@@ -1,66 +1,123 @@
 # Database Constraints and Assumptions
 
-## User-Related Constraints
-* When a user is deleted:
+## User-related
 
-  * User preferences are deleted
-  * User's reviews (as author or target) are deleted
-  * Associated passenger, driver, and operator records are deleted
-  * GDPR requests are deleted
-  * Company representative records referencing the user are deleted
-  * GDPR logs remain unchanged (no action)
+* Deleting a **User**:
 
-## Card-Related Constraints
+  * **Cascades**: `UserPreferences`, `Passenger`, `Driver`, `CompanyRepresentative`, `PersonDocument`, `InAppMessage` **(as sender/recipient → NO ACTION, so no cascade!)**
+  * **NO ACTION**: `Rating` (as Author/Target), `InAppMessage` (Sender/Recipient), `GdprLog` (ActorUser)
+  * **Effect**: You **cannot** delete a user if they have Ratings, In-App Messages, or GDPR Logs referencing them. Handle via soft-delete or explicit cleanup via stored procedure.
 
-* When credit card is deleted:
+* Deleting a **Passenger** (child of User; cascades from User):
 
-  * Reference is set to NULL for all roles (driver, passenger, company)
-  * Software handles NULL card state to prompt for new card
+  * **Cascades**: `RideRequest`
 
-## Company-Related Constraints
+* Deleting a **Driver** (child of User; cascades from User):
 
-* When a company is deleted:
+  * **NO ACTION** dependents (none directly). Rides reference **Driver** via `Ride.DriverUserId → Driver(UserId)` with **NO ACTION**, so you **cannot** delete a driver if rides exist for them.
 
-  * All associated drivers are deleted
-  * All company representative records are deleted
-* When a company representative or driver is deleted:
+## Party / Card / Company
 
-  * Associated vehicles are deleted
+* **Party**:
 
-## Administrative Constraints
+  * `User → Party` and `Company → Party` are **NO ACTION** (no cascade).
+  * `Payment(Sender/Receiver) → Party` is **NO ACTION**.
 
-* When an admin who approves operators is deleted:
+* **CreditCard**:
 
-  * No action (admins are manually managed and never deleted - assumption)
+  * `CreditCard.OwnerId → Party` is **NO ACTION**.
+  * Deleting a card **does not cascade** anywhere. App must handle loss of default/active card.
 
-## Vehicle-Related Constraints
+* **Company**:
 
-* When a vehicle is deleted:
+  * Deleting a company:
 
-  * Vehicle availability, live location, documents, and tests are deleted
-  * Related user service enrollments are deleted (need to re-enroll and get verified)
+    * **Cascades**: `CompanyRepresentative` (CompanyId → CASCADE)
+    * **Cascades**: `Driver` (if Driver is working at Company)
+  * **NO ACTION**: `Party` (Company.PartyId → NO ACTION)
 
-## Geofence and Ride Constraints
+* **CompanyRepresentative**:
 
-* When a geofence zone is deleted:
+  * Deleting a representative’s **User** cascades the **CompanyRepresentative** row.
 
-  * Related bridges are deleted
-* When a bridge is deleted:
+## Vehicle-related
 
-  * References in itinerary legs are set to NULL
-* When an itinerary leg is deleted:
+* Deleting a **Vehicle**:
 
-  * Related dispatch offers and leg-cross-bridge records are deleted
-* When a dispatch offer is deleted:
+  * **Cascades**: `VehicleDocument`, `VehicleTest`, `VehicleAvailabilityDaily`, `VehicleLocationLive`, `UserServiceEnrollment` (VehicleId → CASCADE)
+  * **NO ACTION**: `Ride` (Ride.VehicleId → NO ACTION), `DispatchOffer` (VehicleId → NO ACTION)
 
-  * Related rides are deleted
-* When a ride is deleted:
+* Deleting a **VehicleType**:
 
-  * Related in-app messages are deleted
-  * Rating and payment references are set to NULL
+  * **Cascades**: `AllowedRideProfile` rows that reference it (CASCADE)
 
-## GDPR Constraints
+* Deleting a **User** who **owns** vehicles (`Vehicle.UserOwnerId → User` is CASCADE):
 
-* When a GDPR request is deleted:
+  * **Cascades**: their `Vehicle` rows, and thus all vehicle child rows listed above.
 
-  * Associated GDPR logs are deleted
+## Service / Ride-profile mapping
+
+* Deleting a **ServiceType** or **RideType**:
+
+  * **Cascades**: `ServicetypeAllowedRidetype` and `AllowedRideProfile` rows referencing them
+
+## Geofence / Bridge / Itinerary
+
+* Deleting a **Geofencezone**:
+
+  * `Bridge.FromZone/ToZone` are **NO ACTION**, delete with stored procedure/trigger.
+
+* Deleting a **Bridge**:
+
+  * **Cascades**: `LegCrossesBridge` (Bridge → CASCADE)
+  * `ItineraryLeg.ViaBridgeId` is **SET NULL** (leg keeps existing, reference cleared)
+
+* Deleting a **RideRequest**:
+
+  * **Cascades**: `ItineraryLeg` (RideRequestId → CASCADE)
+
+* Deleting an **ItineraryLeg**:
+
+  * **Cascades**: `LegCrossesBridge` (ItineraryLeg → CASCADE)
+  * **Cascades**: `DispatchOffer` (LegId → CASCADE)
+
+## Dispatch offers / Rides / Messages / Ratings / Payments
+
+* Deleting a **DispatchOffer**:
+
+  * `Ride.OfferId` is **NO ACTION** → you **cannot** delete an offer that has a Ride; delete/handle the ride first.
+
+* Deleting a **Ride**:
+
+  * **Cascades**: `InAppMessage` (Ride → CASCADE)
+  * **SET NULL**: `Rating`, `Payment` references on the ride
+  * **NO ACTION**: `DriverUserId`, `PassengerUserId`, `VehicleId` → the ride protects those rows from deletion
+
+* Deleting a **User** involved in messages/ratings:
+
+  * **Ratings** (Author/Target) are **NO ACTION** → cannot delete user while ratings exist.
+  * **InAppMessage** Sender/Recipient are **NO ACTION** → cannot delete user while messages exist.
+
+* Deleting a **Rating** or **Payment**:
+
+  * `Ride` sets the reference to **NULL** (no cascade to the Ride’s existence).
+
+## GDPR
+
+* Deleting a **User**:
+
+  * **Cascades**: `GdprRequest` (UserId → CASCADE)
+
+* Deleting a **GdprRequest**:
+
+  * `GdprLog.GdprId` is **NO ACTION** → you **cannot** delete a request while logs exist; delete logs first (or switch to CASCADE if desired).
+
+* Deleting a **User** who authored GDPR logs (`GdprLog.ActorUserId → User`):
+
+  * **NO ACTION** → cannot delete until logs are handled.
+
+## Admin / Operator
+
+* Deleting an **Admin**:
+
+  * `Operator.ApprovedByAdmin` is **NO ACTION** (policy: admin users never deleted)
