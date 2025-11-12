@@ -1,20 +1,31 @@
 SET QUOTED_IDENTIFIER ON;
 GO
 
+-- ================================ Custom Types ================================ --
+CREATE TYPE dbo.Gender FROM CHAR(1);
+CREATE TYPE dbo.MoneyAmount FROM DECIMAL(10,2);
+CREATE TYPE dbo.LongText FROM NVARCHAR(255);
+CREATE TYPE dbo.UtcStamp FROM DATETIME2(0);
+CREATE TYPE dbo.PartyType FROM CHAR(1);
+
+GO
+
 -- =================================== Tables =================================== --
 
 CREATE TABLE [dbo].[User] (
     [UserId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Name] NVARCHAR(100) NOT NULL,
+    [FirstName] NVARCHAR(50) NOT NULL DEFAULT '',
+    [LastName] NVARCHAR(50) NOT NULL DEFAULT '',
     [Dob] DATE NOT NULL CHECK (Dob < GETDATE()),
-    [Gender] CHAR(1) NOT NULL,
-    [Email] NVARCHAR(255) NOT NULL,
+    [Gender] Gender NOT NULL,
+    [Email] LongText NOT NULL,
     [Phone] NVARCHAR(32) NOT NULL,
-    [Address] NVARCHAR(255) NOT NULL,
+    [Address] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL,
-    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [PasswordHash] LongText NOT NULL,
     [PartyId] UNIQUEIDENTIFIER NOT NULL,
-    [CreatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([UserId]),
     CONSTRAINT [UQ_User_Email] UNIQUE ([Email]),
     CONSTRAINT [UQ_User_Username] UNIQUE ([Username]),
@@ -25,7 +36,8 @@ CREATE TABLE [dbo].[User] (
 CREATE TABLE [dbo].[Admin] (
     [AdminId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [PasswordHash] LongText NOT NULL,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Admin] PRIMARY KEY CLUSTERED ([AdminId])
 );
 
@@ -33,13 +45,13 @@ CREATE TABLE [dbo].[CreditCard] (
     [CardId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [OwnerId] UNIQUEIDENTIFIER NOT NULL,
     [Last4] CHAR(4) NOT NULL,
-    [Token] NVARCHAR(255) NOT NULL UNIQUE,
+    [Token] LongText NOT NULL UNIQUE,
     [ExpMonth] INT NOT NULL,
     [ExpYear] INT NOT NULL,
     [IsDefault] BIT NOT NULL DEFAULT 0,
     [IsActive] BIT NOT NULL DEFAULT 0,
-    [AddedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
-    [UpdatedAt] DATETIME2(0),
+    [AddedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_Credit_Card] PRIMARY KEY CLUSTERED ([CardId]),
     CONSTRAINT [CK_CreditCard_Exp] CHECK ([ExpMonth] BETWEEN 1 AND 12),
     CONSTRAINT [CK_CreditCard_ExpYear] CHECK ( ( [ExpYear] > YEAR(GETUTCDATE()) ) OR ( [ExpYear] = YEAR(GETUTCDATE()) AND [ExpMonth] >= MONTH(GETUTCDATE()) ) ),
@@ -47,9 +59,9 @@ CREATE TABLE [dbo].[CreditCard] (
 );
 
 CREATE TABLE [dbo].[Party] (
-    [PartyId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
-    [PartyType] CHAR(1) NOT NULL, -- 'U' = User, 'C' = Company
-    [CreatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [PartyId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [PartyType] PartyType NOT NULL, -- 'U' = User, 'C' = Company
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Party] PRIMARY KEY CLUSTERED ([PartyId]),
     CONSTRAINT [CK_Party_Type] CHECK ([PartyType] IN ('U','C'))
 );
@@ -57,13 +69,15 @@ CREATE TABLE [dbo].[Party] (
 CREATE TABLE [dbo].[Servicetype] (
     [ServiceTypeId] INT IDENTITY(1,1) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL,
-    [Description] NVARCHAR(255) NOT NULL,
-    [BaseFare] DECIMAL(10,2) NOT NULL,
-    [PerKm] DECIMAL(10,2) NOT NULL,
-    [PerMin] DECIMAL(10,2) NOT NULL,
-    [ValidFrom] DATETIME2(0) NOT NULL,
-    [ValidTo] DATETIME2(0),
+    [Description] LongText NOT NULL,
+    [BaseFare] MoneyAmount NOT NULL,
+    [PerKm] MoneyAmount NOT NULL,
+    [PerMin] MoneyAmount NOT NULL,
+    [ValidFrom] UtcStamp NOT NULL,
+    [ValidTo] UtcStamp,
     [Active] BIT NOT NULL DEFAULT 1,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_ServiceType] PRIMARY KEY CLUSTERED ([ServiceTypeId]),
     CONSTRAINT [CK_ServiceType_ValidTo] CHECK ([ValidTo] IS NULL OR [ValidTo] > [ValidFrom])
 );
@@ -71,7 +85,9 @@ CREATE TABLE [dbo].[Servicetype] (
 CREATE TABLE [dbo].[Ridetype] (
     [RideTypeId] INT IDENTITY(1,1) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL,
-    [Description] NVARCHAR(255),
+    [Description] LongText,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_RideType] PRIMARY KEY CLUSTERED ([RideTypeId])
 );
 
@@ -79,10 +95,10 @@ CREATE TABLE [dbo].[Payment] (
     [PaymentId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [SenderPartyId] UNIQUEIDENTIFIER NOT NULL,
     [ReceiverPartyId] UNIQUEIDENTIFIER NOT NULL,
-    [GrossAmount] DECIMAL(9,2) NOT NULL DEFAULT 0,
-    [OsrhFee] DECIMAL(9,2) NOT NULL DEFAULT 0,
-    [DriverPayout] DECIMAL(9,2) NOT NULL DEFAULT 0,
-    [PaidAt] DATETIME2(0),
+    [GrossAmount] MoneyAmount NOT NULL DEFAULT 0,
+    [OsrhFee] MoneyAmount NOT NULL DEFAULT 0,
+    [DriverPayout] MoneyAmount NOT NULL DEFAULT 0,
+    [PaidAt] UtcStamp,
     [Method] NVARCHAR(100) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Pending',
     CONSTRAINT [PK_Payment] PRIMARY KEY CLUSTERED ([PaymentId]),
@@ -96,8 +112,9 @@ CREATE TABLE [dbo].[Rating] (
     [AuthorUserId] UNIQUEIDENTIFIER NOT NULL,
     [TargetUserId] UNIQUEIDENTIFIER NOT NULL,
     [Stars] INT NOT NULL,
-    [Comment] NVARCHAR(255),
-    [CreatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [Comment] LongText,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_Rating] PRIMARY KEY CLUSTERED ([RatingId]),
     CONSTRAINT [CK_Rating_Stars] CHECK ([Stars] BETWEEN 1 AND 5)
 );
@@ -109,16 +126,20 @@ CREATE TABLE [dbo].[Geofencezone] (
     [MaxLat] DECIMAL(9,6),
     [MaxLng] DECIMAL(9,6),
     [Name] NVARCHAR(100),
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_GeofenceZone] PRIMARY KEY CLUSTERED ([ZoneId]),
     CONSTRAINT [CK_GeofenceZone_Coords] CHECK ([MaxLat] > [MinLat] AND [MaxLng] > [MinLng])
 );
 
 CREATE TABLE [dbo].[Operator] (
     [OperatorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Email] NVARCHAR(255) NOT NULL,
+    [Email] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [PasswordHash] LongText NOT NULL,
     [ApprovedByAdmin] UNIQUEIDENTIFIER NOT NULL,
+    [ApprovedAt] UtcStamp NOT NULL,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Operator] PRIMARY KEY CLUSTERED ([OperatorId])
 );
 
@@ -129,9 +150,10 @@ CREATE TABLE [dbo].[Passenger] (
 
 CREATE TABLE [dbo].[Inspector] (
     [InspectorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Email] NVARCHAR(255) NOT NULL,
+    [Email] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [PasswordHash] LongText NOT NULL,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Inspector] PRIMARY KEY CLUSTERED ([InspectorId])
 );
 
@@ -139,20 +161,21 @@ CREATE TABLE [dbo].[Company] (
     [CompanyId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Name] NVARCHAR(100) NOT NULL,
     [PartyId] UNIQUEIDENTIFIER NOT NULL,
-    [CreatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Company] PRIMARY KEY CLUSTERED ([CompanyId]),
     CONSTRAINT [UQ_Company_PartyId] UNIQUE ([PartyId]),
     CONSTRAINT [UQ_Company_Name] UNIQUE ([Name])
 );
 
 CREATE TABLE [dbo].[UserPreferences] (
-    [UserPreferencesId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
+    [UserPreferencesId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL UNIQUE,
     [NotificationsEnabled] BIT NOT NULL DEFAULT 0,
     [Language] CHAR(2) NOT NULL DEFAULT 'en',
     [LocEnabled] BIT NOT NULL DEFAULT 0,
     [Timezone] NVARCHAR(100),
-    [UpdatedAt] DATETIME2(0) NULL,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp NULL,
     CONSTRAINT [PK_UserPreferences] PRIMARY KEY CLUSTERED ([UserPreferencesId]),
     CONSTRAINT [CK_UserPreferences_Languages] CHECK ([Language] IN ('en','es','fr','de','it','el'))
 );
@@ -160,17 +183,17 @@ CREATE TABLE [dbo].[UserPreferences] (
 CREATE TABLE [dbo].[ServicetypeAllowedRidetype] (
     [ServiceTypeID] INT NOT NULL,
     [RideTypeID] INT NOT NULL,
-    CONSTRAINT [PK_SERVICETYPE_ALLOWED_RIDETYPE] PRIMARY KEY CLUSTERED ([ServiceTypeID], [RideTypeID])
+    CONSTRAINT [PK_ServicetypeAllowedRidetype] PRIMARY KEY CLUSTERED ([ServiceTypeID], [RideTypeID])
 );
 
 CREATE TABLE [dbo].[Ride] (
-    [RideId] INT IDENTITY(1,1) NOT NULL,
+    [RideId] INT IDENTITY(1,2) NOT NULL,
     [OfferId] INT NOT NULL,
     [DriverUserId] UNIQUEIDENTIFIER NOT NULL,
     [PassengerUserId] UNIQUEIDENTIFIER NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
-    [StartedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
-    [EndedAt] DATETIME2(0) NOT NULL,
+    [StartedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [EndedAt] UtcStamp NOT NULL,
     [PriceFinal] DECIMAL(12,2) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Scheduled'),
     [Rating] INT,
@@ -181,12 +204,12 @@ CREATE TABLE [dbo].[Ride] (
 );
 
 CREATE TABLE [dbo].[GdprRequest] (
-    [GdprId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [GdprId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL,
     [Type] NVARCHAR(100) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
-    [RequestedAt] DATETIME2(0) NOT NULL,
-    [DecidedAt] DATETIME2(0),
+    [RequestedAt] UtcStamp NOT NULL,
+    [DecidedAt] UtcStamp,
     CONSTRAINT [PK_GdprRequest] PRIMARY KEY CLUSTERED ([GdprId]),
     CONSTRAINT [CK_GdprRequest_Type] CHECK ([Type] IN ('DataAccess','DataDeletion','DataExport', 'DataCorrection')),
     CONSTRAINT [CK_GdprRequest_Status] CHECK ([Status] IN ('Pending','Approved','Denied'))
@@ -207,7 +230,7 @@ CREATE TABLE [dbo].[Driver] (
 );
 
 CREATE TABLE [dbo].[VehicleType] (
-    [VehicleTypeId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [VehicleTypeId] INT IDENTITY(1,1) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL UNIQUE,
     CONSTRAINT [PK_VehicleType] PRIMARY KEY CLUSTERED ([VehicleTypeId])
 );
@@ -216,36 +239,72 @@ CREATE TABLE [dbo].[AllowedRideProfile] (
     [RideProfileId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [ServiceTypeId] INT NOT NULL,
     [RideTypeId] INT NOT NULL,
-    [VehicleTypeId] UNIQUEIDENTIFIER NOT NULL,
+    [VehicleTypeId] INT NOT NULL,
     [ProfileName] NVARCHAR(100),
     CONSTRAINT [PK_AllowedRideProfile] PRIMARY KEY CLUSTERED ([RideProfileId])
 );
 
 CREATE TABLE [dbo].[RideRequest] (
-    [RequestId] INT IDENTITY(1,1) NOT NULL,
+    [RequestId] INT IDENTITY(1,2) NOT NULL,
     [PassengerId] UNIQUEIDENTIFIER NOT NULL,
     [NumOfPeople] INT NOT NULL,
-    [PickupAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [PickupAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [PickupLat] DECIMAL(9,6) NOT NULL,
     [PickupLng] DECIMAL(9,6) NOT NULL,
     [DropLat] DECIMAL(9,6) NOT NULL,
     [DropLng] DECIMAL(9,6) NOT NULL,
-    [PickupCountry] NVARCHAR(255),
-    [PickupRegion] NVARCHAR(255),
-    [PickupCity] NVARCHAR(255),
-    [PickupDistrict] NVARCHAR(255),
-    [PickupPostalCode] NVARCHAR(255),
-    [DropCountry] NVARCHAR(255),
-    [DropRegion] NVARCHAR(255),
-    [DropCity] NVARCHAR(255),
-    [DropDistrict] NVARCHAR(255),
-    [DropPostalCode] NVARCHAR(255),
-    [CreatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [PickupCountry] LongText,
+    [PickupRegion] LongText,
+    [PickupCity] LongText,
+    [PickupDistrict] LongText,
+    [PickupPostalCode] LongText,
+    [DropCountry] LongText,
+    [DropRegion] LongText,
+    [DropCity] LongText,
+    [DropDistrict] LongText,
+    [DropPostalCode] LongText,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
     [RideProfileId] UNIQUEIDENTIFIER NOT NULL,
     CONSTRAINT [PK_RideRequest] PRIMARY KEY CLUSTERED ([RequestId]),
     CONSTRAINT [CK_RideRequest_NumOfPeople] CHECK ([NumOfPeople] > 0),
-    CONSTRAINT [CK_RideRequest_Status] CHECK ([Status] IN ('Pending','Accepted','Declined','Cancelled','Completed'))
+    CONSTRAINT [CK_RideRequest_Status] CHECK ([Status] IN ('Pending','Accepted','Declined','Cancelled','Completed','Edited'))
+);
+
+CREATE TABLE [dbo].[RideRequestLog] (
+    [LogEntryId] BIGINT IDENTITY(1,1) PRIMARY KEY,
+    [RequestId] INT NOT NULL, -- same ID as in RideRequest
+    [Operation] CHAR(1) NOT NULL,
+    [ChangedAt] DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    [ChangedBy] UNIQUEIDENTIFIER NULL,
+
+    -- Snapshot of ride request
+    [PassengerId] UNIQUEIDENTIFIER NOT NULL,
+    [NumOfPeople] INT NOT NULL,
+    [PickupAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [PickupLat] DECIMAL(9,6) NOT NULL,
+    [PickupLng] DECIMAL(9,6) NOT NULL,
+    [DropLat] DECIMAL(9,6) NOT NULL,
+    [DropLng] DECIMAL(9,6) NOT NULL,
+    [PickupCountry] LongText,
+    [PickupRegion] LongText,
+    [PickupCity] LongText,
+    [PickupDistrict] LongText,
+    [PickupPostalCode] LongText,
+    [DropCountry] LongText,
+    [DropRegion] LongText,
+    [DropCity] LongText,
+    [DropDistrict] LongText,
+    [DropPostalCode] LongText,
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp,
+    [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
+    [RideProfileId] UNIQUEIDENTIFIER NOT NULL,
+
+    CONSTRAINT [CK_RideRequestLog_NumOfPeople] CHECK ([NumOfPeople] > 0),
+    CONSTRAINT [CK_RideRequestLog_Operation] CHECK ([Operation] IN ('I','U','D')),
+    CONSTRAINT [CK_RideRequestLog_Status] CHECK ([Status] IN ('Pending','Accepted','Declined','Cancelled','Completed','Edited'))
 );
 
 CREATE TABLE [dbo].[InAppMessage] (
@@ -253,16 +312,16 @@ CREATE TABLE [dbo].[InAppMessage] (
     [SenderUserId] UNIQUEIDENTIFIER NOT NULL,
     [RecipientUserId] UNIQUEIDENTIFIER NOT NULL,
     [Body] NVARCHAR(MAX) NOT NULL,
-    [SentAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [SentAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [Ride] INT NOT NULL,
     CONSTRAINT [PK_InAppMessage] PRIMARY KEY CLUSTERED ([MsgId])
 );
 
 CREATE TABLE [dbo].[GdprLog] (
-    [LogId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [GdprId] UNIQUEIDENTIFIER NOT NULL,
+    [LogId] BIGINT IDENTITY(1,1) NOT NULL,
+    [GdprId] INT NOT NULL,
     [ActorUserId] UNIQUEIDENTIFIER NOT NULL,
-    [LoggedAt] DATETIME2(0),
+    [LoggedAt] UtcStamp,
     [Note] NVARCHAR(MAX),
     CONSTRAINT [PK_GdprLog] PRIMARY KEY CLUSTERED ([LogId])
 );
@@ -270,15 +329,15 @@ CREATE TABLE [dbo].[GdprLog] (
 CREATE TABLE [dbo].[CompanyRepresentative] (
     [CompanyRepresentativeId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [CompanyId] UNIQUEIDENTIFIER NOT NULL,
-    [Email] NVARCHAR(255) NOT NULL,
+    [Email] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] NVARCHAR(255) NOT NULL,
+    [PasswordHash] LongText NOT NULL,
     CONSTRAINT [PK_CompanyRepresentative] PRIMARY KEY CLUSTERED ([CompanyRepresentativeId])
 );
 
 CREATE TABLE [dbo].[Vehicle] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [VehicleTypeId] UNIQUEIDENTIFIER NOT NULL,
+    [VehicleTypeId] INT NOT NULL,
     [Seats] INT DEFAULT 0 NOT NULL,
     [CargoVolume] DECIMAL(10,2) DEFAULT 0,
     [CargoWeight] DECIMAL(10,2) DEFAULT 0,
@@ -292,12 +351,12 @@ CREATE TABLE [dbo].[Vehicle] (
 );
 
 CREATE TABLE [dbo].[PersonDocument] (
-    [DocId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [DocId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL,
     [DocType] NVARCHAR(100) NOT NULL,
-    [IssueDate] DATETIME2(0) NOT NULL ,
-    [UploadedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
-    [ExpiryDate] DATETIME2(0) NOT NULL,
+    [IssueDate] UtcStamp NOT NULL ,
+    [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [ExpiryDate] UtcStamp NOT NULL,
     [FileUrl] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_PersonDocument] PRIMARY KEY CLUSTERED ([DocId]),
     CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] > [IssueDate])
@@ -313,12 +372,12 @@ CREATE TABLE [dbo].[ItineraryLeg] (
 );
 
 CREATE TABLE [dbo].[VehicleDocument] (
-    [VehDocId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [VehDocId] INT IDENTITY(1,1) NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [DocType] NVARCHAR(100) NOT NULL,
-    [IssueDate] DATETIME2(0) NOT NULL,
-    [UploadedAt] DATETIME2(0) DEFAULT GETUTCDATE(),
-    [ExpiryDate] DATETIME2(0) NOT NULL,
+    [IssueDate] UtcStamp NOT NULL,
+    [UploadedAt] UtcStamp DEFAULT GETUTCDATE(),
+    [ExpiryDate] UtcStamp NOT NULL,
     [FileUrl] NVARCHAR(512) NOT NULL,
     [Image] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_VehicleDocument] PRIMARY KEY CLUSTERED ([VehDocId]),
@@ -329,19 +388,19 @@ CREATE TABLE [dbo].[VehicleTest] (
     [TestId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [InspectorId] UNIQUEIDENTIFIER NOT NULL,
-    [CheckDate] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE(),
+    [CheckDate] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ExpiryDate] AS (DATEADD(YEAR, 1, [CheckDate])),
     [Comments] NVARCHAR(MAX) DEFAULT N'No comments',
     CONSTRAINT [PK_VehicleTest] PRIMARY KEY CLUSTERED ([TestId])
 );
 
 CREATE TABLE [dbo].[UserServiceEnrollment] (
-    [EnrollId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    [EnrollId] INT IDENTITY(1,1) NOT NULL,
     [Status] NVARCHAR(100),
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [ServiceType] INT NOT NULL,
     [RideType] INT NOT NULL,
-    [ApprovedAt] DATETIME2(0),
+    [ApprovedAt] UtcStamp,
     [ApprovedById] UNIQUEIDENTIFIER,
     [UserId] UNIQUEIDENTIFIER NOT NULL,
     CONSTRAINT [PK_UserServiceEnrollment] PRIMARY KEY CLUSTERED ([EnrollId]),
@@ -354,7 +413,7 @@ CREATE TABLE dbo.[VehicleAvailabilityDaily] (
     [StartsAt] TIME(0) NOT NULL,
     [EndsAt] TIME(0) NOT NULL,
     [IsRecurring] BIT NOT NULL DEFAULT 0, -- repeated every weekday -> set to 1
-    [UpdatedAt] DATETIME2(0) DEFAULT GETUTCDATE(),
+    [UpdatedAt] UtcStamp DEFAULT GETUTCDATE(),
     CONSTRAINT PK_VehicleAvailabilityDaily PRIMARY KEY ([VehicleId], [AvailabilityDate]),
     CONSTRAINT CK_VAD_Time CHECK ([EndsAt] > [StartsAt])
 );
@@ -365,8 +424,8 @@ CREATE TABLE [dbo].[DispatchOffer] (
     [RecipientPartyId] UNIQUEIDENTIFIER NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Sent',
-    [SentAt] DATETIME2(0) DEFAULT GETUTCDATE(),
-    [RespondedAt] DATETIME2(0),
+    [SentAt] UtcStamp DEFAULT GETUTCDATE(),
+    [RespondedAt] UtcStamp,
     CONSTRAINT [PK_DispatchOffer] PRIMARY KEY CLUSTERED ([OfferId]),
     CONSTRAINT [CK_DispatchOffer_Status] CHECK ([Status] IN ('Sent','Accepted','Declined','Expired'))
 );
@@ -375,7 +434,7 @@ CREATE TABLE [dbo].[VehicleLocationLive] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     [Lat] DECIMAL(9,6) NOT NULL,
     [Lng] DECIMAL(9,6) NOT NULL,
-    [UpdatedAt] DATETIME2(0) NOT NULL DEFAULT GETUTCDATE()
+    [UpdatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE()
 );
 
 CREATE TABLE [dbo].[LegCrossesBridge] (
@@ -384,6 +443,7 @@ CREATE TABLE [dbo].[LegCrossesBridge] (
     CONSTRAINT [PK_LegCrossesBridge] PRIMARY KEY CLUSTERED ([ItineraryLeg], [Bridge])
 );
 
+GO
 
 -- =================================== FK and other constraints =================================== --
 
@@ -567,6 +627,12 @@ ADD CONSTRAINT [FK_RideRequest_AllowedRideProfile]
     CONSTRAINT [FK_RideRequest_Passenger]
     FOREIGN KEY ([PassengerId]) REFERENCES [dbo].[Passenger]([UserId])
     ON DELETE CASCADE;
+
+/* RideRequestLog → RideRequest */
+ALTER TABLE [dbo].[RideRequestLog]
+ADD CONSTRAINT [FK_RideRequestLog_RideRequest]
+    FOREIGN KEY ([RequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
+    ON DELETE NO ACTION;
 
 /* DispatchOffer → ItineraryLeg, Driver, Company, Vehicle */
 ALTER TABLE [dbo].[DispatchOffer]
