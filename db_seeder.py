@@ -16,7 +16,7 @@ NUM_ADMINS     = 5
 NUM_OPERATORS  = 30
 NUM_INSPECTORS = 100
 
-NUM_PASSENGERS = 300
+NUM_PASSENGERS = 600
 NUM_DRIVERS    = 400
 NUM_VEHICLES_PER_DRIVER = 2
 NUM_CREDIT_CARDS_PER_ENTITY = 3
@@ -24,6 +24,7 @@ NUM_CREDIT_CARDS_PER_ENTITY = 3
 NUM_COMPANIES  = 5
 NUM_REPR_PER_COMPANY = 40
 
+NUM_GEOFENCE_ZONES = 10
 RIDES_TO_CREATE = 10
 # ----------------------------
 
@@ -206,249 +207,280 @@ with cn:
             cur.execute("""INSERT dbo.CompanyRepresentative(CompanyRepresentativeId,CompanyId,Email,Username,PasswordHash)
                    VALUES(?,?,?,?,?)""", user_id, cid, email, username, "hash")
 
-    # # Passengers
-    # passengers = []  # (party_id, user_id)
-    # for i in range(NUM_PASSENGERS):
-    #     party_u = guid()
-    #     user_id = guid()
-    #     email = f"passenger{i+1}@example.com"
-    #     cur.execute("INSERT dbo.Party(PartyId,PartyType,CreatedAt) VALUES(?, 'U', SYSUTCDATETIME())", party_u)
-    #     cur.execute("""INSERT dbo.[User](UserId,Name,Dob,Gender,Email,Phone,Address,Username,PasswordHash,PartyId)
-    #                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
-    #                 user_id, fake.name(), fake.date_of_birth(minimum_age=18, maximum_age=75),
-    #                 random.choice(['M','F', 'm', 'f']), email, fake.phone_number(), fake.address()[:250],
-    #                 email.split('@')[0], "hash", party_u)
-    #     cur.execute("INSERT dbo.Passenger(UserId) VALUES(?)", user_id)
-    #     cur.execute("""INSERT dbo.UserPreferences(UserPreferencesId,UserId,NotificationsEnabled,[Language],LocEnabled,Timezone)
-    #                    VALUES(NEWID(), ?, ?, 'el', ?, N'Asia/Nicosia')""",
-    #                 user_id, random.choice([0,1]), random.choice([0,1]))
-    #     passengers.append((party_u, user_id))
-
-    # # Drivers
-    # drivers = []  # (driver_party, driver_user, [vehicle_ids])
-    # for i in range(NUM_DRIVERS):
-    #     party_u = guid()
-    #     user_id = guid()
-    #     email = f"driver{i+1}@example.com"
-    #     cur.execute("INSERT dbo.Party(PartyId,PartyType,CreatedAt) VALUES(?, 'U', SYSUTCDATETIME())", party_u)
-    #     cur.execute("""INSERT dbo.[User](UserId,Name,Dob,Gender,Email,Phone,Address,Username,PasswordHash,PartyId)
-    #                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
-    #                 user_id, fake.name(), fake.date_of_birth(minimum_age=22, maximum_age=70),
-    #                 random.choice(['M','F', 'm', 'f']), email, fake.phone_number(), fake.address()[:250],
-    #                 email.split('@')[0], "hash", party_u)
-    #     cur.execute("INSERT dbo.Driver(UserId,Company) VALUES(?, ?)", user_id, random.choice(company_ids))
-
-    #     # PersonDocument for driver (once per driver)
-    #     # Driver License
-    #     pd_issue = utcnow() - datetime.timedelta(days=365*5)
-    #     pd_exp   = utcnow() + datetime.timedelta(days=365*3)
-    #     cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-    #                VALUES(NEWID(),?,?,?,?,?,?)""",
-    #             user_id, 'DriverLicense', pd_issue, utcnow(), pd_exp, 'https://example.com/license.pdf')
+    # Passengers
+    passengers = []  # (party_id, user_id)
+    for i in range(NUM_PASSENGERS):
+        party_u = guid()
+        user_id = guid()
+        email = f"passenger{i+1}@example.com"
+        cur.execute("INSERT dbo.Party(PartyId,PartyType,CreatedAt) VALUES(?, 'U', SYSUTCDATETIME())", party_u)
         
-    #     # ID Document
-    #     id_issue = utcnow() - datetime.timedelta(days=365*8)
-    #     id_exp   = utcnow() + datetime.timedelta(days=365*2)
-    #     cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-    #                VALUES(NEWID(),?,?,?,?,?,?)""",
-    #             user_id, 'ID', id_issue, utcnow(), id_exp, 'https://example.com/id.pdf')
+        full_name = fake.name()
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
         
-    #     # Proof of Address
-    #     addr_issue = utcnow() - datetime.timedelta(days=30)
-    #     addr_exp   = utcnow() + datetime.timedelta(days=90)
-    #     cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-    #                VALUES(NEWID(),?,?,?,?,?,?)""",
-    #             user_id, 'ProofOfAddress', addr_issue, utcnow(), addr_exp, 'https://example.com/address.pdf')
+        cur.execute("""INSERT dbo.[User](UserId,FirstName,LastName,Dob,Gender,Email,Phone,Address,Username,PasswordHash,PartyId)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                    user_id, first_name, last_name, fake.date_of_birth(minimum_age=18, maximum_age=75),
+                    random.choice(['M','F', 'm', 'f']), email, fake.phone_number(), fake.address()[:250],
+                    email.split('@')[0], "hash", party_u)
+        cur.execute("INSERT dbo.Passenger(UserId) VALUES(?)", user_id)
+        cur.execute("""INSERT dbo.UserPreferences(UserPreferencesId,UserId,NotificationsEnabled,[Language],LocEnabled,Timezone)
+                       VALUES(NEWID(), ?, ?, 'el', ?, N'Asia/Nicosia')""",
+                    user_id, random.choice([0,1]), random.choice([0,1]))
+        passengers.append((party_u, user_id))
 
-    #     vehicle_ids = []
+    # Drivers
+    drivers = []  # (driver_party, driver_user, [vehicle_ids])
+    for i in range(NUM_DRIVERS):
+        party_u = guid()
+        user_id = guid()
+        email = f"driver{i+1}@example.com"
+        cur.execute("INSERT dbo.Party(PartyId,PartyType,CreatedAt) VALUES(?, 'U', SYSUTCDATETIME())", party_u)
+
+        full_name = fake.name()
+        name_parts = full_name.split(' ', 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+        cur.execute("""INSERT dbo.[User](UserId,FirstName,LastName,Dob,Gender,Email,Phone,Address,Username,PasswordHash,PartyId)
+                       VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                    user_id, first_name, last_name, fake.date_of_birth(minimum_age=22, maximum_age=70),
+                    random.choice(['M','F', 'm', 'f']), email, fake.phone_number(), fake.address()[:250],
+                    email.split('@')[0], "hash", party_u)
+        cur.execute("INSERT dbo.Driver(UserId,Company) VALUES(?, ?)", user_id, random.choice(company_ids))
+
+        # Documents for driver
+        # Driver License
+        pd_issue = utcnow() - datetime.timedelta(days=365*5)
+        pd_exp   = utcnow() + datetime.timedelta(days=365*3)
+        cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
+                   VALUES(NEWID(),?,?,?,?,?,?)""",
+                user_id, 'Driver License', pd_issue, utcnow(), pd_exp, 'https://example.com/license.pdf')
         
-    #     # Vehicles per driver
-    #     for v in range(NUM_VEHICLES_PER_DRIVER):
-    #         veh_id = guid()
-    #         vt_id = random.choice(list(vt_ids.values()))
-    #         cur.execute("""INSERT dbo.Vehicle(VehicleId,VehicleTypeId,Seats,CargoVolume,CargoWeight,Status,UserOwnerPartyId)
-    #                VALUES(?,?,?,?,?,?,?)""",
-    #             veh_id, vt_id, random.choice([4,5,7]),
-    #             Decimal("450.0"), Decimal("600.0"), 'Active', party_u)
+        # ID Document
+        id_issue = utcnow() - datetime.timedelta(days=365*8)
+        id_exp   = utcnow() + datetime.timedelta(days=365*2)
+        cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
+                   VALUES(NEWID(),?,?,?,?,?,?)""",
+                user_id, 'ID', id_issue, utcnow(), id_exp, 'https://example.com/id.pdf')
+        
+        # Proof of Address
+        addr_issue = utcnow() - datetime.timedelta(days=30)
+        addr_exp   = utcnow() + datetime.timedelta(days=90)
+        cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
+                   VALUES(NEWID(),?,?,?,?,?,?)""",
+                user_id, 'Proof of Address', addr_issue, utcnow(), addr_exp, 'https://example.com/address.pdf')
 
-    #         # MOT Document
-    #         mot_issue = utcnow() - datetime.timedelta(days=180)
-    #         mot_exp = utcnow() + datetime.timedelta(days=185)
-    #         cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
-    #                    VALUES(NEWID(),?,?,?,?,?,?,?)""",
-    #                 veh_id, 'MOT', mot_issue, utcnow(), mot_exp,
-    #                 'https://example.com/mot.pdf', 'https://example.com/mot.png')
+        vehicle_specs = {
+            "Sedan":        {"seats": (4,5),   "vol": (350,500),    "wt": (200,400)},
+            "Hatchback":    {"seats": (4,5),   "vol": (250,400),    "wt": (150,300)},
+            "SUV":          {"seats": (5,7),   "vol": (500,800),    "wt": (400,800)},
+            "Coupe":        {"seats": (2,4),   "vol": (200,300),    "wt": (150,250)},
+            "Convertible":  {"seats": (2,4),   "vol": (150,300),    "wt": (150,250)},
+            "Pickup Truck": {"seats": (2,5),   "vol": (800,1500),   "wt": (1000,2000)},
+            "Minivan":      {"seats": (6,8),   "vol": (1000,1500),  "wt": (800,1500)},
+            "Van":          {"seats": (2,3),   "vol": (2000,4000),  "wt": (2000,4000)},
+            "Wagon":        {"seats": (4,5),   "vol": (500,700),    "wt": (400,800)},
+            "Crossover":    {"seats": (5,5),   "vol": (450,600),    "wt": (400,700)},
+            "Luxury Car":   {"seats": (4,5),   "vol": (400,600),    "wt": (300,600)},
+            "Sports Car":   {"seats": (2,4),   "vol": (150,300),    "wt": (150,300)},
+            "Electric Car": {"seats": (4,5),   "vol": (300,500),    "wt": (300,600)},
+            "Hybrid Car":   {"seats": (4,5),   "vol": (300,500),    "wt": (250,500)},
+            "Truck":        {"seats": (2,3),   "vol": (5000,20000), "wt": (5000,20000)},
+        }
+
+        vehicle_ids = []
+        
+        # Vehicles per driver
+        for v in range(NUM_VEHICLES_PER_DRIVER):
+            veh_id = guid()
+            vt_id = random.choice(list(vt_ids.values()))
+            vt_name = [k for k, v in vt_ids.items() if v == vt_id][0]
+
+            spec = vehicle_specs.get(vt_name, {"seats": (4,5), "vol": (300,500), "wt": (200,600)}) # get spec with fallback
+            seats = random.randint(spec["seats"][0], spec["seats"][1])
+            cargo_vol = Decimal(str(random.randint(spec["vol"][0], spec["vol"][1])))
+            cargo_wt  = Decimal(str(random.randint(spec["wt"][0], spec["wt"][1])))
+
+            cur.execute("""INSERT dbo.Vehicle(VehicleId,VehicleTypeId,Seats,CargoVolume,CargoWeight,Status,UserOwnerPartyId)
+                VALUES(?,?,?,?,?,?,?)""",
+                veh_id, vt_id, seats, cargo_vol, cargo_wt, 'Active', party_u)
+
+            # Vehicle Documents
+            # MOT Document
+            mot_issue = utcnow() - datetime.timedelta(days=180)
+            mot_exp = utcnow() + datetime.timedelta(days=185)
+            cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
+                       VALUES(NEWID(),?,?,?,?,?,?,?)""",
+                    veh_id, 'MOT', mot_issue, utcnow(), mot_exp,
+                    'https://example.com/mot.pdf', 'https://example.com/mot.png')
             
-    #         # Ownership Document
-    #         ownership_issue = utcnow() - datetime.timedelta(days=365*2)
-    #         ownership_exp = utcnow() + datetime.timedelta(days=365*3)
-    #         cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
-    #                    VALUES(NEWID(),?,?,?,?,?,?,?)""",
-    #                 veh_id, 'Ownership', ownership_issue, utcnow(), ownership_exp,
-    #                 'https://example.com/ownership.pdf', 'https://example.com/ownership.png')
+            # Ownership Document
+            ownership_issue = utcnow() - datetime.timedelta(days=365*2)
+            ownership_exp = utcnow() + datetime.timedelta(days=365*3)
+            cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
+                       VALUES(NEWID(),?,?,?,?,?,?,?)""",
+                    veh_id, 'Ownership', ownership_issue, utcnow(), ownership_exp,
+                    'https://example.com/ownership.pdf', 'https://example.com/ownership.png')
             
-    #         # Latest Service Report
-    #         service_issue = utcnow() - datetime.timedelta(days=90)
-    #         service_exp = utcnow() + datetime.timedelta(days=275)
-    #         cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
-    #                    VALUES(NEWID(),?,?,?,?,?,?,?)""",
-    #                 veh_id, 'ServiceReport', service_issue, utcnow(), service_exp,
-    #                 'https://example.com/service.pdf', 'https://example.com/service.png')
+            # Latest Service Report
+            service_issue = utcnow() - datetime.timedelta(days=90)
+            service_exp = utcnow() + datetime.timedelta(days=275)
+            cur.execute("""INSERT dbo.VehicleDocument(VehDocId,VehicleId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl,Image)
+                       VALUES(NEWID(),?,?,?,?,?,?,?)""",
+                    veh_id, 'Service Report', service_issue, utcnow(), service_exp,
+                    'https://example.com/service.pdf', 'https://example.com/service.png')
             
-    #         # Vehicle Test
-    #         cur.execute("INSERT dbo.VehicleTest(TestId,VehicleId,InspectorId,CheckDate,Comments) VALUES(NEWID(), ?, ?, DATEADD(DAY,-20,SYSUTCDATETIME()), N'OK')", veh_id, random.choice(inspector_ids))
+            # Vehicle Test
+            cur.execute("INSERT dbo.VehicleTest(TestId,VehicleId,InspectorId,CheckDate,Comments) VALUES(NEWID(), ?, ?, DATEADD(DAY,-20,SYSUTCDATETIME()), N'OK')", veh_id, random.choice(inspector_ids))
 
-    #         # Daily Availability
-    #         avail_date = utcnow().date()
-    #         cur.execute("""INSERT dbo.VehicleAvailabilityDaily(VehicleId,AvailabilityDate,StartsAt,EndsAt,IsRecurring,UpdatedAt)
-    #                        VALUES(?,?,?,?,?,SYSUTCDATETIME())""",
-    #                     veh_id, avail_date, "08:00", "18:00", random.choice([0,1]))
+            # Vehicle daily availability
+            avail_date = utcnow().date()
+            cur.execute("""INSERT dbo.VehicleAvailabilityDaily(VehicleId,AvailabilityDate,StartsAt,EndsAt,IsRecurring,UpdatedAt)
+                           VALUES(?,?,?,?,?,SYSUTCDATETIME())""",
+                        veh_id, avail_date, "08:00", "18:00", random.choice([0,1]))
             
-    #         # Location
-    #         cur.execute("""INSERT dbo.VehicleLocationLive(VehicleId,Lat,Lng,UpdatedAt)
-    #                        VALUES(?, 34.69, 32.96, SYSUTCDATETIME())""", veh_id)
+            # Vehicle Location
+            cur.execute("""INSERT dbo.VehicleLocationLive(VehicleId,Lat,Lng,UpdatedAt)
+                           VALUES(?, 34.69, 32.96, SYSUTCDATETIME())""", veh_id)
 
-    #         # Find compatible service/ride type combinations for this vehicle type
-    #         vt_name = [k for k, v in vt_ids.items() if v == vt_id][0]
-    #         compatible_combos = [(svc_key, rt_key) for svc_key, rt_key, vt, _ in combo_specs if vt == vt_name]
-            
-    #         # Enrollment (approve by random operator)
-    #         if compatible_combos:
-    #             svc_key, rt_key = random.choice(compatible_combos)
-    #             cur.execute("""INSERT dbo.UserServiceEnrollment(EnrollId,[Status],VehicleId,ServiceType,RideType,ApprovedAt,ApprovedById,UserId)
-    #                            VALUES(NEWID(),'Approved', ?, ?, ?, SYSUTCDATETIME(), ?, ?)""",
-    #                         veh_id, svc_ids[svc_key], rt_ids[rt_key],
-    #                         random.choice(operator_ids), user_id)
+            # Driver Service Enrollment (for compatible ride+service types)
+            compatible_combos = [(svc_key, rt_key) for svc_key, rt_key, vt, _ in combo_specs if vt == vt_name]
+            if compatible_combos:
+                svc_key, rt_key = random.choice(compatible_combos)
+                cur.execute("""INSERT dbo.UserServiceEnrollment(EnrollId,[Status],VehicleId,ServiceType,RideType,ApprovedAt,ApprovedById,UserId)
+                               VALUES(NEWID(),'Approved', ?, ?, ?, SYSUTCDATETIME(), ?, ?)""",
+                            veh_id, svc_ids[svc_key], rt_ids[rt_key],
+                            random.choice(operator_ids), user_id)
 
-    #         vehicle_ids.append(veh_id)
+            vehicle_ids.append(veh_id)
 
-    #     drivers.append((party_u, user_id, vehicle_ids))
+        drivers.append((party_u, user_id, vehicle_ids))
 
-    # # Credit cards
-    # owner_party_ids = []
-    # owner_party_ids += [p_party for (p_party, _u) in passengers]
-    # owner_party_ids += [d_party for (d_party, _u, _vehlist) in drivers]
-    # owner_party_ids += comp_parties
+    # Credit cards
+    owner_party_ids = []
+    owner_party_ids += [p_party for (p_party, _u) in passengers]
+    owner_party_ids += [d_party for (d_party, _u, _vehlist) in drivers]
+    owner_party_ids += comp_parties
 
-    # cards = []
-    # now = utcnow()
-    # cur.fast_executemany = True
+    cards = []
+    now = utcnow()
+    cur.fast_executemany = True
+    for owner in owner_party_ids:
+        for i in range(NUM_CREDIT_CARDS_PER_ENTITY):
+            card_id    = guid()
+            last4      = f"{random.randint(0, 9999):04d}"
+            exp_month  = random.randint(1, 12)
+            exp_year   = now.year + random.randint(1, 5)
+            token      = f"tok_{uuid.uuid4().hex}_{owner.replace('-', '')[:8]}_{i}"
+            is_default = 1 if i == 0 else 0
+            is_active  = 1 if i == 0 else random.choice([0, 1])
 
-    # for owner in owner_party_ids:
-    #     # exactly NUM_CREDIT_CARDS_PER_ENTITY per owner
-    #     for i in range(NUM_CREDIT_CARDS_PER_ENTITY):
-    #         card_id    = guid()
-    #         last4      = f"{random.randint(0, 9999):04d}"
-    #         exp_month  = random.randint(1, 12)
-    #         exp_year   = now.year + random.randint(1, 5)
-    #         token      = f"tok_{uuid.uuid4().hex}_{owner.replace('-', '')[:8]}_{i}"
-    #         is_default = 1 if i == 0 else 0
-    #         is_active  = 1 if i == 0 else random.choice([0, 1])
+            cards.append((
+                card_id, owner, last4, token,
+                exp_month, exp_year, is_default, is_active, now
+            ))
 
-    #         cards.append((
-    #             card_id, owner, last4, token,
-    #             exp_month, exp_year, is_default, is_active, now
-    #         ))
+    if cards:
+        cur.executemany("""
+            INSERT INTO dbo.CreditCard
+            (CardId, OwnerId, Last4, Token, ExpMonth, ExpYear, IsDefault, IsActive, AddedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, cards)
+    
+    # Geofences & Bridges
+    zones = []
+    for i in range(NUM_GEOFENCE_ZONES):
+        zid = guid()
+        minlat = 34.65 + i*0.02
+        minlng = 32.95 + i*0.02
+        maxlat = minlat + 0.02
+        maxlng = minlng + 0.03
+        cur.execute("""INSERT dbo.Geofencezone(ZoneId,MinLat,MinLng,MaxLat,MaxLng,[Name])
+                        VALUES(?,?,?,?,?,?)""",
+                    zid, minlat, minlng, maxlat, maxlng, f"Zone {i+1}")
+        zones.append(zid)
 
-    # if cards:
-    #     cur.executemany("""
-    #         INSERT INTO dbo.CreditCard
-    #         (CardId, OwnerId, Last4, Token, ExpMonth, ExpYear, IsDefault, IsActive, AddedAt)
-    #         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    #     """, cards)
+    # connect consecutive zones with a bridge
+    bridge_ids = []
+    for i in range(len(zones)-1):
+        bid = guid()
+        cur.execute("INSERT dbo.Bridge(BridgeId,[Name],FromZone,ToZone) VALUES(?,?,?,?)",
+                    bid, f"Bridge {i+1}", zones[i], zones[i+1])
+        bridge_ids.append(bid)
 
-    # # Geofences & Bridges
-    # zones = []
-    # for i in range(3):
-    #     zid = guid()
-    #     minlat = 34.65 + i*0.02
-    #     minlng = 32.95 + i*0.02
-    #     maxlat = minlat + 0.02
-    #     maxlng = minlng + 0.03
-    #     cur.execute("""INSERT dbo.Geofencezone(ZoneId,MinLat,MinLng,MaxLat,MaxLng,[Name])
-    #                    VALUES(?,?,?,?,?,?)""",
-    #                 zid, minlat, minlng, maxlat, maxlng, f"Zone {i+1}")
-    #     zones.append(zid)
+    # Ride flow: requests -> legs -> dispatch offers -> rides (+payments, messages, rating) ----
+    # choose any profile
+    rp_id = profile_any
 
-    # # connect consecutive zones with a bridge
-    # bridge_ids = []
-    # for i in range(len(zones)-1):
-    #     bid = guid()
-    #     cur.execute("INSERT dbo.Bridge(BridgeId,[Name],FromZone,ToZone) VALUES(?,?,?,?)",
-    #                 bid, f"Bridge {i+1}", zones[i], zones[i+1])
-    #     bridge_ids.append(bid)
+    for i in range(RIDES_TO_CREATE):
+        p_party, p_user = random.choice(passengers)
+        d_party, d_user, veh = random.choice(drivers)
 
-    # # Ride flow: requests -> legs -> dispatch offers -> rides (+payments, messages, rating) ----
-    # # choose any profile
-    # rp_id = profile_any
+        # Ride Request
+        req_id = guid()
+        start_time = utcnow() - datetime.timedelta(minutes=random.randint(10, 120))
+        cur.execute("""INSERT dbo.RideRequest(RequestId,PassengerId,NumOfPeople,PickupAt,PickupLat,PickupLng,DropLat,DropLng,
+                     PickupCountry,PickupRegion,PickupCity,PickupDistrict,PickupPostalCode,
+                     DropCountry,DropRegion,DropCity,DropDistrict,DropPostalCode,
+                     CreatedAt,Status,RideProfileId)
+                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,SYSUTCDATETIME(),'Pending',?)""",
+                    req_id, p_user, random.randint(1,2), start_time,
+                    34.690, 32.960, 34.720, 33.010,
+                    'Κύπρος','Λευκωσία','Λευκωσία', 'Κέντρο','1010',
+                    'Κύπρος','Λευκωσία','Λευκωσία', 'Άλλη','1020',
+                    rp_id)
 
-    # for i in range(RIDES_TO_CREATE):
-    #     p_party, p_user = random.choice(passengers)
-    #     d_party, d_user, veh = random.choice(drivers)
+        # Itinerary leg (maybe via first bridge)
+        leg_id = guid()
+        via_bid = random.choice(bridge_ids) if bridge_ids else None
+        cur.execute("INSERT dbo.ItineraryLeg(LegId,SeqNo,ViaBridgeId,RideRequestId) VALUES(?,1,?,?)",
+                    leg_id, via_bid, req_id)
+        if via_bid:
+            cur.execute("INSERT dbo.LegCrossesBridge(ItineraryLeg,Bridge) VALUES(?,?)", leg_id, via_bid)
 
-    #     # Ride Request
-    #     req_id = guid()
-    #     start_time = utcnow() - datetime.timedelta(minutes=random.randint(10, 120))
-    #     cur.execute("""INSERT dbo.RideRequest(RequestId,PassengerId,NumOfPeople,PickupAt,PickupLat,PickupLng,DropLat,DropLng,
-    #                  PickupCountry,PickupRegion,PickupCity,PickupDistrict,PickupPostalCode,
-    #                  DropCountry,DropRegion,DropCity,DropDistrict,DropPostalCode,
-    #                  CreatedAt,Status,RideProfileId)
-    #                  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,SYSUTCDATETIME(),'Pending',?)""",
-    #                 req_id, p_user, random.randint(1,2), start_time,
-    #                 34.690, 32.960, 34.720, 33.010,
-    #                 'Κύπρος','Λευκωσία','Λευκωσία', 'Κέντρο','1010',
-    #                 'Κύπρος','Λευκωσία','Λευκωσία', 'Άλλη','1020',
-    #                 rp_id)
+        # Dispatch Offer to DRIVER party
+        offer_id = guid()
+        status = random.choice(["Accepted","Sent","Declined"])
+        cur.execute("""INSERT dbo.DispatchOffer(OfferId,LegId,RecipientPartyId,VehicleId,[Status],SentAt,RespondedAt)
+                       VALUES(?,?,?, ?, ?, SYSUTCDATETIME(), CASE WHEN ?='Accepted' THEN SYSUTCDATETIME() ELSE NULL END)""",
+                    offer_id, leg_id, d_party, veh, status, status)
 
-    #     # Itinerary leg (maybe via first bridge)
-    #     leg_id = guid()
-    #     via_bid = random.choice(bridge_ids) if bridge_ids else None
-    #     cur.execute("INSERT dbo.ItineraryLeg(LegId,SeqNo,ViaBridgeId,RideRequestId) VALUES(?,1,?,?)",
-    #                 leg_id, via_bid, req_id)
-    #     if via_bid:
-    #         cur.execute("INSERT dbo.LegCrossesBridge(ItineraryLeg,Bridge) VALUES(?,?)", leg_id, via_bid)
+        # If accepted, create payment + ride + messages + optional rating
+        if status == "Accepted":
+            pay_id = guid()
+            gross = round(random.uniform(7, 25), 2)
+            fee   = round(gross * 0.1, 2)
+            payout= round(gross - fee, 2)
+            cur.execute("""INSERT dbo.Payment(PaymentId,SenderPartyId,ReceiverPartyId,GrossAmount,OsrhFee,DriverPayout,PaidAt,Method,[Status])
+                           VALUES(?,?,?,?,?,?,SYSUTCDATETIME(),'CreditCard','Completed')""",
+                        pay_id, p_party, d_party, gross, fee, payout)
 
-    #     # Dispatch Offer to DRIVER party
-    #     offer_id = guid()
-    #     status = random.choice(["Accepted","Sent","Declined"])
-    #     cur.execute("""INSERT dbo.DispatchOffer(OfferId,LegId,RecipientPartyId,VehicleId,[Status],SentAt,RespondedAt)
-    #                    VALUES(?,?,?, ?, ?, SYSUTCDATETIME(), CASE WHEN ?='Accepted' THEN SYSUTCDATETIME() ELSE NULL END)""",
-    #                 offer_id, leg_id, d_party, veh, status, status)
+            ride_id = guid()
+            started = start_time + datetime.timedelta(minutes=random.randint(1, 10))
+            ended   = started + datetime.timedelta(minutes=random.randint(10, 25))
+            cur.execute("""INSERT dbo.Ride(RideId,OfferId,DriverUserId,PassengerUserId,VehicleId,
+                           StartedAt,EndedAt,PriceFinal,[Status],Rating,[Payment])
+                           VALUES(?,?,?,?,?,?,?,?, 'Completed', NULL, ?)""",
+                        ride_id, offer_id, d_party, p_user, veh, started, ended, gross, pay_id)
 
-    #     # If accepted, create payment + ride + messages + optional rating
-    #     if status == "Accepted":
-    #         pay_id = guid()
-    #         gross = round(random.uniform(7, 25), 2)
-    #         fee   = round(gross * 0.1, 2)
-    #         payout= round(gross - fee, 2)
-    #         cur.execute("""INSERT dbo.Payment(PaymentId,SenderPartyId,ReceiverPartyId,GrossAmount,OsrhFee,DriverPayout,PaidAt,Method,[Status])
-    #                        VALUES(?,?,?,?,?,?,SYSUTCDATETIME(),'CreditCard','Completed')""",
-    #                     pay_id, p_party, d_party, gross, fee, payout)
+            # Messages
+            cur.execute("""INSERT dbo.InAppMessage(MsgId,SenderUserId,RecipientUserId,[Body],SentAt,[Ride])
+                           VALUES(NEWID(),?,?,N'Φτάνω σε 3 λεπτά',DATEADD(MINUTE,-2,SYSUTCDATETIME()),?)""",
+                        d_user, p_user, ride_id)
+            cur.execute("""INSERT dbo.InAppMessage(MsgId,SenderUserId,RecipientUserId,[Body],SentAt,[Ride])
+                           VALUES(NEWID(),?,?,N'ΟΚ, είμαι στο σημείο',DATEADD(MINUTE,-1,SYSUTCDATETIME()),?)""",
+                        p_user, d_user, ride_id)
 
-    #         ride_id = guid()
-    #         started = start_time + datetime.timedelta(minutes=random.randint(1, 10))
-    #         ended   = started + datetime.timedelta(minutes=random.randint(10, 25))
-    #         cur.execute("""INSERT dbo.Ride(RideId,OfferId,DriverUserId,PassengerUserId,VehicleId,
-    #                        StartedAt,EndedAt,PriceFinal,[Status],Rating,[Payment])
-    #                        VALUES(?,?,?,?,?,?,?,?, 'Completed', NULL, ?)""",
-    #                     ride_id, offer_id, d_party, p_user, veh, started, ended, gross, pay_id)
-
-    #         # Messages
-    #         cur.execute("""INSERT dbo.InAppMessage(MsgId,SenderUserId,RecipientUserId,[Body],SentAt,[Ride])
-    #                        VALUES(NEWID(),?,?,N'Φτάνω σε 3 λεπτά',DATEADD(MINUTE,-2,SYSUTCDATETIME()),?)""",
-    #                     d_user, p_user, ride_id)
-    #         cur.execute("""INSERT dbo.InAppMessage(MsgId,SenderUserId,RecipientUserId,[Body],SentAt,[Ride])
-    #                        VALUES(NEWID(),?,?,N'ΟΚ, είμαι στο σημείο',DATEADD(MINUTE,-1,SYSUTCDATETIME()),?)""",
-    #                     p_user, d_user, ride_id)
-
-    #         # Sometimes a rating
-    #         if random.random() < 0.6:
-    #             rating_id = guid()
-    #             stars = random.randint(4,5) if random.random() < 0.7 else random.randint(2,3)
-    #             cur.execute("""INSERT dbo.Rating(RatingId,AuthorUserId,TargetUserId,Stars,Comment,CreatedAt)
-    #                            VALUES(?,?,?,?,?,SYSUTCDATETIME())""",
-    #                         rating_id, p_user, d_user, stars, "Ευχάριστη διαδρομή")
-    #             cur.execute("UPDATE dbo.Ride SET Rating=? WHERE RideId=?", rating_id, ride_id)
+            # Sometimes a rating
+            if random.random() < 0.6:
+                rating_id = guid()
+                stars = random.randint(4,5) if random.random() < 0.7 else random.randint(2,3)
+                cur.execute("""INSERT dbo.Rating(RatingId,AuthorUserId,TargetUserId,Stars,Comment,CreatedAt)
+                               VALUES(?,?,?,?,?,SYSUTCDATETIME())""",
+                            rating_id, p_user, d_user, stars, "Ευχάριστη διαδρομή")
+                cur.execute("UPDATE dbo.Ride SET Rating=? WHERE RideId=?", rating_id, ride_id)
 
     cn.commit()
     end_time = datetime.datetime.now()
