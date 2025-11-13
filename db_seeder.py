@@ -250,27 +250,34 @@ with cn:
                     email.split('@')[0], "hash", party_u)
         cur.execute("INSERT dbo.Driver(UserId,Company) VALUES(?, ?)", user_id, random.choice(company_ids))
 
-        # Documents for driver
+        # Documents for driver (ταυτότητα, άδεια οδήγησης, πιστοποιητικό λευκού ποινικού μητρώου, ιατρικό πιστοποιητικό)
         # Driver License
         pd_issue = utcnow() - datetime.timedelta(days=365*5)
         pd_exp   = utcnow() + datetime.timedelta(days=365*3)
         cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-                   VALUES(NEWID(),?,?,?,?,?,?)""",
-                user_id, 'Driver License', pd_issue, utcnow(), pd_exp, 'https://example.com/license.pdf')
+               VALUES(NEWID(),?,?,?,?,?,?)""",
+            user_id, 'Driver License', pd_issue, utcnow(), pd_exp, 'https://example.com/license.pdf')
         
         # ID Document
         id_issue = utcnow() - datetime.timedelta(days=365*8)
         id_exp   = utcnow() + datetime.timedelta(days=365*2)
         cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-                   VALUES(NEWID(),?,?,?,?,?,?)""",
-                user_id, 'ID', id_issue, utcnow(), id_exp, 'https://example.com/id.pdf')
+               VALUES(NEWID(),?,?,?,?,?,?)""",
+            user_id, 'ID', id_issue, utcnow(), id_exp, 'https://example.com/id.pdf')
         
-        # Proof of Address
-        addr_issue = utcnow() - datetime.timedelta(days=30)
-        addr_exp   = utcnow() + datetime.timedelta(days=90)
+        # Criminal Record Certificate
+        criminal_issue = utcnow() - datetime.timedelta(days=90)
+        criminal_exp   = utcnow() + datetime.timedelta(days=275)
         cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
-                   VALUES(NEWID(),?,?,?,?,?,?)""",
-                user_id, 'Proof of Address', addr_issue, utcnow(), addr_exp, 'https://example.com/address.pdf')
+               VALUES(NEWID(),?,?,?,?,?,?)""",
+            user_id, 'Criminal Record Certificate', criminal_issue, utcnow(), criminal_exp, 'https://example.com/criminal_record.pdf')
+        
+        # Medical Certificate
+        medical_issue = utcnow() - datetime.timedelta(days=180)
+        medical_exp   = utcnow() + datetime.timedelta(days=185)
+        cur.execute("""INSERT dbo.PersonDocument(DocId,UserId,DocType,IssueDate,UploadedAt,ExpiryDate,FileUrl)
+               VALUES(NEWID(),?,?,?,?,?,?)""",
+            user_id, 'Medical Certificate', medical_issue, utcnow(), medical_exp, 'https://example.com/medical_cert.pdf')
 
         vehicle_specs = {
             "Sedan":        {"seats": (4,5),   "vol": (350,500),    "wt": (200,400)},
