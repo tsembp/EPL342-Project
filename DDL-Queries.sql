@@ -6,7 +6,7 @@ CREATE TYPE dbo.Gender FROM CHAR(1);
 CREATE TYPE dbo.MoneyAmount FROM DECIMAL(10,2);
 CREATE TYPE dbo.LongText FROM NVARCHAR(255);
 CREATE TYPE dbo.UtcStamp FROM DATETIME2(0);
-CREATE TYPE dbo.PartyType FROM CHAR(1);
+CREATE TYPE dbo.PaymentMethod FROM NVARCHAR(20)
 
 GO
 
@@ -16,6 +16,7 @@ CREATE TABLE [dbo].[User] (
     [UserId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [FirstName] NVARCHAR(50) NOT NULL DEFAULT '',
     [LastName] NVARCHAR(50) NOT NULL DEFAULT '',
+    [Role] CHAR(1) NOT NULL CHECK (Role IN ('D','P','C')), -- Driver, Passenger, Company Representative
     [Dob] DATE NOT NULL CHECK (Dob < GETDATE()),
     [Gender] Gender NOT NULL,
     [Email] LongText NOT NULL,
@@ -23,13 +24,11 @@ CREATE TABLE [dbo].[User] (
     [Address] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL,
     [PasswordHash] LongText NOT NULL,
-    [PartyId] UNIQUEIDENTIFIER NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([UserId]),
     CONSTRAINT [UQ_User_Email] UNIQUE ([Email]),
     CONSTRAINT [UQ_User_Username] UNIQUE ([Username]),
-    CONSTRAINT [UQ_User_PartyId] UNIQUE ([PartyId]),
     CONSTRAINT [CK_User_Gender] CHECK ([Gender] IN ('m','f', 'M', 'F'))
 );
 
@@ -39,31 +38,6 @@ CREATE TABLE [dbo].[Admin] (
     [PasswordHash] LongText NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Admin] PRIMARY KEY CLUSTERED ([AdminId])
-);
-
-CREATE TABLE [dbo].[CreditCard] (
-    [CardId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [OwnerId] UNIQUEIDENTIFIER NOT NULL,
-    [Last4] CHAR(4) NOT NULL,
-    [Token] LongText NOT NULL UNIQUE,
-    [ExpMonth] INT NOT NULL,
-    [ExpYear] INT NOT NULL,
-    [IsDefault] BIT NOT NULL DEFAULT 0,
-    [IsActive] BIT NOT NULL DEFAULT 0,
-    [AddedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    [UpdatedAt] UtcStamp,
-    CONSTRAINT [PK_Credit_Card] PRIMARY KEY CLUSTERED ([CardId]),
-    CONSTRAINT [CK_CreditCard_Exp] CHECK ([ExpMonth] BETWEEN 1 AND 12),
-    CONSTRAINT [CK_CreditCard_ExpYear] CHECK ( ( [ExpYear] > YEAR(GETUTCDATE()) ) OR ( [ExpYear] = YEAR(GETUTCDATE()) AND [ExpMonth] >= MONTH(GETUTCDATE()) ) ),
-    CONSTRAINT [CK_CreditCard_Last4] CHECK ([Last4] LIKE '[0-9][0-9][0-9][0-9]')
-);
-
-CREATE TABLE [dbo].[Party] (
-    [PartyId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [PartyType] PartyType NOT NULL, -- 'U' = User, 'C' = Company
-    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT [PK_Party] PRIMARY KEY CLUSTERED ([PartyId]),
-    CONSTRAINT [CK_Party_Type] CHECK ([PartyType] IN ('U','C'))
 );
 
 CREATE TABLE [dbo].[Servicetype] (
@@ -93,13 +67,13 @@ CREATE TABLE [dbo].[Ridetype] (
 
 CREATE TABLE [dbo].[Payment] (
     [PaymentId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [SenderPartyId] UNIQUEIDENTIFIER NOT NULL,
-    [ReceiverPartyId] UNIQUEIDENTIFIER NOT NULL,
+    [SenderUserId] UNIQUEIDENTIFIER NOT NULL,
+    [ReceiverUserId] UNIQUEIDENTIFIER NOT NULL,
     [GrossAmount] MoneyAmount NOT NULL DEFAULT 0,
     [OsrhFee] MoneyAmount NOT NULL DEFAULT 0,
     [DriverPayout] MoneyAmount NOT NULL DEFAULT 0,
     [PaidAt] UtcStamp,
-    [Method] NVARCHAR(100) NOT NULL,
+    [Method] PaymentMethod NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Pending',
     CONSTRAINT [PK_Payment] PRIMARY KEY CLUSTERED ([PaymentId]),
     CONSTRAINT [CK_Method] CHECK ([Method] IN ('CreditCard','Cash')),
@@ -157,16 +131,6 @@ CREATE TABLE [dbo].[Inspector] (
     CONSTRAINT [PK_Inspector] PRIMARY KEY CLUSTERED ([InspectorId])
 );
 
-CREATE TABLE [dbo].[Company] (
-    [CompanyId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Name] NVARCHAR(100) NOT NULL,
-    [PartyId] UNIQUEIDENTIFIER NOT NULL,
-    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT [PK_Company] PRIMARY KEY CLUSTERED ([CompanyId]),
-    CONSTRAINT [UQ_Company_PartyId] UNIQUE ([PartyId]),
-    CONSTRAINT [UQ_Company_Name] UNIQUE ([Name])
-);
-
 CREATE TABLE [dbo].[UserPreferences] (
     [UserPreferencesId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL UNIQUE,
@@ -174,16 +138,11 @@ CREATE TABLE [dbo].[UserPreferences] (
     [Language] CHAR(2) NOT NULL DEFAULT 'en',
     [LocEnabled] BIT NOT NULL DEFAULT 0,
     [Timezone] NVARCHAR(100),
+    [PreferredPaymentMethod] PaymentMethod,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp NULL,
     CONSTRAINT [PK_UserPreferences] PRIMARY KEY CLUSTERED ([UserPreferencesId]),
     CONSTRAINT [CK_UserPreferences_Languages] CHECK ([Language] IN ('en','es','fr','de','it','el'))
-);
-
-CREATE TABLE [dbo].[ServicetypeAllowedRidetype] (
-    [ServiceTypeID] INT NOT NULL,
-    [RideTypeID] INT NOT NULL,
-    CONSTRAINT [PK_ServicetypeAllowedRidetype] PRIMARY KEY CLUSTERED ([ServiceTypeID], [RideTypeID])
 );
 
 CREATE TABLE [dbo].[Ride] (
@@ -225,7 +184,6 @@ CREATE TABLE [dbo].[Bridge] (
 
 CREATE TABLE [dbo].[Driver] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
-    [Company] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_Driver] PRIMARY KEY CLUSTERED ([UserId])
 );
 
@@ -327,22 +285,19 @@ CREATE TABLE [dbo].[GdprLog] (
 );
 
 CREATE TABLE [dbo].[CompanyRepresentative] (
-    [CompanyRepresentativeId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [CompanyId] UNIQUEIDENTIFIER NOT NULL,
-    [Email] LongText NOT NULL,
-    [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] LongText NOT NULL,
-    CONSTRAINT [PK_CompanyRepresentative] PRIMARY KEY CLUSTERED ([CompanyRepresentativeId])
+    [UserId] UNIQUEIDENTIFIER NOT NULL,
+    [Company] NVARCHAR(100),
+    CONSTRAINT [PK_CompanyRepresentative] PRIMARY KEY CLUSTERED ([UserId])
 );
 
 CREATE TABLE [dbo].[Vehicle] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [VehicleTypeId] INT NOT NULL,
+    [OwnerUserId] UNIQUEIDENTIFIER NOT NULL,
     [Seats] INT DEFAULT 0 NOT NULL,
     [CargoVolume] DECIMAL(10,2) DEFAULT 0,
     [CargoWeight] DECIMAL(10,2) DEFAULT 0,
     [Status] NVARCHAR(100) DEFAULT 'Active',
-    [UserOwnerPartyId] UNIQUEIDENTIFIER NOT NULL,
     CONSTRAINT [PK_Vehicle] PRIMARY KEY CLUSTERED ([VehicleId]),
     CONSTRAINT [CK_Seats_Positive] CHECK ([Seats] > 0),
     CONSTRAINT [CK_CargoWeight_Positive] CHECK ([CargoWeight] >= 0),
@@ -396,33 +351,33 @@ CREATE TABLE [dbo].[VehicleTest] (
 
 CREATE TABLE [dbo].[UserServiceEnrollment] (
     [EnrollId] INT IDENTITY(1,1) NOT NULL,
-    [Status] NVARCHAR(100),
+    [UserId] UNIQUEIDENTIFIER NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [ServiceType] INT NOT NULL,
     [RideType] INT NOT NULL,
+    [Status] NVARCHAR(100),
     [ApprovedAt] UtcStamp,
     [ApprovedById] UNIQUEIDENTIFIER,
-    [UserId] UNIQUEIDENTIFIER NOT NULL,
     CONSTRAINT [PK_UserServiceEnrollment] PRIMARY KEY CLUSTERED ([EnrollId]),
     CONSTRAINT [CK_UserServiceEnrollment_Status] CHECK ([Status] IN ('Pending','Approved','Rejected'))
 );
 
-CREATE TABLE dbo.[VehicleAvailabilityDaily] (
-    [VehicleId] UNIQUEIDENTIFIER NOT NULL,
+CREATE TABLE [dbo].[DriverAvailability] (
+    [EnrollId] INT NOT NULL, -- reference valid enrollment ID (vehicle type, service type, ride type)
     [AvailabilityDate] DATE NOT NULL,
+    [GeofencezoneId] INT NOT NULL, -- works within this zone
     [StartsAt] TIME(0) NOT NULL,
     [EndsAt] TIME(0) NOT NULL,
-    [IsRecurring] BIT NOT NULL DEFAULT 0, -- repeated every weekday -> set to 1
+    [IsRecurring] BIT NOT NULL DEFAULT 0,
     [UpdatedAt] UtcStamp DEFAULT GETUTCDATE(),
-    CONSTRAINT PK_VehicleAvailabilityDaily PRIMARY KEY ([VehicleId], [AvailabilityDate]),
-    CONSTRAINT CK_VAD_Time CHECK ([EndsAt] > [StartsAt])
+    CONSTRAINT CK_DriverAvailability_Time CHECK ([EndsAt] > [StartsAt]),
+    CONSTRAINT PK_DriverAvailability PRIMARY KEY ([EnrollId], [AvailabilityDate], [StartsAt]) -- allow for multiple entries per day (8:00-12:00 and 14:00-18:00)
 );
 
 CREATE TABLE [dbo].[DispatchOffer] (
     [OfferId] INT IDENTITY(1,1) NOT NULL,
     [LegId] INT NOT NULL,
-    [RecipientPartyId] UNIQUEIDENTIFIER NOT NULL,
-    [VehicleId] UNIQUEIDENTIFIER NOT NULL,
+    [RecipientUserId] UNIQUEIDENTIFIER NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Sent',
     [SentAt] UtcStamp DEFAULT GETUTCDATE(),
     [RespondedAt] UtcStamp,
@@ -447,41 +402,23 @@ GO
 
 -- =================================== FK and other constraints =================================== --
 
-/* User -> Party */
-ALTER TABLE [dbo].[User]
-ADD CONSTRAINT [FK_User_Party]
-    FOREIGN KEY ([PartyId]) REFERENCES [dbo].[Party]([PartyId])
-    ON DELETE NO ACTION;
-
 /* UserPreferences → User */
 ALTER TABLE [dbo].[UserPreferences]
 ADD CONSTRAINT [FK_UserPreferences_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE;
 
-/* Operator → User, Admin */
+/* Operator → Admin (ApprovedByAdmin) */
 ALTER TABLE [dbo].[Operator]
 ADD CONSTRAINT [FK_Operator_ApprovedByAdmin]
     FOREIGN KEY ([ApprovedByAdmin]) REFERENCES [dbo].[Admin]([AdminId])
     ON DELETE NO ACTION;
 
-/* Passenger → User, CreditCard */
+/* Passenger → User */
 ALTER TABLE [dbo].[Passenger]
 ADD CONSTRAINT [FK_Passenger_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE
-
-/* CreditCard → User (Owner) */
-ALTER TABLE [dbo].[CreditCard]
-ADD CONSTRAINT [FK_CreditCard_Party]
-    FOREIGN KEY ([OwnerId]) REFERENCES [dbo].[Party]([PartyId])
-    ON DELETE NO ACTION;
-
-/* Company → CreditCard */
-ALTER TABLE [dbo].[Company]
-ADD CONSTRAINT [FK_Company_Party]
-    FOREIGN KEY ([PartyId]) REFERENCES [dbo].[Party]([PartyId])
-    ON DELETE NO ACTION;
 
 /* Rating → User (author, target) */
 ALTER TABLE [dbo].[Rating]
@@ -494,37 +431,25 @@ ADD CONSTRAINT [FK_Rating_AuthorUser]
     CONSTRAINT [CK_Rating_NoSelf]
     CHECK ([AuthorUserId] <> [TargetUserId]);
 
-/* ServicetypeAllowedRidetype (junction) */
-ALTER TABLE [dbo].[ServicetypeAllowedRidetype]
-ADD CONSTRAINT [FK_SvcAllowedRide_Servicetype]
-    FOREIGN KEY ([ServiceTypeID]) REFERENCES [dbo].[Servicetype]([ServiceTypeId])
-    ON DELETE CASCADE,
-    CONSTRAINT [FK_SvcAllowedRide_Ridetype]
-    FOREIGN KEY ([RideTypeID]) REFERENCES [dbo].[Ridetype]([RideTypeId])
-    ON DELETE CASCADE;
-
-/* Driver → User, Company, CreditCard */
+/* Driver → User */
 ALTER TABLE [dbo].[Driver]
 ADD CONSTRAINT [FK_Driver_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
-    ON DELETE CASCADE,
-    CONSTRAINT [FK_Driver_Company]
-    FOREIGN KEY ([Company]) REFERENCES [dbo].[Company]([CompanyId])
     ON DELETE CASCADE;
 
-/* Vehicle → VehicleType, CompanyRepresentative, Driver */
+/* Vehicle → VehicleType, OwnerUser */
 ALTER TABLE [dbo].[Vehicle]
 ADD CONSTRAINT [FK_Vehicle_VehicleType]
     FOREIGN KEY ([VehicleTypeId]) REFERENCES [dbo].[VehicleType]([VehicleTypeId])
     ON DELETE CASCADE,
-    CONSTRAINT [FK_Vehicle_User]
-    FOREIGN KEY ([UserOwnerPartyId]) REFERENCES [dbo].[Party]([PartyId])
+    CONSTRAINT [FK_Vehicle_OwnerUser]
+    FOREIGN KEY ([OwnerUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE;
 
-/* CompanyRepresentative → Company, User */
+/* CompanyRepresentative → User */
 ALTER TABLE [dbo].[CompanyRepresentative]
-ADD CONSTRAINT [FK_CompanyRepresentative_Company]
-    FOREIGN KEY ([CompanyId]) REFERENCES [dbo].[Company]([CompanyId])
+ADD CONSTRAINT [FK_CompanyRepresentative_User]
+    FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE;
 
 /* PersonDocument → User */
@@ -549,10 +474,13 @@ ADD CONSTRAINT [FK_VehicleTest_Vehicle]
     ON DELETE NO ACTION;
 
 /* VehicleAvailabilityDaily → Vehicle */
-ALTER TABLE [dbo].[VehicleAvailabilityDaily]
-ADD CONSTRAINT [FK_VehicleAvailability_Vehicle]
-    FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicle]([VehicleId])
-    ON DELETE CASCADE;
+ALTER TABLE [dbo].[DriverAvailability]
+ADD CONSTRAINT [FK_DriverAvailability_Enrollment]
+    FOREIGN KEY ([EnrollId]) REFERENCES [dbo].[UserServiceEnrollment]([EnrollId])
+    ON DELETE CASCADE,
+    CONSTRAINT [FK_DriverAvailability_Geofencezone]
+    FOREIGN KEY ([GeofencezoneId]) REFERENCES [dbo].[Geofencezone]([ZoneId])
+    ON DELETE NO ACTION;
 
 /* VehicleLocationLive → Vehicle */
 ALTER TABLE [dbo].[VehicleLocationLive]
@@ -560,9 +488,9 @@ ADD CONSTRAINT [FK_VehicleLocationLive_Vehicle]
     FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicle]([VehicleId])
     ON DELETE CASCADE;
 
-/* UserServiceEnrollment → Vehicle, ServiceType, RideType, Driver, Operator, CompanyRepresentative */
+/* UserServiceEnrollment →  User, Vehicle, ServiceType, RideType, Operator */
 ALTER TABLE [dbo].[UserServiceEnrollment]
-    ADD CONSTRAINT [FK_Enroll_User]
+ADD CONSTRAINT [FK_Enroll_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION,
     CONSTRAINT [FK_Enroll_Vehicle]
@@ -589,11 +517,11 @@ ADD CONSTRAINT [FK_AllowedRideProfile_ServiceType]
     CONSTRAINT [FK_AllowedRideProfile_VehicleType]
     FOREIGN KEY ([VehicleTypeId]) REFERENCES [dbo].[VehicleType]([VehicleTypeId])
     ON DELETE CASCADE,
-    CONSTRAINT [FK_AllowedRideProfile_ServicetypeAllowedRidetype]
-    FOREIGN KEY ([ServiceTypeId], [RideTypeId]) REFERENCES [dbo].[ServicetypeAllowedRidetype]([ServiceTypeID], [RideTypeID])
-    ON DELETE CASCADE;
-    /* Bridge → Geofencezone */
-    ALTER TABLE [dbo].[Bridge]
+    CONSTRAINT [UQ_AllowedRideProfile_Unique]
+    UNIQUE ([ServiceTypeId], [RideTypeId], [VehicleTypeId]);
+
+/* Bridge → Geofencezone */
+ALTER TABLE [dbo].[Bridge]
     ADD CONSTRAINT [FK_Bridge_FromZone]
     FOREIGN KEY ([FromZone]) REFERENCES [dbo].[Geofencezone]([ZoneId])
     ON DELETE NO ACTION,
@@ -634,31 +562,28 @@ ADD CONSTRAINT [FK_RideRequestLog_RideRequest]
     FOREIGN KEY ([RequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
     ON DELETE NO ACTION;
 
-/* DispatchOffer → ItineraryLeg, Driver, Company, Vehicle */
+/* DispatchOffer → Leg, Receipient User */
 ALTER TABLE [dbo].[DispatchOffer]
-ADD CONSTRAINT [FK_DispatchOffer_RecipientPartyId]
-    FOREIGN KEY ([RecipientPartyId]) REFERENCES [dbo].[Party]([PartyId])
+ADD CONSTRAINT [FK_DispatchOffer_RecipientUserId]
+    FOREIGN KEY ([RecipientUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE,
     CONSTRAINT [FK_DispatchOffer_ItineraryLeg]
     FOREIGN KEY ([LegId]) REFERENCES [dbo].[ItineraryLeg]([LegId])
-    ON DELETE CASCADE,
-    CONSTRAINT [FK_DispatchOffer_Vehicle]
-    FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicle]([VehicleId])
     ON DELETE NO ACTION;
 
-/* Payment → Party (Sender, Receiver) */
+/* Payment → Sender, Receiver User */
 ALTER TABLE [dbo].[Payment]
-ADD CONSTRAINT [FK_Payment_SenderParty]
-    FOREIGN KEY ([SenderPartyId]) REFERENCES [dbo].[Party]([PartyId])
+ADD CONSTRAINT [FK_Payment_SenderUser]
+    FOREIGN KEY ([SenderUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION,
-    CONSTRAINT [FK_Payment_ReceiverParty]
-    FOREIGN KEY ([ReceiverPartyId]) REFERENCES [dbo].[Party]([PartyId])
+    CONSTRAINT [FK_Payment_ReceiverUser]
+    FOREIGN KEY ([ReceiverUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION;
 
 /* Ride → DispatchOffer, Rating, Payment */
 ALTER TABLE [dbo].[Ride]
 ADD CONSTRAINT [FK_Ride_DriverUser]
-    FOREIGN KEY ([DriverUserId]) REFERENCES [dbo].[Party]([PartyId])
+    FOREIGN KEY ([DriverUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION,
     CONSTRAINT [FK_Ride_PassengerUser]
     FOREIGN KEY ([PassengerUserId]) REFERENCES [dbo].[Passenger]([UserId])
