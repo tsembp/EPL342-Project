@@ -1,0 +1,6 @@
+ServiceTypeId,Name,Description,BaseFare,PerKm,PerMin,ValidFrom,ValidTo,Active,CreatedAt,UpdatedAt
+1,simple_route,Passenger transport from A to Z,3.5,0.8,0.2,2025-11-17 16:41:20.312479+00:00,,1,2025-11-17 16:41:20.312479+00:00,
+2,luxury_route,Like simple but with higher specifications,3.5,0.8,0.2,2025-11-17 16:41:20.312479+00:00,,1,2025-11-17 16:41:20.312479+00:00,
+3,light_cargo,Small household volume/weight,3.5,0.8,0.2,2025-11-17 16:41:20.312479+00:00,,1,2025-11-17 16:41:20.312479+00:00,
+4,heavy_cargo,Moving/larger volume,3.5,0.8,0.2,2025-11-17 16:41:20.312479+00:00,,1,2025-11-17 16:41:20.312479+00:00,
+5,bridged_route,Multiple means due to geofencing/bridges,3.5,0.8,0.2,2025-11-17 16:41:20.312479+00:00,,1,2025-11-17 16:41:20.312479+00:00,
