@@ -2,3 +2,5 @@ Flask
 pyodbc
 python-dotenv
 Faker
+datetime
+matplotlib
