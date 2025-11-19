@@ -23,7 +23,7 @@ CREATE TABLE [dbo].[User] (
     [Phone] NVARCHAR(32) NOT NULL,
     [Address] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL,
-    [PasswordHash] LongText NOT NULL,
+    [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([UserId]),
@@ -35,7 +35,7 @@ CREATE TABLE [dbo].[User] (
 CREATE TABLE [dbo].[Admin] (
     [AdminId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] LongText NOT NULL,
+    [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Admin] PRIMARY KEY CLUSTERED ([AdminId])
 );
@@ -110,7 +110,7 @@ CREATE TABLE [dbo].[Operator] (
     [OperatorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Email] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] LongText NOT NULL,
+    [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [ApprovedByAdmin] UNIQUEIDENTIFIER NOT NULL,
     [ApprovedAt] UtcStamp NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
@@ -126,7 +126,7 @@ CREATE TABLE [dbo].[Inspector] (
     [InspectorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Email] LongText NOT NULL,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
-    [PasswordHash] LongText NOT NULL,
+    [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Inspector] PRIMARY KEY CLUSTERED ([InspectorId])
 );
