@@ -1,0 +1,13 @@
+CREATE OR ALTER FUNCTION dbo.fn_HashPassword
+(
+    @Password NVARCHAR(4000)
+)
+RETURNS VARCHAR(64)
+AS
+BEGIN
+    DECLARE @hash VARBINARY(32);
+    SET @hash = HASHBYTES('SHA2_256', @Password);
+
+    RETURN CONVERT(VARCHAR(64), @hash, 10);
+END;
+GO
