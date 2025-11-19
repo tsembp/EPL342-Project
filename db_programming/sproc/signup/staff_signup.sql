@@ -48,8 +48,8 @@ BEGIN
                     Email,
                     Username,
                     PasswordHash,
-                    ApprovedByAdmin,
-                    ApprovedAt
+                    CheckedByAdmin,
+                    CheckedAt
                 )
                 VALUES
                 (

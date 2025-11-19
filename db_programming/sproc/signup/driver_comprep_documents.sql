@@ -57,7 +57,7 @@ BEGIN
         FROM [dbo].[PersonDocument] PD
         WHERE PD.UserId = @UserId
           AND PD.DocType = @DocType
-          AND PD.DocNumber = @DocNumber
+          AND PD.DocNo = @DocNumber
     )
     BEGIN
         RAISERROR('Document with the same type and number already exists for this user.', 16, 1);
@@ -67,7 +67,7 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM [dbo].[PersonDocument] PD
-        WHERE PD.DocNumber = @DocNumber
+        WHERE PD.DocNo = @DocNumber
     )
     BEGIN
         RAISERROR('Document with the same number already exists.', 16, 1);
