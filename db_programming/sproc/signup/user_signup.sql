@@ -24,6 +24,7 @@ BEGIN
     END;
 
     IF @Dob IS NULL OR @Dob >= CAST(GETUTCDATE() AS DATE)
+    OR @Dob <= DATEADD(YEAR, -100, CAST(GETUTCDATE() AS DATE))
     BEGIN
         RAISERROR('Invalid Date of Birth.', 16, 1);
         RETURN;
@@ -53,6 +54,8 @@ BEGIN
         dbo.fn_HashPassword(@PasswordPlain);
 
     DECLARE @UserId UNIQUEIDENTIFIER = NEWID();
+    
+    DECLARE @Verified BIT = CASE WHEN @Role = 'P' THEN 1 ELSE 0 END;
 
     BEGIN TRY
         BEGIN TRAN;
@@ -68,7 +71,7 @@ BEGIN
                     Email,
                     Phone,
                     [Address],
-                    Validated,
+                    Verified,
                     Username,
                     PasswordHash
                 )
@@ -83,7 +86,7 @@ BEGIN
                     @Email,
                     @Phone,
                     @Address,
-                    0,
+                    @Verified,
                     @Username,
                     @PasswordHash
                 );

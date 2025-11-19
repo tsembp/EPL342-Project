@@ -427,7 +427,7 @@ ADD CONSTRAINT [FK_UserPreferences_User]
 /* Operator → Admin (ApprovedByAdmin) */
 ALTER TABLE [dbo].[Operator]
 ADD CONSTRAINT [FK_Operator_ApprovedByAdmin]
-    FOREIGN KEY ([ApprovedByAdmin]) REFERENCES [dbo].[Admin]([AdminId])
+    FOREIGN KEY ([CheckedByAdmin]) REFERENCES [dbo].[Admin]([AdminId])
     ON DELETE NO ACTION;
 
 /* Passenger → User */

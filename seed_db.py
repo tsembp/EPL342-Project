@@ -217,7 +217,7 @@ def seed_operators(cursor, num_operators, admin_ids):
         approved_at = datetime.utcnow()
         cursor.execute(
             """
-            INSERT INTO [dbo].[Operator] (OperatorId, Email, Username, PasswordHash, ApprovedByAdmin, ApprovedAt)
+            INSERT INTO [dbo].[Operator] (OperatorId, Email, Username, PasswordHash, CheckedByAdmin, CheckedAt)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             op_id, email, username, password_hash, approved_by, approved_at
@@ -238,9 +238,9 @@ def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
             """
             INSERT INTO [dbo].[User] (
                 UserId, FirstName, LastName, Role, Dob, Gender, Email,
-                Phone, Address, Username, PasswordHash
+                Phone, Address, Verified, Username, PasswordHash
             )
-            VALUES (?, ?, ?, 'D', ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, 'D', ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             uid,
             first,
@@ -250,6 +250,7 @@ def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
             email,
             random_phone(),
             random_address(),
+            0,
             f"driver{i+1}",
             "$2a$10$fakeDriverHash",
         )
@@ -265,9 +266,9 @@ def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
             """
             INSERT INTO [dbo].[User] (
                 UserId, FirstName, LastName, Role, Dob, Gender, Email,
-                Phone, Address, Username, PasswordHash
+                Phone, Address, Verified, Username, PasswordHash
             )
-            VALUES (?, ?, ?, 'P', ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, 'P', ?, ?, ?, ?, ?, 1, ?, ?)
             """,
             uid,
             first,
@@ -293,9 +294,9 @@ def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
             """
             INSERT INTO [dbo].[User] (
                 UserId, FirstName, LastName, Role, Dob, Gender, Email,
-                Phone, Address, Username, PasswordHash
+                Phone, Address, Verified, Username, PasswordHash
             )
-            VALUES (?, ?, ?, 'C', ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, 'C', ?, ?, ?, ?, ?, 0, ?, ?)
             """,
             uid,
             first,
@@ -938,22 +939,31 @@ def seed_ratings(cursor, num_ratings, author_user_ids, target_user_ids):
 
 
 def seed_person_documents(cursor, user_ids, docs_per_user):
-    doc_types = ["ID Card", "Driver License", "Passport"]
+    doc_types = [
+        'ID_OR_PASSPORT',
+        'RESIDENCE_PERMIT',
+        'DRIVING_LICENSE',
+        'VEHICLE_REG',
+        'MOT_CERT',
+        'CRIMINAL_RECORD',
+        'MEDICAL_CERT',
+        'PSYCHOLOGICAL_CERT']
     for uid in user_ids:
         for _ in range(docs_per_user):
             doc_type = random.choice(doc_types)
+            doc_no = f"DOC-{random.randint(100000, 999999)}"
             issue, expiry = random_future_date(365, 365 * 10)
             file_url = f"https://files.local/userdocs/{uid}/{doc_type.replace(' ', '_').lower()}.pdf"
             insert_and_return_identity(
                 cursor,
                 """
                 INSERT INTO [dbo].[PersonDocument] (
-                    UserId, DocType, IssueDate, ExpiryDate, FileUrl
+                    UserId, DocType, DocNo, IssueDate, ExpiryDate, Accepted, FileUrl
                 )
                 OUTPUT INSERTED.DocId
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (uid, doc_type, issue, expiry, file_url),
+                (uid, doc_type, doc_no, issue, expiry, 1, file_url),
             )
 
 
