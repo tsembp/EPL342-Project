@@ -26,6 +26,7 @@ CREATE TABLE [dbo].[User] (
     [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
+    [Verified] BIT NOT NULL DEFAULT 0,  
     CONSTRAINT [PK_User] PRIMARY KEY CLUSTERED ([UserId]),
     CONSTRAINT [UQ_User_Email] UNIQUE ([Email]),
     CONSTRAINT [UQ_User_Username] UNIQUE ([Username]),
@@ -108,11 +109,11 @@ CREATE TABLE [dbo].[Geofencezone] (
 
 CREATE TABLE [dbo].[Operator] (
     [OperatorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Email] LongText NOT NULL,
+    [Email] LongText NOT NULL UNIQUE,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
     [PasswordHash] NVARCHAR(MAX) NOT NULL,
-    [ApprovedByAdmin] UNIQUEIDENTIFIER NOT NULL,
-    [ApprovedAt] UtcStamp NOT NULL,
+    [CheckedByAdmin] UNIQUEIDENTIFIER,
+    [CheckedAt] UtcStamp,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Operator] PRIMARY KEY CLUSTERED ([OperatorId])
 );
@@ -124,7 +125,7 @@ CREATE TABLE [dbo].[Passenger] (
 
 CREATE TABLE [dbo].[Inspector] (
     [InspectorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    [Email] LongText NOT NULL,
+    [Email] LongText NOT NULL UNIQUE,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
     [PasswordHash] NVARCHAR(MAX) NOT NULL,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
@@ -311,7 +312,8 @@ CREATE TABLE [dbo].[PersonDocument] (
     [DocType] NVARCHAR(100) NOT NULL,
     [IssueDate] UtcStamp NOT NULL ,
     [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    [ExpiryDate] UtcStamp NOT NULL,
+    [ExpiryDate] UtcStamp DEFAULT NULL,
+    [Accepted] BIT NOT NULL DEFAULT 0,
     [FileUrl] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_PersonDocument] PRIMARY KEY CLUSTERED ([DocId]),
     CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] > [IssueDate])
@@ -332,7 +334,8 @@ CREATE TABLE [dbo].[VehicleDocument] (
     [DocType] NVARCHAR(100) NOT NULL,
     [IssueDate] UtcStamp NOT NULL,
     [UploadedAt] UtcStamp DEFAULT GETUTCDATE(),
-    [ExpiryDate] UtcStamp NOT NULL,
+    [ExpiryDate] UtcStamp DEFAULT NULL,
+    [Accepted] BIT NOT NULL DEFAULT 0,
     [FileUrl] NVARCHAR(512) NOT NULL,
     [Image] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_VehicleDocument] PRIMARY KEY CLUSTERED ([VehDocId]),
