@@ -356,8 +356,8 @@ CREATE TABLE [dbo].[UserServiceEnrollment] (
     [ServiceType] INT NOT NULL,
     [RideType] INT NOT NULL,
     [Status] NVARCHAR(100),
-    [ApprovedAt] UtcStamp,
-    [ApprovedById] UNIQUEIDENTIFIER,
+    [CheckedAt] UtcStamp,
+    [CheckedById] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_UserServiceEnrollment] PRIMARY KEY CLUSTERED ([EnrollId]),
     CONSTRAINT [CK_UserServiceEnrollment_Status] CHECK ([Status] IN ('Pending','Approved','Rejected'))
 );
@@ -502,8 +502,8 @@ ADD CONSTRAINT [FK_Enroll_User]
     CONSTRAINT [FK_Enroll_RideType]
     FOREIGN KEY ([RideType]) REFERENCES [dbo].[Ridetype]([RideTypeId])
     ON DELETE CASCADE,
-    CONSTRAINT [FK_Enroll_ApprovedByOperator]
-    FOREIGN KEY ([ApprovedById]) REFERENCES [dbo].[Operator]([OperatorId])
+    CONSTRAINT [FK_Enroll_CheckedByOperator]
+    FOREIGN KEY ([CheckedById]) REFERENCES [dbo].[Operator]([OperatorId])
     ON DELETE NO ACTION;
 
 /* AllowedRideProfile → ServiceType, RideType, VehicleType */

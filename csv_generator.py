@@ -10,19 +10,19 @@ import csv
 load_dotenv()
 
 # ---------- CONFIG ----------
-NUM_ADMINS     = 10
-NUM_OPERATORS  = 50
-NUM_INSPECTORS = 100
+NUM_ADMINS     = 2
+NUM_OPERATORS  = 5
+NUM_INSPECTORS = 5
 
-NUM_PASSENGERS = 4000
-NUM_DRIVERS    = 1500
+NUM_PASSENGERS = 10
+NUM_DRIVERS    = 3
 NUM_VEHICLES_PER_DRIVER = 2
 NUM_CREDIT_CARDS_PER_ENTITY = 2
 
-NUM_COMPANY_REPRESENTATIVESS = 200
+NUM_COMPANY_REPRESENTATIVES = 2
 
 NUM_GEOFENCE_ZONES = 10
-RIDES_TO_CREATE = 6000
+RIDES_TO_CREATE = 300  
 
 CSV_DIR = Path("seed_data")
 CSV_DIR.mkdir(exist_ok=True)
@@ -297,7 +297,7 @@ persondocument_rows = []
 
 # Company Representatives
 companyrep_rows = []
-for i in range(NUM_COMPANY_REPRESENTATIVESS):
+for i in range(NUM_COMPANY_REPRESENTATIVES):
     user_id = guid()
     email = f"companyrep{i+1}@example.com"
     
@@ -661,10 +661,10 @@ for profile_row in allowedrideprofile_rows:
     profiles_by_service[svc_id].append(profile_row)
 
 ride_scenarios = [
-    {'status': 'Completed', 'weight': 0.5, 'has_rating': 0.7, 'has_messages': 0.8, 'num_offers': (2, 5)},
+    {'status': 'Completed', 'weight': 0.5, 'has_rating': 0.7, 'has_messages': 0.8, 'num_offers': (1, 2)},  # Reduced from (2,5) to (1,2)
     {'status': 'InProgress', 'weight': 0.15, 'has_rating': 0, 'has_messages': 0.5, 'num_offers': (1, 1)},
     {'status': 'Scheduled', 'weight': 0.2, 'has_rating': 0, 'has_messages': 0.2, 'num_offers': (1, 1)},
-    {'status': 'Cancelled', 'weight': 0.15, 'has_rating': 0.1, 'has_messages': 0.3, 'num_offers': (1, 4)},
+    {'status': 'Cancelled', 'weight': 0.15, 'has_rating': 0.1, 'has_messages': 0.3, 'num_offers': (1, 2)},  # Reduced from (1,4) to (1,2)
 ]
 
 # Normalize weights
@@ -824,16 +824,19 @@ for i in range(RIDES_TO_CREATE):
         ride_id = ride_id_counter
         ride_id_counter += 2  # IDENTITY(1,2)
         
+        # Ensure EndedAt is always after StartedAt (required by CHECK constraint)
+        ended_safe = ended if ended else started + timedelta(minutes=1)
+        
         ride_rows.append([
             ride_id, accepted_offer_id, accepted_provider['user_id'], 
             p_user, accepted_provider['vehicle_id'],
-            started, ended or started, gross, selected_scenario['status'],
+            started, ended_safe, gross, selected_scenario['status'],
             rating_ref, pay_id
         ])
         
         # Create in-app messages if applicable
         if random.random() < selected_scenario['has_messages']:
-            num_messages = random.randint(1, 5)
+            num_messages = random.randint(1, 2)  # Reduced from (1,5) to (1,2)
             for msg_idx in range(num_messages):
                 msg_id = msg_id_counter
                 msg_id_counter += 1
