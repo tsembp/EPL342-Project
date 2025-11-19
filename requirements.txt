@@ -4,3 +4,7 @@ python-dotenv
 Faker
 datetime
 matplotlib
+pandas
+geopandas
+shapely
+contextily
