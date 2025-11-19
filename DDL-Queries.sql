@@ -6,7 +6,8 @@ CREATE TYPE dbo.Gender FROM CHAR(1);
 CREATE TYPE dbo.MoneyAmount FROM DECIMAL(10,2);
 CREATE TYPE dbo.LongText FROM NVARCHAR(255);
 CREATE TYPE dbo.UtcStamp FROM DATETIME2(0);
-CREATE TYPE dbo.PaymentMethod FROM NVARCHAR(20)
+CREATE TYPE dbo.PaymentMethod FROM NVARCHAR(20);
+CREATE TYPE dbo.PersonalDocType FROM NVARCHAR(50);
 
 GO
 
@@ -309,16 +310,28 @@ CREATE TABLE [dbo].[Vehicle] (
 CREATE TABLE [dbo].[PersonDocument] (
     [DocId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL,
-    [DocType] NVARCHAR(100) NOT NULL,
+    [DocType] PersonalDocType NOT NULL,
+    [DocNo] NVARCHAR(100) NOT NULL,
     [IssueDate] UtcStamp NOT NULL ,
     [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ExpiryDate] UtcStamp DEFAULT NULL,
     [Accepted] BIT NOT NULL DEFAULT 0,
     [FileUrl] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_PersonDocument] PRIMARY KEY CLUSTERED ([DocId]),
-    CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] > [IssueDate])
+    CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] IS NULL OR [ExpiryDate] > [IssueDate]),
+    CONSTRAINT [CK_PersonalDocType] CHECK ([DocType] IN (
+        'ID_OR_PASSPORT',
+        'RESIDENCE_PERMIT',
+        'DRIVING_LICENSE',
+        'VEHICLE_REG',
+        'MOT_CERT',
+        'CRIMINAL_RECORD',
+        'MEDICAL_CERT',
+        'PSYCHOLOGICAL_CERT'
+    )),
+    CONSTRAINT [UQ_DocNo] UNIQUE ([DocNo])
 );
-
+    
 CREATE TABLE [dbo].[ItineraryLeg] (
     [LegId] INT IDENTITY(1,1) NOT NULL,
     [SeqNo] INT NOT NULL,
