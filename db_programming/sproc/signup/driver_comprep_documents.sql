@@ -74,6 +74,18 @@ BEGIN
         RETURN;
     END;
 
+    IF EXISTS(
+        SELECT 1
+        FROM [dbo].[PersonDocument] PD
+        WHERE PD.UserId = @UserId
+          AND PD.DocType = @DocType
+          AND PD.Status IN ('Pending', 'Accepted')
+    )
+    BEGIN
+        RAISERROR('Document with the same type and status in (Pending, Accepted) already exists for this user.', 16, 1);
+        RETURN;
+    END;
+
     BEGIN TRY
         INSERT INTO [dbo].[PersonDocument]
         (
