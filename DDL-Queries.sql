@@ -1,5 +1,8 @@
+SET XACT_ABORT ON;
 SET QUOTED_IDENTIFIER ON;
 GO
+
+BEGIN TRANSACTION;
 
 -- ================================ Custom Types ================================ --
 CREATE TYPE dbo.Gender FROM CHAR(1);
@@ -663,3 +666,9 @@ ADD CONSTRAINT [FK_GdprLog_GdprRequest]
     CONSTRAINT [FK_GdprLog_ActorUser]
     FOREIGN KEY ([ActorUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION;
+
+COMMIT TRANSACTION;
+GO
+
+PRINT 'DB Schema created successfully.';
+GO
