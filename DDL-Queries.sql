@@ -398,7 +398,7 @@ CREATE TABLE [dbo].[UserServiceEnrollment] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [ServiceType] INT NOT NULL,
     [RideType] INT NOT NULL,
-    [Status] NVARCHAR(100),
+    [Status] NVARCHAR(100) NOT NULL DEFAULT 'Pending',
     [CheckedAt] UtcStamp,
     [CheckedById] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_UserServiceEnrollment] PRIMARY KEY CLUSTERED ([EnrollId]),
