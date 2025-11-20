@@ -181,6 +181,11 @@ def random_future_date(days_min=30, days_max=365):
     expiry = issue + timedelta(days=random.randint(days_min, days_max))
     return issue, expiry
 
+def random_past_date(days_ago_max=30):
+    """Generate a random datetime in the past (within the last N days)"""
+    days_ago = random.randint(1, days_ago_max)
+    return datetime.utcnow() - timedelta(days=days_ago)
+
 def random_money(min_value=5.0, max_value=50.0):
     return round(random.uniform(min_value, max_value), 2)
 
@@ -504,24 +509,43 @@ def get_random_point_in_zone(cursor, zone_id):
 def seed_vehicles(cursor, num_vehicles, vehicle_type_ids, owner_user_ids):
     vehicle_ids = []
     vehicle_type_name_list = list(vehicle_type_ids.keys())
+    
+    # Lists for generating realistic vehicle data
+    brands = ["Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Audi", "Volkswagen", "Nissan", "Hyundai", "Tesla", "Mazda"]
+    models = ["Model S", "Civic", "Corolla", "F-150", "Camry", "Accord", "Mustang", "3 Series", "C-Class", "A4", "Model 3", "CX-5"]
+    colors = ["Black", "White", "Silver", "Blue", "Red", "Gray", "Green", "Yellow", "Orange", "Brown"]
+    
     for i in range(num_vehicles):
         vid = uuid.uuid4()
         vtype_name = random.choice(vehicle_type_name_list)
         vtype_id = vehicle_type_ids[vtype_name]
         owner = random.choice(owner_user_ids)
+        
+        # Generate required fields
+        plate_number = f"{random.choice(['CY', 'UK', 'DE', 'FR'])}-{random.randint(1000, 9999)}-{random.choice(['AA', 'BB', 'CC', 'DD'])}"
+        brand = random.choice(brands)
+        model = random.choice(models)
+        color = random.choice(colors)
+        
         seats = random.randint(2, 7)
         cargo_volume = round(random.uniform(0.0, 5.0), 2)
         cargo_weight = round(random.uniform(0.0, 500.0), 2)
+        
+        # Mix of verified and unverified vehicles (70% verified, 30% not verified)
+        verified = 1 if random.random() < 0.7 else 0
+        status = 'Active' if verified else 'Pending'
+        
         cursor.execute(
             """
             INSERT INTO [dbo].[Vehicle] (
-                VehicleId, VehicleTypeId, OwnerUserId, Seats, CargoVolume, CargoWeight, Status
+                VehicleId, VehicleTypeId, OwnerUserId, PlateNumber, Brand, Model, Color, 
+                Verified, Seats, CargoVolume, CargoWeight, Status
             )
-            VALUES (?, ?, ?, ?, ?, ?, 'Active')
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            vid, vtype_id, owner, seats, cargo_volume, cargo_weight
+            vid, vtype_id, owner, plate_number, brand, model, color, verified, seats, cargo_volume, cargo_weight, status
         )
-        vehicle_ids.append(vid)
+        vehicle_ids.append((vid, verified))  # Store vehicle ID and verification status
     return vehicle_ids
 
 
@@ -967,25 +991,65 @@ def seed_person_documents(cursor, user_ids, docs_per_user):
             )
 
 
-def seed_vehicle_documents(cursor, vehicle_ids, docs_per_vehicle):
-    doc_types = ["Registration", "Insurance", "TechnicalIns"]
-    for vid in vehicle_ids:
+def seed_vehicle_documents(cursor, vehicle_ids, docs_per_vehicle, operator_ids):
+    # Use the doc types from the CHECK constraint
+    doc_types = ["VEHICLE_REGISTRATION", "MOT_CERTIFICATE", "VEHICLE_CLASSIFICATION_CERTIFICATE", "VEHICLE_IMAGE"]
+    review_comments_options = [
+        "Document verified and approved",
+        "All information is correct",
+        "Document is valid and up to date",
+        "Rejected: Document is expired",
+        "Rejected: Information is unclear",
+        "Rejected: Missing required information",
+        None  # Some documents may not have comments
+    ]
+    
+    for vid, is_verified in vehicle_ids:
         for _ in range(docs_per_vehicle):
             doc_type = random.choice(doc_types)
             issue, expiry = random_future_date(365, 365 * 5)
             file_url = f"https://files.local/vehicledocs/{vid}/{doc_type.replace(' ', '_').lower()}.pdf"
-            image = f"https://files.local/vehicleimages/{vid}/{doc_type.replace(' ', '_').lower()}.png"
-            insert_and_return_identity(
-                cursor,
-                """
-                INSERT INTO [dbo].[VehicleDocument] (
-                    VehicleId, DocType, IssueDate, ExpiryDate, FileUrl, Image
+            
+            # If vehicle is verified, ALL documents must be accepted
+            if is_verified:
+                status = "Accepted"
+                accepted = 1
+            else:
+                # For unverified vehicles, documents can have any status
+                status = random.choice(["Pending", "Accepted", "Rejected"])
+                accepted = 1 if status == "Accepted" else 0
+            
+            # If document is reviewed (Accepted or Rejected), add reviewer info
+            if status in ["Accepted", "Rejected"] and operator_ids:
+                reviewed_by = random.choice(operator_ids)
+                reviewed_at = random_past_date(30)  # Reviewed within last 30 days
+                review_comments = random.choice(review_comments_options)
+                
+                insert_and_return_identity(
+                    cursor,
+                    """
+                    INSERT INTO [dbo].[VehicleDocument] (
+                        VehicleId, DocType, IssueDate, ExpiryDate, FileUrl, Accepted, Status,
+                        ReviewedByOperatorId, ReviewedAt, ReviewComments
+                    )
+                    OUTPUT INSERTED.VehDocId
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (vid, doc_type, issue, expiry, file_url, accepted, status, reviewed_by, reviewed_at, review_comments),
                 )
-                OUTPUT INSERTED.VehDocId
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (vid, doc_type, issue, expiry, file_url, image),
-            )
+            else:
+                # Pending documents don't have reviewer info
+                insert_and_return_identity(
+                    cursor,
+                    """
+                    INSERT INTO [dbo].[VehicleDocument] (
+                        VehicleId, DocType, IssueDate, ExpiryDate, FileUrl, Accepted, Status
+                    )
+                    OUTPUT INSERTED.VehDocId
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (vid, doc_type, issue, expiry, file_url, accepted, status),
+                )
 
 
 def seed_user_service_enrollments(cursor, drivers, vehicles, service_type_ids, ride_type_ids, operator_ids):
@@ -1065,12 +1129,15 @@ def main():
         bridge_ids, bridge_map = seed_bridges(cursor, grid)
 
         print("Seeding Vehicles...")
-        vehicle_ids = seed_vehicles(
+        vehicle_ids_with_status = seed_vehicles(
             cursor,
             CONFIG["NUM_VEHICLES"],
             vehicle_type_ids,
             owner_user_ids=driver_ids + company_rep_ids,
         )
+        
+        # Extract just the IDs for functions that don't need verification status
+        vehicle_ids = [vid for vid, _ in vehicle_ids_with_status]
 
         print("Seeding AllowedRideProfiles from combo_specs...")
         ride_profile_ids = seed_allowed_ride_profiles(cursor, service_type_ids, ride_type_ids, vehicle_type_ids)
@@ -1135,8 +1202,9 @@ def main():
         print("Seeding VehicleDocuments...")
         seed_vehicle_documents(
             cursor,
-            vehicle_ids,
+            vehicle_ids_with_status,  # Pass the full tuple with verification status
             CONFIG["NUM_VEHICLE_DOCS_PER_VEHICLE"],
+            operator_ids,
         )
 
         conn.commit()
