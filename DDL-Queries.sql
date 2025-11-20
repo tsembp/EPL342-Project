@@ -310,6 +310,9 @@ CREATE TABLE [dbo].[Vehicle] (
     [CargoWeight] DECIMAL(10,2) DEFAULT 0,
     [Status] NVARCHAR(100) DEFAULT 'Pending',
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    [ReviewedByOperatorId] UNIQUEIDENTIFIER,
+    [ReviewComment] NVARCHAR(1000),
+    [ReviewedAt] UtcStamp,
     CONSTRAINT [PK_Vehicle] PRIMARY KEY CLUSTERED ([VehicleId]),
     CONSTRAINT [CK_Seats_Positive] CHECK ([Seats] > 0),
     CONSTRAINT [CK_CargoWeight_Positive] CHECK ([CargoWeight] >= 0),
@@ -481,7 +484,9 @@ ADD CONSTRAINT [FK_Vehicle_VehicleType]
     ON DELETE CASCADE,
     CONSTRAINT [FK_Vehicle_OwnerUser]
     FOREIGN KEY ([OwnerUserId]) REFERENCES [dbo].[User]([UserId])
-    ON DELETE CASCADE;
+    ON DELETE CASCADE,
+    FOREIGN KEY ([ReviewedByOperatorId]) REFERENCES [dbo].[Operator]([OperatorId])
+    ON DELETE NO ACTION;
 
 /* CompanyRepresentative → User */
 ALTER TABLE [dbo].[CompanyRepresentative]
