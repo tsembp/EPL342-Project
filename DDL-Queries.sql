@@ -177,7 +177,7 @@ CREATE TABLE [dbo].[GdprRequest] (
     [DecidedAt] UtcStamp,
     CONSTRAINT [PK_GdprRequest] PRIMARY KEY CLUSTERED ([GdprId]),
     CONSTRAINT [CK_GdprRequest_Type] CHECK ([Type] IN ('DataAccess','DataDeletion','DataExport', 'DataCorrection')),
-    CONSTRAINT [CK_GdprRequest_Status] CHECK ([Status] IN ('Pending','Approved','Denied'))
+    CONSTRAINT [CK_GdprRequest_Status] CHECK ([Status] IN ('Pending','Under-Review','Pre-Approved','Approved','Denied','Completed'))
 );
 
 CREATE TABLE [dbo].[Bridge] (
@@ -284,7 +284,7 @@ CREATE TABLE [dbo].[InAppMessage] (
 CREATE TABLE [dbo].[GdprLog] (
     [LogId] BIGINT IDENTITY(1,1) NOT NULL,
     [GdprId] INT NOT NULL,
-    [ActorUserId] UNIQUEIDENTIFIER NOT NULL,
+    [ActorAdminId] UNIQUEIDENTIFIER,
     [LoggedAt] UtcStamp,
     [Note] NVARCHAR(MAX),
     CONSTRAINT [PK_GdprLog] PRIMARY KEY CLUSTERED ([LogId])
@@ -673,8 +673,8 @@ ALTER TABLE [dbo].[GdprLog]
 ADD CONSTRAINT [FK_GdprLog_GdprRequest]
     FOREIGN KEY ([GdprId]) REFERENCES [dbo].[GdprRequest]([GdprId])
     ON DELETE NO ACTION,
-    CONSTRAINT [FK_GdprLog_ActorUser]
-    FOREIGN KEY ([ActorUserId]) REFERENCES [dbo].[User]([UserId])
+    CONSTRAINT [FK_GdprLog_ActorAdminUser]
+    FOREIGN KEY ([ActorAdminId]) REFERENCES [dbo].[Admin]([AdminId])
     ON DELETE NO ACTION;
 
 COMMIT TRANSACTION;
