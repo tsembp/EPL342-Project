@@ -296,15 +296,21 @@ CREATE TABLE [dbo].[Vehicle] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [VehicleTypeId] INT NOT NULL,
     [OwnerUserId] UNIQUEIDENTIFIER NOT NULL,
+    [PlateNumber] NVARCHAR(20) NOT NULL UNIQUE,
+    [Brand] NVARCHAR(50) NOT NULL,
+    [Model] NVARCHAR(50) NOT NULL,
+    [Color] NVARCHAR(30) NOT NULL,
+    [Verified] BIT NOT NULL DEFAULT 0,
     [Seats] INT DEFAULT 0 NOT NULL,
     [CargoVolume] DECIMAL(10,2) DEFAULT 0,
     [CargoWeight] DECIMAL(10,2) DEFAULT 0,
-    [Status] NVARCHAR(100) DEFAULT 'Active',
+    [Status] NVARCHAR(100) DEFAULT 'Pending',
+    [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_Vehicle] PRIMARY KEY CLUSTERED ([VehicleId]),
     CONSTRAINT [CK_Seats_Positive] CHECK ([Seats] > 0),
     CONSTRAINT [CK_CargoWeight_Positive] CHECK ([CargoWeight] >= 0),
     CONSTRAINT [CK_CargoVolume_Positive] CHECK ([CargoVolume] >= 0),
-    CONSTRAINT [CK_Vehicle_Status] CHECK ([Status] IN ('Active','Inactive'))
+    CONSTRAINT [CK_Vehicle_Status] CHECK ([Status] IN ('Pending','Active','Inactive', 'Rejected'))
 );
 
 CREATE TABLE [dbo].[PersonDocument] (
@@ -345,14 +351,24 @@ CREATE TABLE [dbo].[VehicleDocument] (
     [VehDocId] INT IDENTITY(1,1) NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [DocType] NVARCHAR(100) NOT NULL,
-    [IssueDate] UtcStamp NOT NULL,
     [UploadedAt] UtcStamp DEFAULT GETUTCDATE(),
+    [IssueDate] UtcStamp DEFAULT NULL,
     [ExpiryDate] UtcStamp DEFAULT NULL,
-    [Accepted] BIT NOT NULL DEFAULT 0,
     [FileUrl] NVARCHAR(512) NOT NULL,
-    [Image] NVARCHAR(512) NOT NULL,
+    [Accepted] BIT NOT NULL DEFAULT 0,
+    [Status] NVARCHAR(20) NOT NULL DEFAULT 'Pending',
+    [ReviewedByOperatorId] UNIQUEIDENTIFIER,
+    [ReviewedAt] UtcStamp,
+    [ReviewComments] NVARCHAR(1000),
     CONSTRAINT [PK_VehicleDocument] PRIMARY KEY CLUSTERED ([VehDocId]),
-    CONSTRAINT [CK_VehicleDocument_Expiry] CHECK ([ExpiryDate] > [IssueDate])
+    CONSTRAINT [CK_VehicleDocument_Status] CHECK ([Status] IN ('Pending', 'Accepted', 'Rejected')),
+    CONSTRAINT [CK_VehicleDocument_Expiry] CHECK ([ExpiryDate] > [IssueDate]),
+    CONSTRAINT [CK_VehicleDocument_DocType] CHECK ([DocType] IN (
+        'VEHICLE_REGISTRATION',
+        'MOT_CERTIFICATE',
+        'VEHICLE_CLASSIFICATION_CERTIFICATE',
+        'VEHICLE_IMAGE'
+    ))
 );
 
 CREATE TABLE [dbo].[VehicleTest] (
@@ -478,7 +494,10 @@ ADD CONSTRAINT [FK_PersonDocument_User]
 ALTER TABLE [dbo].[VehicleDocument]
 ADD CONSTRAINT [FK_VehicleDocument_Vehicle]
     FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicle]([VehicleId])
-    ON DELETE CASCADE;
+    ON DELETE CASCADE,
+    CONSTRAINT [FK_VehicleDocument_ReviewedByOperator]
+    FOREIGN KEY ([ReviewedByOperatorId]) REFERENCES [dbo].[Operator]([OperatorId])
+    ON DELETE NO ACTION;
 
 /* VehicleTest → Vehicle */
 ALTER TABLE [dbo].[VehicleTest]
