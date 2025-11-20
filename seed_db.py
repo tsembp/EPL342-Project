@@ -981,10 +981,11 @@ def seed_ratings(cursor, num_ratings, author_user_ids, target_user_ids):
     return rating_ids
 
 
-def seed_person_documents(cursor, user_ids, docs_per_user, driver_ids):
+def seed_person_documents(cursor, user_ids, operator_ids):
     """
-    Seed person documents ensuring that verified users (especially drivers) 
-    only have accepted documents.
+    Seed person documents ensuring that verified users have all 8 required 
+    document types in 'Accepted' status.
+    Unverified users may have incomplete or rejected documents.
     """
     doc_types = [
         'ID_OR_PASSPORT',
@@ -994,9 +995,21 @@ def seed_person_documents(cursor, user_ids, docs_per_user, driver_ids):
         'MOT_CERT',
         'CRIMINAL_RECORD',
         'MEDICAL_CERT',
-        'PSYCHOLOGICAL_CERT']
+        'PSYCHOLOGICAL_CERT'
+    ]
     
-    # First, get the verification status for each user
+    review_comments_options = [
+        "Document verified and approved",
+        "All information is correct and valid",
+        "Document is valid and up to date",
+        "Rejected: Document is expired",
+        "Rejected: Information is unclear or illegible",
+        "Rejected: Missing required information",
+        "Rejected: Document appears to be fraudulent",
+        None  # Some documents may not have comments
+    ]
+    
+    # Get verification status for each user
     user_verification_status = {}
     for uid in user_ids:
         cursor.execute("SELECT Verified FROM [dbo].[User] WHERE UserId = ?", uid)
@@ -1006,29 +1019,66 @@ def seed_person_documents(cursor, user_ids, docs_per_user, driver_ids):
     for uid in user_ids:
         is_verified = user_verification_status[uid]
         
-        for _ in range(docs_per_user):
-            doc_type = random.choice(doc_types)
-            doc_no = f"DOC-{random.randint(100000, 999999)}"
-            issue, expiry = random_future_date(365, 365 * 10)
-            file_url = f"https://files.local/userdocs/{uid}/{doc_type.replace(' ', '_').lower()}.pdf"
+        if is_verified:
+            # Verified users MUST have all 8 document types accepted
+            documents_to_create = doc_types.copy()
+        else:
+            # Unverified users may have incomplete sets (3-7 documents)
+            num_docs = random.randint(3, 7)
+            documents_to_create = random.sample(doc_types, num_docs)
+        
+        for doc_type in documents_to_create:
+            doc_no = f"DOC-{uuid.uuid4().hex[:12].upper()}"  # Unique document number
             
-            # If user is verified, ALL documents must be accepted
-            if is_verified:
-                status = 'Accepted'
+            # Generate realistic dates
+            days_ago_upload = random.randint(10, 180)  # Uploaded 10-180 days ago
+            uploaded_at = datetime.utcnow() - timedelta(days=days_ago_upload)
+            
+            issue_date = uploaded_at - timedelta(days=random.randint(30, 730))  # Issued before upload
+            
+            # Some documents expire, others don't
+            if doc_type in ['ID_OR_PASSPORT', 'RESIDENCE_PERMIT', 'DRIVING_LICENSE', 'MOT_CERT']:
+                expiry_date = issue_date + timedelta(days=random.randint(365, 3650))
             else:
-                # For unverified users, documents can have any status
-                status = random.choice(['Pending', 'Accepted', 'Rejected'])
+                expiry_date = None
             
-            insert_and_return_identity(
-                cursor,
+            file_url = f"https://files.local/userdocs/{uid}/{doc_type.lower()}.pdf"
+            
+            # Determine status based on verification
+            if is_verified:
+                # Verified users: all documents accepted
+                status = 'Accepted'
+                reviewed_by = random.choice(operator_ids)
+                reviewed_at = uploaded_at + timedelta(days=random.randint(1, 7))  # Reviewed 1-7 days after upload
+                review_comments = random.choice([c for c in review_comments_options if c and 'Rejected' not in c])
+            else:
+                # Unverified users: mix of statuses
+                status = random.choice(['Pending', 'Accepted', 'Rejected'])
+                
+                if status == 'Pending':
+                    reviewed_by = None
+                    reviewed_at = None
+                    review_comments = None
+                else:
+                    # Accepted or Rejected
+                    reviewed_by = random.choice(operator_ids)
+                    reviewed_at = uploaded_at + timedelta(days=random.randint(1, 7))
+                    if status == 'Accepted':
+                        review_comments = random.choice([c for c in review_comments_options if c and 'Rejected' not in c])
+                    else:
+                        review_comments = random.choice([c for c in review_comments_options if c and 'Rejected' in c])
+            
+            # Insert the document
+            cursor.execute(
                 """
                 INSERT INTO [dbo].[PersonDocument] (
-                    UserId, DocType, DocNo, IssueDate, ExpiryDate, Status, FileUrl
+                    UserId, DocType, DocNo, IssueDate, UploadedAt, ExpiryDate, 
+                    Status, ReviewedByOperatorId, ReviewedAt, ReviewComments, FileUrl
                 )
-                OUTPUT INSERTED.DocId
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (uid, doc_type, doc_no, issue, expiry, status, file_url),
+                (uid, doc_type, doc_no, issue_date, uploaded_at, expiry_date, 
+                 status, reviewed_by, reviewed_at, review_comments, file_url)
             )
 
 
@@ -1239,8 +1289,7 @@ def main():
         seed_person_documents(
             cursor,
             users_with_documents,
-            CONFIG["NUM_PERSON_DOCS_PER_USER"],
-            driver_ids,
+            operator_ids,
         )
 
         print("Seeding VehicleDocuments...")
