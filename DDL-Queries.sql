@@ -113,6 +113,7 @@ CREATE TABLE [dbo].[Operator] (
     [Email] LongText NOT NULL UNIQUE,
     [Username] NVARCHAR(30) NOT NULL UNIQUE,
     [PasswordHash] NVARCHAR(MAX) NOT NULL,
+    [Verified] BIT NOT NULL DEFAULT 0,
     [CheckedByAdmin] UNIQUEIDENTIFIER,
     [CheckedAt] UtcStamp,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
@@ -321,7 +322,7 @@ CREATE TABLE [dbo].[PersonDocument] (
     [IssueDate] UtcStamp NOT NULL ,
     [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ExpiryDate] UtcStamp DEFAULT NULL,
-    [Accepted] BIT NOT NULL DEFAULT 0,
+    [Status] NVARCHAR(20) NOT NULL DEFAULT 'Pending ',
     [FileUrl] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_PersonDocument] PRIMARY KEY CLUSTERED ([DocId]),
     CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] IS NULL OR [ExpiryDate] > [IssueDate]),
@@ -335,8 +336,9 @@ CREATE TABLE [dbo].[PersonDocument] (
         'MEDICAL_CERT',
         'PSYCHOLOGICAL_CERT'
     )),
-    CONSTRAINT [UQ_DocNo] UNIQUE ([DocNo])
-);
+    CONSTRAINT [UQ_DocNo] UNIQUE ([DocNo]),
+    CONSTRAINT [CK_PersonDocument_Status] CHECK ([Status] IN ('Pending', 'Accepted', 'Rejected')
+));
     
 CREATE TABLE [dbo].[ItineraryLeg] (
     [LegId] INT IDENTITY(1,1) NOT NULL,
