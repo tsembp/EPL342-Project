@@ -27,7 +27,18 @@ BEGIN
         RETURN;
     END;
 
-    -- 2) Validate VehicleType exists (if you have a VehicleType table)
+    -- 2) Validate plate number uniqueness
+    IF EXISTS (
+        SELECT 1
+        FROM [dbo].[Vehicle]
+        WHERE PlateNumber = @PlateNumber
+    )
+    BEGIN
+        RAISERROR('Plate number must be unique.', 16, 1);
+        RETURN;
+    END;
+
+    -- 3) Validate VehicleType exists (if you have a VehicleType table)
     IF NOT EXISTS (
         SELECT 1
         FROM [dbo].[VehicleType] VT
@@ -38,14 +49,14 @@ BEGIN
         RETURN;
     END;
 
-    -- 3) Validate seats
+    -- 4) Validate seats
     IF @Seats <= 0
     BEGIN
         RAISERROR('Seats must be greater than zero.', 16, 1);
         RETURN;
     END;
 
-    -- 4) Insert vehicle
+    -- 5) Insert vehicle
     DECLARE @VehicleId UNIQUEIDENTIFIER = NEWID();
 
     INSERT INTO [dbo].[Vehicle]
