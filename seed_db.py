@@ -218,15 +218,30 @@ def seed_operators(cursor, num_operators, admin_ids):
         username = f"operator{i+1}"
         password_hash = "$2a$10$fakeOperatorHash"
         email = f"{username}@ops.local"
-        approved_by = random.choice(admin_ids)
-        approved_at = datetime.utcnow()
-        cursor.execute(
-            """
-            INSERT INTO [dbo].[Operator] (OperatorId, Email, Username, PasswordHash, CheckedByAdmin, CheckedAt)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            op_id, email, username, password_hash, approved_by, approved_at
-        )
+        
+        # Mix of verified and unverified operators (80% verified, 20% not verified)
+        verified = 1 if random.random() < 0.8 else 0
+        
+        # Only verified operators have CheckedByAdmin and CheckedAt
+        if verified and admin_ids:
+            approved_by = random.choice(admin_ids)
+            approved_at = random_past_date(60)  # Checked within last 60 days
+            cursor.execute(
+                """
+                INSERT INTO [dbo].[Operator] (OperatorId, Email, Username, PasswordHash, Verified, CheckedByAdmin, CheckedAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                op_id, email, username, password_hash, verified, approved_by, approved_at
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO [dbo].[Operator] (OperatorId, Email, Username, PasswordHash, Verified)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                op_id, email, username, password_hash, verified
+            )
+        
         operator_ids.append(op_id)
     return operator_ids
 
@@ -234,11 +249,15 @@ def seed_operators(cursor, num_operators, admin_ids):
 def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
     users = {"D": [], "P": [], "C": []}
 
-    # Drivers
+    # Drivers - mix of verified and unverified (70% verified, 30% unverified)
     for i in range(num_drivers):
         uid = uuid.uuid4()
         first, last = random_name()
         email = f"driver{i+1}@seed.local"  # ✅ guaranteed unique per driver index
+        
+        # 70% of drivers are verified (will have all documents accepted)
+        verified = 1 if random.random() < 0.7 else 0
+        
         cursor.execute(
             """
             INSERT INTO [dbo].[User] (
@@ -255,7 +274,7 @@ def seed_users_and_roles(cursor, num_drivers, num_passengers, num_company_reps):
             email,
             random_phone(),
             random_address(),
-            0,
+            verified,
             f"driver{i+1}",
             "$2a$10$fakeDriverHash",
         )
@@ -962,7 +981,11 @@ def seed_ratings(cursor, num_ratings, author_user_ids, target_user_ids):
     return rating_ids
 
 
-def seed_person_documents(cursor, user_ids, docs_per_user):
+def seed_person_documents(cursor, user_ids, docs_per_user, driver_ids):
+    """
+    Seed person documents ensuring that verified users (especially drivers) 
+    only have accepted documents.
+    """
     doc_types = [
         'ID_OR_PASSPORT',
         'RESIDENCE_PERMIT',
@@ -972,22 +995,40 @@ def seed_person_documents(cursor, user_ids, docs_per_user):
         'CRIMINAL_RECORD',
         'MEDICAL_CERT',
         'PSYCHOLOGICAL_CERT']
+    
+    # First, get the verification status for each user
+    user_verification_status = {}
     for uid in user_ids:
+        cursor.execute("SELECT Verified FROM [dbo].[User] WHERE UserId = ?", uid)
+        row = cursor.fetchone()
+        user_verification_status[uid] = row[0] if row else 0
+    
+    for uid in user_ids:
+        is_verified = user_verification_status[uid]
+        
         for _ in range(docs_per_user):
             doc_type = random.choice(doc_types)
             doc_no = f"DOC-{random.randint(100000, 999999)}"
             issue, expiry = random_future_date(365, 365 * 10)
             file_url = f"https://files.local/userdocs/{uid}/{doc_type.replace(' ', '_').lower()}.pdf"
+            
+            # If user is verified, ALL documents must be accepted
+            if is_verified:
+                status = 'Accepted'
+            else:
+                # For unverified users, documents can have any status
+                status = random.choice(['Pending', 'Accepted', 'Rejected'])
+            
             insert_and_return_identity(
                 cursor,
                 """
                 INSERT INTO [dbo].[PersonDocument] (
-                    UserId, DocType, DocNo, IssueDate, ExpiryDate, Accepted, FileUrl
+                    UserId, DocType, DocNo, IssueDate, ExpiryDate, Status, FileUrl
                 )
                 OUTPUT INSERTED.DocId
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (uid, doc_type, doc_no, issue, expiry, 1, file_url),
+                (uid, doc_type, doc_no, issue, expiry, status, file_url),
             )
 
 
@@ -1192,11 +1233,14 @@ def main():
             target_user_ids=driver_ids,
         )
 
-        print("Seeding PersonDocuments...")
+        print("Seeding PersonDocuments (only for Drivers and Company Representatives)...")
+        # Only drivers and company representatives have documents
+        users_with_documents = driver_ids + company_rep_ids
         seed_person_documents(
             cursor,
-            all_user_ids,
+            users_with_documents,
             CONFIG["NUM_PERSON_DOCS_PER_USER"],
+            driver_ids,
         )
 
         print("Seeding VehicleDocuments...")
