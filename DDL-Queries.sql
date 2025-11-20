@@ -329,6 +329,9 @@ CREATE TABLE [dbo].[PersonDocument] (
     [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ExpiryDate] UtcStamp DEFAULT NULL,
     [Status] NVARCHAR(20) NOT NULL DEFAULT 'Pending ',
+    [ReviewedByOperatorId] UNIQUEIDENTIFIER,
+    [ReviewedAt] UtcStamp,
+    [ReviewComments] NVARCHAR(1000),
     [FileUrl] NVARCHAR(512) NOT NULL,
     CONSTRAINT [PK_PersonDocument] PRIMARY KEY CLUSTERED ([DocId]),
     CONSTRAINT [CK_PersonDocument_Expiry] CHECK ([ExpiryDate] IS NULL OR [ExpiryDate] > [IssueDate]),
@@ -498,7 +501,9 @@ ADD CONSTRAINT [FK_CompanyRepresentative_User]
 ALTER TABLE [dbo].[PersonDocument]
 ADD CONSTRAINT [FK_PersonDocument_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
-    ON DELETE CASCADE;
+    ON DELETE CASCADE,
+    FOREIGN KEY ([ReviewedByOperatorId]) REFERENCES [dbo].[Operator]([OperatorId])
+    ON DELETE NO ACTION;
 
 /* VehicleDocument → Vehicle */
 ALTER TABLE [dbo].[VehicleDocument]
