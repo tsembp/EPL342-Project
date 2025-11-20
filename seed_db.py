@@ -1301,11 +1301,11 @@ def main():
         )
 
         conn.commit()
-        print("✅ Seeding completed successfully.")
+        print("Seeding completed successfully.")
 
     except Exception as e:
         conn.rollback()
-        print("❌ Error during seeding, rolled back transaction.")
+        print("Error during seeding, rolled back transaction.")
         print(e)
     finally:
         conn.close()
