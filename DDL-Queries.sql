@@ -465,7 +465,9 @@ ADD CONSTRAINT [FK_Rating_AuthorUser]
     FOREIGN KEY ([RideId]) REFERENCES [dbo].[Ride]([RideId])
     ON DELETE CASCADE,
     CONSTRAINT [CK_Rating_NoSelf]
-    CHECK ([AuthorUserId] <> [TargetUserId]);
+    CHECK ([AuthorUserId] <> [TargetUserId]),
+    CONSTRAINT [UQ_Rating_Ride_Author_Target]
+    UNIQUE ([RideId], [AuthorUserId], [TargetUserId]);
 
 /* Driver → User */
 ALTER TABLE [dbo].[Driver]
