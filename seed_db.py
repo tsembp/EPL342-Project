@@ -409,15 +409,40 @@ def seed_service_ride_vehicle_types_from_combos(cursor):
         ride_type_ids[name] = rid
 
     # VehicleType (IDENTITY)
+    vehicle_type_specs = {
+        # Passenger vehicles
+        "Sedan": (4, 0.40, 0),
+        "Hatchback": (4, 0.35, 0),
+        "SUV": (5, 0.80, 0),
+        "Coupe": (2, 0.25, 0),
+        "Convertible": (2, 0.20, 0),
+        "Crossover": (5, 0.60, 0),
+        "Electric Car": (5, 0.35, 0),
+        "Hybrid Car": (5, 0.40, 0),
+        "Wagon": (5, 0.70, 0),
+        "Luxury Car": (4, 0.45, 0),
+        "Sports Car": (2, 0.15, 0),
+        "Minivan": (random.randint(6, 8), 1.00, 0),
+        # Cargo vehicles
+        "Van": (2, 3.00, 500.00),
+        "Pickup Truck": (2, 1.50, 800.00),
+        "Truck": (2, 10.00, 2000.00),
+    }
     for name in vehicle_names:
+        num_seats, min_cargo_vol, min_cargo_weight = vehicle_type_specs.get(
+            name, (2, 0.30, 0)  # Default fallback
+        )
+        
         vid = insert_and_return_identity(
             cursor,
             """
-            INSERT INTO [dbo].[VehicleType] (Name)
+            INSERT INTO [dbo].[VehicleType] (
+                Name, MinCargoVolume, MinCargoWeight, NumOfSeats
+            )
             OUTPUT INSERTED.VehicleTypeId
-            VALUES (?)
+            VALUES (?, ?, ?, ?)
             """,
-            (name,),
+            (name, min_cargo_vol, min_cargo_weight, num_seats),
         )
         vehicle_type_ids[name] = vid
 

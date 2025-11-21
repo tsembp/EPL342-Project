@@ -210,6 +210,9 @@ CREATE TABLE [dbo].[Driver] (
 CREATE TABLE [dbo].[VehicleType] (
     [VehicleTypeId] INT IDENTITY(1,1) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL UNIQUE,
+    [NumOfSeats] INT NOT NULL DEFAULT 1,
+    [MinCargoVolume] DECIMAL(10,2) NOT NULL DEFAULT 0,
+    [MinCargoWeight] DECIMAL(10,2) NOT NULL DEFAULT 0,
     CONSTRAINT [PK_VehicleType] PRIMARY KEY CLUSTERED ([VehicleTypeId])
 );
 
@@ -243,7 +246,6 @@ CREATE TABLE [dbo].[RideRequestLog] (
     [RequestId] INT NOT NULL, -- same ID as in RideRequest
     [Operation] CHAR(1) NOT NULL,
     [ChangedAt] DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-    [ChangedBy] UNIQUEIDENTIFIER NULL,
 
     -- Snapshot of ride request
     [PassengerId] UNIQUEIDENTIFIER NOT NULL,
