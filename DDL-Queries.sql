@@ -111,6 +111,19 @@ CREATE TABLE [dbo].[Geofencezone] (
     CONSTRAINT [CK_GeofenceZone_Coords] CHECK ([MaxLat] > [MinLat] AND [MaxLng] > [MinLng])
 );
 
+CREATE TABLE [dbo].[ZonePoint] (
+    [PointId] INT IDENTITY(1,1) NOT NULL,
+    [ZoneId] INT NOT NULL,
+    [Latitude]  DECIMAL(9,6) NOT NULL,
+    [Longitude] DECIMAL(9,6) NOT NULL,
+    [PointType] CHAR(1) NOT NULL CHECK ([PointType] IN ('S', 'B')), -- S = Station (pickup/drop), B = Bridge endpoint
+    [Name] NVARCHAR(100) NULL,
+    [IsPickupAllowed] BIT NOT NULL DEFAULT 0,
+    [IsDropoffAllowed] BIT NOT NULL DEFAULT 0,
+    CONSTRAINT [PK_ZonePoint] PRIMARY KEY CLUSTERED ([PointId]),
+    CONSTRAINT [UQ_ZonePoint_LatLng_Zone] UNIQUE ([ZoneId], [Latitude], [Longitude])
+);
+
 CREATE TABLE [dbo].[Operator] (
     [OperatorId] UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     [Email] LongText NOT NULL UNIQUE,
@@ -182,9 +195,10 @@ CREATE TABLE [dbo].[GdprRequest] (
 
 CREATE TABLE [dbo].[Bridge] (
     [BridgeId] INT IDENTITY(1,1) NOT NULL,
-    [Name] NVARCHAR(100),
-    [FromZone] INT NOT NULL,
-    [ToZone] INT NOT NULL,
+    [PointId] INT NOT NULL,
+    [FromZoneId] INT NOT NULL,
+    [ToZoneId] INT NOT NULL,
+    [Name] NVARCHAR(100) NULL,
     CONSTRAINT [PK_Bridge] PRIMARY KEY CLUSTERED ([BridgeId])
 );
 
@@ -213,20 +227,8 @@ CREATE TABLE [dbo].[RideRequest] (
     [PassengerId] UNIQUEIDENTIFIER NOT NULL,
     [NumOfPeople] INT NOT NULL,
     [PickupAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    [PickupLat] DECIMAL(9,6) NOT NULL,
-    [PickupLng] DECIMAL(9,6) NOT NULL,
-    [DropLat] DECIMAL(9,6) NOT NULL,
-    [DropLng] DECIMAL(9,6) NOT NULL,
-    [PickupCountry] LongText,
-    [PickupRegion] LongText,
-    [PickupCity] LongText,
-    [PickupDistrict] LongText,
-    [PickupPostalCode] LongText,
-    [DropCountry] LongText,
-    [DropRegion] LongText,
-    [DropCity] LongText,
-    [DropDistrict] LongText,
-    [DropPostalCode] LongText,
+    [PickUpPoint] INT,
+    [DropOffPoint] INT,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
@@ -247,20 +249,8 @@ CREATE TABLE [dbo].[RideRequestLog] (
     [PassengerId] UNIQUEIDENTIFIER NOT NULL,
     [NumOfPeople] INT NOT NULL,
     [PickupAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    [PickupLat] DECIMAL(9,6) NOT NULL,
-    [PickupLng] DECIMAL(9,6) NOT NULL,
-    [DropLat] DECIMAL(9,6) NOT NULL,
-    [DropLng] DECIMAL(9,6) NOT NULL,
-    [PickupCountry] LongText,
-    [PickupRegion] LongText,
-    [PickupCity] LongText,
-    [PickupDistrict] LongText,
-    [PickupPostalCode] LongText,
-    [DropCountry] LongText,
-    [DropRegion] LongText,
-    [DropCity] LongText,
-    [DropDistrict] LongText,
-    [DropPostalCode] LongText,
+    [PickUpPoint] INT,
+    [DropOffPoint] INT,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
@@ -351,12 +341,15 @@ CREATE TABLE [dbo].[PersonDocument] (
     
 CREATE TABLE [dbo].[ItineraryLeg] (
     [LegId] INT IDENTITY(1,1) NOT NULL,
-    [SeqNo] INT NOT NULL,
-    [ViaBridgeId] INT,
     [RideRequestId] INT NOT NULL,
+    [SeqNo] INT NOT NULL,
+    [ZoneId] INT NOT NULL,
+    [FromPointId] INT NOT NULL,
+    [ToPointId]   INT NOT NULL,
     CONSTRAINT [PK_ItineraryLeg] PRIMARY KEY CLUSTERED ([LegId]),
     CONSTRAINT [UQ_ItineraryLeg_SeqNo_RideRequest] UNIQUE ([SeqNo], [RideRequestId])
 );
+
 
 CREATE TABLE [dbo].[VehicleDocument] (
     [VehDocId] INT IDENTITY(1,1) NOT NULL,
@@ -433,12 +426,6 @@ CREATE TABLE [dbo].[VehicleLocationLive] (
     [Lat] DECIMAL(9,6) NOT NULL,
     [Lng] DECIMAL(9,6) NOT NULL,
     [UpdatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE()
-);
-
-CREATE TABLE [dbo].[LegCrossesBridge] (
-    [ItineraryLeg] INT NOT NULL,
-    [Bridge] INT NOT NULL,
-    CONSTRAINT [PK_LegCrossesBridge] PRIMARY KEY CLUSTERED ([ItineraryLeg], [Bridge])
 );
 
 GO
@@ -570,32 +557,39 @@ ADD CONSTRAINT [FK_AllowedRideProfile_ServiceType]
     CONSTRAINT [UQ_AllowedRideProfile_Unique]
     UNIQUE ([ServiceTypeId], [RideTypeId], [VehicleTypeId]);
 
+ALTER TABLE [dbo].[ZonePoint]
+ADD CONSTRAINT [FK_ZonePoint_Geofencezone]
+    FOREIGN KEY ([ZoneId]) REFERENCES [dbo].[Geofencezone]([ZoneId])
+    ON DELETE CASCADE;
+
 /* Bridge → Geofencezone */
 ALTER TABLE [dbo].[Bridge]
-    ADD CONSTRAINT [FK_Bridge_FromZone]
-    FOREIGN KEY ([FromZone]) REFERENCES [dbo].[Geofencezone]([ZoneId])
-    ON DELETE NO ACTION,
+ADD CONSTRAINT [FK_Bridge_Point]
+        FOREIGN KEY ([PointId]) REFERENCES [dbo].[ZonePoint]([PointId])
+        ON DELETE NO ACTION,
+    CONSTRAINT [FK_Bridge_FromZone]
+        FOREIGN KEY ([FromZoneId]) REFERENCES [dbo].[Geofencezone]([ZoneId])
+        ON DELETE NO ACTION,
     CONSTRAINT [FK_Bridge_ToZone]
-    FOREIGN KEY ([ToZone]) REFERENCES [dbo].[Geofencezone]([ZoneId])
-    ON DELETE NO ACTION;
+        FOREIGN KEY ([ToZoneId]) REFERENCES [dbo].[Geofencezone]([ZoneId])
+        ON DELETE NO ACTION,
+    CONSTRAINT [CK_Bridge_ZoneDiff]
+        CHECK ([FromZoneId] <> [ToZoneId])
 
 /* ItineraryLeg → Bridge, RideRequest */
 ALTER TABLE [dbo].[ItineraryLeg]
-ADD CONSTRAINT [FK_ItineraryLeg_Bridge]
-    FOREIGN KEY ([ViaBridgeId]) REFERENCES [dbo].[Bridge]([BridgeId])
-    ON DELETE SET NULL,
-    CONSTRAINT [FK_ItineraryLeg_RideRequest]
-    FOREIGN KEY ([RideRequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
-    ON DELETE CASCADE;
-
-/* LegCrossesBridge (junction) → ItineraryLeg, Bridge */
-ALTER TABLE [dbo].[LegCrossesBridge]
-ADD CONSTRAINT [FK_LegCrossesBridge_ItineraryLeg]
-    FOREIGN KEY ([ItineraryLeg]) REFERENCES [dbo].[ItineraryLeg]([LegId])
-    ON DELETE CASCADE,
-    CONSTRAINT [FK_LegCrossesBridge_Bridge]
-    FOREIGN KEY ([Bridge]) REFERENCES [dbo].[Bridge]([BridgeId])
-    ON DELETE CASCADE;
+ADD CONSTRAINT [FK_ItineraryLeg_RideRequest]
+        FOREIGN KEY ([RideRequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
+        ON DELETE CASCADE,
+    CONSTRAINT [FK_ItineraryLeg_Zone]
+        FOREIGN KEY ([ZoneId]) REFERENCES [dbo].[Geofencezone]([ZoneId])
+        ON DELETE NO ACTION,
+    CONSTRAINT [FK_ItineraryLeg_FromPoint]
+        FOREIGN KEY ([FromPointId]) REFERENCES [dbo].[ZonePoint]([PointId])
+        ON DELETE NO ACTION,
+    CONSTRAINT [FK_ItineraryLeg_ToPoint]
+        FOREIGN KEY ([ToPointId]) REFERENCES [dbo].[ZonePoint]([PointId])
+        ON DELETE NO ACTION
 
 /* RideRequest → AllowedRideProfile, Passenger */
 ALTER TABLE [dbo].[RideRequest]
@@ -604,7 +598,13 @@ ADD CONSTRAINT [FK_RideRequest_AllowedRideProfile]
     ON DELETE NO ACTION,
     CONSTRAINT [FK_RideRequest_Passenger]
     FOREIGN KEY ([PassengerId]) REFERENCES [dbo].[Passenger]([UserId])
-    ON DELETE CASCADE;
+    ON DELETE CASCADE,
+    CONSTRAINT [FK_RideRequest_PickUpStation]
+    FOREIGN KEY ([PickUpPoint]) REFERENCES [dbo].[ZonePoint]([PointId])
+    ON DELETE NO ACTION,
+    CONSTRAINT [FK_RideRequest_DropOffPoint]
+    FOREIGN KEY ([DropOffPoint]) REFERENCES [dbo].[ZonePoint]([PointId])
+    ON DELETE NO ACTION;
 
 /* RideRequestLog → RideRequest */
 ALTER TABLE [dbo].[RideRequestLog]
