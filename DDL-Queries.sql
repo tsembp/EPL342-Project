@@ -172,13 +172,17 @@ CREATE TABLE [dbo].[Ride] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [StartedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [EndedAt] UtcStamp NOT NULL,
+    [DistanceKm] DECIMAL(10,2),
+    [DurationMinutes] INT,
     [PriceFinal] DECIMAL(12,2) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Scheduled'),
     [Rating] INT,
     [Payment] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_Ride] PRIMARY KEY CLUSTERED ([RideId]),
     CONSTRAINT [CK_Ride_Status] CHECK ([Status] IN ('Scheduled','InProgress','Completed','Cancelled')),
-    CONSTRAINT [CK_Ride_Time] CHECK ([EndedAt] > [StartedAt])
+    CONSTRAINT [CK_Ride_Time] CHECK ([EndedAt] > [StartedAt]),
+    CONSTRAINT [CK_Ride_DistanceKm] CHECK ([DistanceKm] IS NULL OR [DistanceKm] >= 0),
+    CONSTRAINT [CK_Ride_DurationMinutes] CHECK ([DurationMinutes] IS NULL OR [DurationMinutes] >= 0)
 );
 
 CREATE TABLE [dbo].[GdprRequest] (
