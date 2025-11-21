@@ -88,6 +88,7 @@ CREATE TABLE [dbo].[Payment] (
 
 CREATE TABLE [dbo].[Rating] (
     [RatingId] INT IDENTITY(1,1) NOT NULL,
+    [RideId] INT NOT NULL,
     [AuthorUserId] UNIQUEIDENTIFIER NOT NULL,
     [TargetUserId] UNIQUEIDENTIFIER NOT NULL,
     [Stars] INT NOT NULL,
@@ -95,7 +96,8 @@ CREATE TABLE [dbo].[Rating] (
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_Rating] PRIMARY KEY CLUSTERED ([RatingId]),
-    CONSTRAINT [CK_Rating_Stars] CHECK ([Stars] BETWEEN 1 AND 5)
+    CONSTRAINT [CK_Rating_Stars] CHECK ([Stars] BETWEEN 1 AND 5),
+    CONSTRAINT [UQ_Rating_Ride_Author_Target] UNIQUE (RideId, AuthorUserId, TargetUserId)
 );
 
 CREATE TABLE [dbo].[Geofencezone] (
@@ -174,7 +176,6 @@ CREATE TABLE [dbo].[Ride] (
     [EndedAt] UtcStamp NOT NULL,
     [PriceFinal] DECIMAL(12,2) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Scheduled'),
-    [Rating] INT,
     [Payment] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_Ride] PRIMARY KEY CLUSTERED ([RideId]),
     CONSTRAINT [CK_Ride_Status] CHECK ([Status] IN ('Scheduled','InProgress','Completed','Cancelled')),
@@ -460,6 +461,9 @@ ADD CONSTRAINT [FK_Rating_AuthorUser]
     CONSTRAINT [FK_Rating_TargetUser]
     FOREIGN KEY ([TargetUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION,
+    CONSTRAINT [FK_Rating_Ride] 
+    FOREIGN KEY ([RideId]) REFERENCES [dbo].[Ride]([RideId])
+    ON DELETE CASCADE,
     CONSTRAINT [CK_Rating_NoSelf]
     CHECK ([AuthorUserId] <> [TargetUserId]);
 
@@ -646,9 +650,6 @@ ADD CONSTRAINT [FK_Ride_DriverUser]
     CONSTRAINT [FK_Ride_Offer]
     FOREIGN KEY ([OfferId]) REFERENCES [dbo].[DispatchOffer]([OfferId])
     ON DELETE NO ACTION,
-    CONSTRAINT [FK_Ride_Rating]
-    FOREIGN KEY ([Rating]) REFERENCES [dbo].[Rating]([RatingId])
-    ON DELETE SET NULL,
     CONSTRAINT [FK_Ride_Payment]
     FOREIGN KEY ([Payment]) REFERENCES [dbo].[Payment]([PaymentId])
     ON DELETE SET NULL;
