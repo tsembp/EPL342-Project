@@ -464,9 +464,103 @@ def seed_zones(cursor, num_zones):
     
     return zone_ids, grid
 
-def seed_bridges(cursor, grid):
+def seed_zone_points(cursor, zone_ids):
+    """
+    Create ZonePoints for each zone:
+    - 2-3 stations (type 'S') for pickup/dropoff
+    - 4 bridge endpoints (type 'B') at zone boundaries (top, right, bottom, left)
+    Returns: dict mapping zone_id -> {'stations': [...], 'bridges': {...}}
+    """
+    zone_points = {}
+    
+    for zone_id in zone_ids:
+        # Get zone bounds
+        cursor.execute(
+            "SELECT MinLat, MinLng, MaxLat, MaxLng FROM [dbo].[Geofencezone] WHERE ZoneId = ?",
+            zone_id
+        )
+        row = cursor.fetchone()
+        min_lat, min_lng, max_lat, max_lng = row
+        
+        mid_lat = (float(min_lat) + float(max_lat)) / 2
+        mid_lng = (float(min_lng) + float(max_lng)) / 2
+        
+        station_points = []
+        bridge_points = {}
+        
+        # Create 2-3 stations (pickup/dropoff points) randomly placed in zone
+        num_stations = random.randint(2, 3)
+        for i in range(num_stations):
+            lat = random.uniform(float(min_lat), float(max_lat))
+            lng = random.uniform(float(min_lng), float(max_lng))
+            
+            point_id = insert_and_return_identity(
+                cursor,
+                """
+                INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+                OUTPUT INSERTED.PointId
+                VALUES (?, ?, ?, 'S', ?, 1, 1)
+                """,
+                (zone_id, round(lat, 6), round(lng, 6), f"Station {i+1}")
+            )
+            station_points.append(point_id)
+        
+        # Create 4 bridge endpoints at zone boundaries
+        # Top (north) bridge endpoint
+        bridge_points['top'] = insert_and_return_identity(
+            cursor,
+            """
+            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+            OUTPUT INSERTED.PointId
+            VALUES (?, ?, ?, 'B', ?, 0, 0)
+            """,
+            (zone_id, float(max_lat), mid_lng, f"Bridge North")
+        )
+        
+        # Right (east) bridge endpoint
+        bridge_points['right'] = insert_and_return_identity(
+            cursor,
+            """
+            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+            OUTPUT INSERTED.PointId
+            VALUES (?, ?, ?, 'B', ?, 0, 0)
+            """,
+            (zone_id, mid_lat, float(max_lng), f"Bridge East")
+        )
+        
+        # Bottom (south) bridge endpoint
+        bridge_points['bottom'] = insert_and_return_identity(
+            cursor,
+            """
+            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+            OUTPUT INSERTED.PointId
+            VALUES (?, ?, ?, 'B', ?, 0, 0)
+            """,
+            (zone_id, float(min_lat), mid_lng, f"Bridge South")
+        )
+        
+        # Left (west) bridge endpoint
+        bridge_points['left'] = insert_and_return_identity(
+            cursor,
+            """
+            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+            OUTPUT INSERTED.PointId
+            VALUES (?, ?, ?, 'B', ?, 0, 0)
+            """,
+            (zone_id, mid_lat, float(min_lng), f"Bridge West")
+        )
+        
+        zone_points[zone_id] = {
+            'stations': station_points,
+            'bridges': bridge_points
+        }
+    
+    return zone_points
+
+def seed_bridges(cursor, grid, zone_points):
     """
     Create bridges connecting adjacent zones (right and down neighbors).
+    Each bridge links specific ZonePoints at zone boundaries.
     Returns list of bridge_ids and a dict mapping (from_zone, to_zone) -> bridge_id
     """
     bridge_ids = []
@@ -478,51 +572,48 @@ def seed_bridges(cursor, grid):
         for c in range(num_cols):
             current = grid[r][c]
             
-            # Bridge to right neighbor
+            # Bridge to right neighbor (connects east/west points)
             if c < num_cols - 1:
                 right = grid[r][c+1]
+                # Current zone's right bridge point connects to right zone's left bridge point
+                point_id = zone_points[current]['bridges']['right']
+                
                 bridge_id = insert_and_return_identity(
                     cursor,
                     """
-                    INSERT INTO [dbo].[Bridge] (Name, FromZone, ToZone)
+                    INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
                     OUTPUT INSERTED.BridgeId
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (f"Bridge {len(bridge_ids)+1}", current, right)
+                    (point_id, current, right, f"Bridge {len(bridge_ids)+1}")
                 )
                 bridge_ids.append(bridge_id)
                 bridge_map[(current, right)] = bridge_id
             
-            # Bridge to down neighbor
+            # Bridge to down neighbor (connects north/south points)
             if r < num_rows - 1:
                 down = grid[r+1][c]
+                # Current zone's bottom bridge point connects to down zone's top bridge point
+                point_id = zone_points[current]['bridges']['bottom']
+                
                 bridge_id = insert_and_return_identity(
                     cursor,
                     """
-                    INSERT INTO [dbo].[Bridge] (Name, FromZone, ToZone)
+                    INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
                     OUTPUT INSERTED.BridgeId
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (f"Bridge {len(bridge_ids)+1}", current, down)
+                    (point_id, current, down, f"Bridge {len(bridge_ids)+1}")
                 )
                 bridge_ids.append(bridge_id)
                 bridge_map[(current, down)] = bridge_id
     
     return bridge_ids, bridge_map
 
-def get_random_point_in_zone(cursor, zone_id):
-    """Get random lat/lng within a zone's bounds."""
-    cursor.execute(
-        "SELECT MinLat, MinLng, MaxLat, MaxLng FROM [dbo].[Geofencezone] WHERE ZoneId = ?",
-        zone_id
-    )
-    row = cursor.fetchone()
-    if not row:
-        return (34.7, 33.0)  # fallback
-    min_lat, min_lng, max_lat, max_lng = row
-    lat = random.uniform(float(min_lat), float(max_lat))
-    lng = random.uniform(float(min_lng), float(max_lng))
-    return (round(lat, 6), round(lng, 6))
+def get_random_station_in_zone(zone_id, zone_points):
+    """Get a random station point from a zone."""
+    stations = zone_points[zone_id]['stations']
+    return random.choice(stations) if stations else None
 
 
 def seed_vehicles(cursor, num_vehicles, vehicle_type_ids, owner_user_ids):
@@ -674,25 +765,26 @@ def find_path_between_zones(start_zone, end_zone, grid, bridge_map):
 
 # Now replace seed_itinerary_legs() with this updated version:
 
-def seed_itinerary_legs(cursor, ride_requests_info, bridge_map, grid):
+def seed_itinerary_legs(cursor, ride_requests_info, bridge_map, grid, zone_points):
     """
     Create itinerary legs for each ride request.
     For bridged routes, create multiple legs crossing bridges based on actual path.
+    Each leg must have ZoneId, FromPointId, ToPointId.
     Returns list of all leg_ids
     """
     leg_ids = []
     
-    for (req_id, start_zone, end_zone, is_bridged) in ride_requests_info:
+    for (req_id, pickup_point, dropoff_point, start_zone, end_zone, is_bridged) in ride_requests_info:
         if not is_bridged or start_zone == end_zone:
-            # Single leg, no bridge
+            # Single leg within same zone
             leg_id = insert_and_return_identity(
                 cursor,
                 """
-                INSERT INTO [dbo].[ItineraryLeg] (SeqNo, RideRequestId)
+                INSERT INTO [dbo].[ItineraryLeg] (SeqNo, RideRequestId, ZoneId, FromPointId, ToPointId)
                 OUTPUT INSERTED.LegId
-                VALUES (1, ?)
+                VALUES (1, ?, ?, ?, ?)
                 """,
-                (req_id,)
+                (req_id, start_zone, pickup_point, dropoff_point)
             )
             leg_ids.append(leg_id)
         else:
@@ -705,33 +797,50 @@ def seed_itinerary_legs(cursor, ride_requests_info, bridge_map, grid):
                 leg_id = insert_and_return_identity(
                     cursor,
                     """
-                    INSERT INTO [dbo].[ItineraryLeg] (SeqNo, RideRequestId)
+                    INSERT INTO [dbo].[ItineraryLeg] (SeqNo, RideRequestId, ZoneId, FromPointId, ToPointId)
                     OUTPUT INSERTED.LegId
-                    VALUES (1, ?)
+                    VALUES (1, ?, ?, ?, ?)
                     """,
-                    (req_id,)
+                    (req_id, start_zone, pickup_point, dropoff_point)
                 )
                 leg_ids.append(leg_id)
                 continue
             
-            # Create one leg per bridge crossing
+            # Create one leg per zone traversal
+            current_point = pickup_point
             for seq, (from_zone, to_zone, bridge_id) in enumerate(path, start=1):
+                # Get bridge endpoint in from_zone (where we exit)
+                cursor.execute(
+                    "SELECT PointId FROM [dbo].[Bridge] WHERE BridgeId = ?",
+                    bridge_id
+                )
+                bridge_point = cursor.fetchone()[0]
+                
+                # Determine if this is the last leg
+                is_last_leg = (seq == len(path))
+                
+                if is_last_leg:
+                    # Last leg: from bridge point to final dropoff
+                    to_point = dropoff_point
+                else:
+                    # Intermediate leg: from current point to bridge point
+                    to_point = bridge_point
+                
                 leg_id = insert_and_return_identity(
                     cursor,
                     """
-                    INSERT INTO [dbo].[ItineraryLeg] (SeqNo, ViaBridgeId, RideRequestId)
+                    INSERT INTO [dbo].[ItineraryLeg] (SeqNo, RideRequestId, ZoneId, FromPointId, ToPointId)
                     OUTPUT INSERTED.LegId
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (seq, bridge_id, req_id)
+                    (seq, req_id, from_zone, current_point, to_point)
                 )
                 leg_ids.append(leg_id)
                 
-                # ✅ Insert into LegCrossesBridge junction table
-                cursor.execute(
-                    "INSERT INTO [dbo].[LegCrossesBridge] (ItineraryLeg, Bridge) VALUES (?, ?)",
-                    (leg_id, bridge_id)
-                )
+                # Next leg starts from where we entered the new zone
+                if not is_last_leg:
+                    # Get the corresponding entry point in to_zone
+                    current_point = get_random_station_in_zone(to_zone, zone_points)
     
     return leg_ids
 
@@ -762,10 +871,10 @@ def seed_dispatch_offers(cursor, leg_ids, driver_ids):
     return offer_ids
 
 
-def seed_ride_requests(cursor, num_requests, passenger_ids, ride_profile_ids, zone_ids, bridge_map):
+def seed_ride_requests(cursor, num_requests, passenger_ids, ride_profile_ids, zone_ids, zone_points):
     """
     Create ride requests. Some will be bridged routes (multi-leg crossing zones).
-    Returns list of (request_id, start_zone, end_zone, is_bridged) tuples
+    Returns list of (request_id, pickup_point, dropoff_point, start_zone, end_zone, is_bridged) tuples
     """
     request_info = []
     
@@ -793,8 +902,9 @@ def seed_ride_requests(cursor, num_requests, passenger_ids, ride_profile_ids, zo
         else:
             end_zone = start_zone
         
-        pickup_lat, pickup_lng = get_random_point_in_zone(cursor, start_zone)
-        drop_lat, drop_lng = get_random_point_in_zone(cursor, end_zone)
+        # Get station points for pickup and dropoff
+        pickup_point = get_random_station_in_zone(start_zone, zone_points)
+        dropoff_point = get_random_station_in_zone(end_zone, zone_points)
         
         num_people = random.randint(1, 4)
         pickup_at = datetime.utcnow() + timedelta(hours=random.randint(1, 72))
@@ -805,16 +915,15 @@ def seed_ride_requests(cursor, num_requests, passenger_ids, ride_profile_ids, zo
             """
             INSERT INTO [dbo].[RideRequest] (
                 PassengerId, NumOfPeople, PickupAt,
-                PickupCountry, PickupCity, PickupLat, PickupLng,
-                DropCountry, DropCity, DropLat, DropLng,
+                PickUpPoint, DropOffPoint,
                 Status, RideProfileId
             )
             OUTPUT INSERTED.RequestId
-            VALUES (?, ?, ?, 'Cyprus', 'Nicosia', ?, ?, 'Cyprus', 'Nicosia', ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (passenger_id, num_people, pickup_at, pickup_lat, pickup_lng, drop_lat, drop_lng, status, profile_id)
+            (passenger_id, num_people, pickup_at, pickup_point, dropoff_point, status, profile_id)
         )
-        request_info.append((req_id, start_zone, end_zone, is_bridged))
+        request_info.append((req_id, pickup_point, dropoff_point, start_zone, end_zone, is_bridged))
     
     return request_info
 
@@ -1216,8 +1325,11 @@ def main():
         print("Seeding Zones...")
         zone_ids, grid = seed_zones(cursor, CONFIG["NUM_ZONES"])
 
+        print("Seeding ZonePoints (stations and bridge endpoints)...")
+        zone_points = seed_zone_points(cursor, zone_ids)
+
         print("Seeding Bridges...")
-        bridge_ids, bridge_map = seed_bridges(cursor, grid)
+        bridge_ids, bridge_map = seed_bridges(cursor, grid, zone_points)
 
         print("Seeding Vehicles...")
         vehicle_ids_with_status = seed_vehicles(
@@ -1253,11 +1365,11 @@ def main():
             passenger_ids,
             ride_profile_ids,
             zone_ids,
-            bridge_map,
+            zone_points,
         )
 
         print("Seeding ItineraryLegs...")
-        leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid)  # ✅ Pass grid
+        leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid, zone_points)
 
         print("Seeding DispatchOffers...")
         offer_ids = seed_dispatch_offers(cursor, leg_ids, driver_ids)
