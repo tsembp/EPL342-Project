@@ -88,6 +88,7 @@ CREATE TABLE [dbo].[Payment] (
 
 CREATE TABLE [dbo].[Rating] (
     [RatingId] INT IDENTITY(1,1) NOT NULL,
+    [RideId] INT NOT NULL,
     [AuthorUserId] UNIQUEIDENTIFIER NOT NULL,
     [TargetUserId] UNIQUEIDENTIFIER NOT NULL,
     [Stars] INT NOT NULL,
@@ -95,7 +96,8 @@ CREATE TABLE [dbo].[Rating] (
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
     CONSTRAINT [PK_Rating] PRIMARY KEY CLUSTERED ([RatingId]),
-    CONSTRAINT [CK_Rating_Stars] CHECK ([Stars] BETWEEN 1 AND 5)
+    CONSTRAINT [CK_Rating_Stars] CHECK ([Stars] BETWEEN 1 AND 5),
+    CONSTRAINT [UQ_Rating_Ride_Author_Target] UNIQUE (RideId, AuthorUserId, TargetUserId)
 );
 
 CREATE TABLE [dbo].[Geofencezone] (
@@ -104,6 +106,15 @@ CREATE TABLE [dbo].[Geofencezone] (
     [MinLng] DECIMAL(9,6),
     [MaxLat] DECIMAL(9,6),
     [MaxLng] DECIMAL(9,6),
+    [Boundary] AS geography::STPolyFromText(
+        'POLYGON((' + 
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + ',' +
+        CAST([MaxLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + ',' +
+        CAST([MaxLng] AS VARCHAR(20)) + ' ' + CAST([MaxLat] AS VARCHAR(20)) + ',' +
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MaxLat] AS VARCHAR(20)) + ',' +
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + 
+        '))', 4326
+    ) PERSISTED,
     [Name] NVARCHAR(100),
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
@@ -116,6 +127,7 @@ CREATE TABLE [dbo].[ZonePoint] (
     [ZoneId] INT NOT NULL,
     [Latitude]  DECIMAL(9,6) NOT NULL,
     [Longitude] DECIMAL(9,6) NOT NULL,
+    [Location] AS GEOGRAPHY::Point([Latitude], [Longitude], 4326) PERSISTED,
     [PointType] CHAR(1) NOT NULL CHECK ([PointType] IN ('S', 'B')), -- S = Station (pickup/drop), B = Bridge endpoint
     [Name] NVARCHAR(100) NULL,
     [IsPickupAllowed] BIT NOT NULL DEFAULT 0,
@@ -176,7 +188,6 @@ CREATE TABLE [dbo].[Ride] (
     [DurationMinutes] INT,
     [PriceFinal] DECIMAL(12,2) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Scheduled'),
-    [Rating] INT,
     [Payment] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_Ride] PRIMARY KEY CLUSTERED ([RideId]),
     CONSTRAINT [CK_Ride_Status] CHECK ([Status] IN ('Scheduled','InProgress','Completed','Cancelled')),
@@ -214,6 +225,9 @@ CREATE TABLE [dbo].[Driver] (
 CREATE TABLE [dbo].[VehicleType] (
     [VehicleTypeId] INT IDENTITY(1,1) NOT NULL,
     [Name] NVARCHAR(100) NOT NULL UNIQUE,
+    [NumOfSeats] INT NOT NULL DEFAULT 1,
+    [MinCargoVolume] DECIMAL(10,2) NOT NULL DEFAULT 0,
+    [MinCargoWeight] DECIMAL(10,2) NOT NULL DEFAULT 0,
     CONSTRAINT [PK_VehicleType] PRIMARY KEY CLUSTERED ([VehicleTypeId])
 );
 
@@ -247,7 +261,6 @@ CREATE TABLE [dbo].[RideRequestLog] (
     [RequestId] INT NOT NULL, -- same ID as in RideRequest
     [Operation] CHAR(1) NOT NULL,
     [ChangedAt] DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-    [ChangedBy] UNIQUEIDENTIFIER NULL,
 
     -- Snapshot of ride request
     [PassengerId] UNIQUEIDENTIFIER NOT NULL,
@@ -429,6 +442,7 @@ CREATE TABLE [dbo].[VehicleLocationLive] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     [Lat] DECIMAL(9,6) NOT NULL,
     [Lng] DECIMAL(9,6) NOT NULL,
+    [Location] AS GEOGRAPHY::Point([Lat], [Lng], 4326) PERSISTED,
     [UpdatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE()
 );
 
@@ -462,8 +476,13 @@ ADD CONSTRAINT [FK_Rating_AuthorUser]
     CONSTRAINT [FK_Rating_TargetUser]
     FOREIGN KEY ([TargetUserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE NO ACTION,
+    CONSTRAINT [FK_Rating_Ride] 
+    FOREIGN KEY ([RideId]) REFERENCES [dbo].[Ride]([RideId])
+    ON DELETE CASCADE,
     CONSTRAINT [CK_Rating_NoSelf]
-    CHECK ([AuthorUserId] <> [TargetUserId]);
+    CHECK ([AuthorUserId] <> [TargetUserId]),
+    CONSTRAINT [UQ_Rating_Ride_Author_Target]
+    UNIQUE ([RideId], [AuthorUserId], [TargetUserId]);
 
 /* Driver → User */
 ALTER TABLE [dbo].[Driver]
@@ -648,9 +667,6 @@ ADD CONSTRAINT [FK_Ride_DriverUser]
     CONSTRAINT [FK_Ride_Offer]
     FOREIGN KEY ([OfferId]) REFERENCES [dbo].[DispatchOffer]([OfferId])
     ON DELETE NO ACTION,
-    CONSTRAINT [FK_Ride_Rating]
-    FOREIGN KEY ([Rating]) REFERENCES [dbo].[Rating]([RatingId])
-    ON DELETE SET NULL,
     CONSTRAINT [FK_Ride_Payment]
     FOREIGN KEY ([Payment]) REFERENCES [dbo].[Payment]([PaymentId])
     ON DELETE SET NULL;
