@@ -629,12 +629,6 @@ ADD CONSTRAINT [FK_RideRequest_AllowedRideProfile]
     FOREIGN KEY ([DropOffPoint]) REFERENCES [dbo].[ZonePoint]([PointId])
     ON DELETE NO ACTION;
 
-/* RideRequestLog → RideRequest */
-ALTER TABLE [dbo].[RideRequestLog]
-ADD CONSTRAINT [FK_RideRequestLog_RideRequest]
-    FOREIGN KEY ([RequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
-    ON DELETE NO ACTION;
-
 /* DispatchOffer → Leg, Receipient User */
 ALTER TABLE [dbo].[DispatchOffer]
 ADD CONSTRAINT [FK_DispatchOffer_RecipientUserId]
