@@ -205,9 +205,7 @@ BEGIN
         FROM dbo.ZonePoint zpTo
         WHERE zpTo.ZoneId    = z.ToZoneId
           AND zpTo.PointType = 'B'
-        ORDER BY 
-            (zpTo.Latitude  - zpExit.Latitude)  * (zpTo.Latitude  - zpExit.Latitude) +
-            (zpTo.Longitude - zpExit.Longitude) * (zpTo.Longitude - zpExit.Longitude)
+        ORDER BY zpTo.Location.STDistance(zpExit.Location)
     ) AS zpEntry
     ORDER BY z.SeqNo DESC;  -- reverse: origin->dest order
 
