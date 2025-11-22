@@ -1062,28 +1062,28 @@ def seed_rides(
         duration = random.randint(10, 90)
         ended_at = started_at + timedelta(minutes=duration)
         price_final = random_money(10, 100)
-        status = random.choice(["Completed", "InProgress", "Scheduled"])
-
+        status = random.choice(['Completed', 'InProgress', 'Scheduled'])
+        
+        # Calculate distance and duration for completed/in-progress rides
+        distance_km = None
+        duration_minutes = None
+        if status in ['Completed', 'InProgress']:
+            # Generate realistic distance (2-50 km for typical urban rides)
+            distance_km = round(random.uniform(2.0, 50.0), 2)
+            # Use the calculated duration from timestamps
+            duration_minutes = duration
+        
         ride_id = insert_and_return_identity(
             cursor,
             """
             INSERT INTO [dbo].[Ride] (
                 OfferId, DriverUserId, PassengerUserId, VehicleId,
-                StartedAt, EndedAt, PriceFinal, Status
+                StartedAt, EndedAt, PriceFinal, Status, DistanceKm, DurationMinutes
             )
             OUTPUT INSERTED.RideId
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                offer_id,
-                driver_id,
-                passenger_id,
-                vehicle_id,
-                started_at,
-                ended_at,
-                price_final,
-                status,
-            ),
+            (offer_id, driver_id, passenger_id, vehicle_id, started_at, ended_at, price_final, status, distance_km, duration_minutes)
         )
         rides_info.append((ride_id, status, price_final))
 
