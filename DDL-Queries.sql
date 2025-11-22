@@ -106,6 +106,15 @@ CREATE TABLE [dbo].[Geofencezone] (
     [MinLng] DECIMAL(9,6),
     [MaxLat] DECIMAL(9,6),
     [MaxLng] DECIMAL(9,6),
+    [Boundary] AS geography::STPolyFromText(
+        'POLYGON((' + 
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + ',' +
+        CAST([MaxLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + ',' +
+        CAST([MaxLng] AS VARCHAR(20)) + ' ' + CAST([MaxLat] AS VARCHAR(20)) + ',' +
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MaxLat] AS VARCHAR(20)) + ',' +
+        CAST([MinLng] AS VARCHAR(20)) + ' ' + CAST([MinLat] AS VARCHAR(20)) + 
+        '))', 4326
+    ) PERSISTED,
     [Name] NVARCHAR(100),
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp,
@@ -118,6 +127,7 @@ CREATE TABLE [dbo].[ZonePoint] (
     [ZoneId] INT NOT NULL,
     [Latitude]  DECIMAL(9,6) NOT NULL,
     [Longitude] DECIMAL(9,6) NOT NULL,
+    [Location] AS GEOGRAPHY::Point([Latitude], [Longitude], 4326) PERSISTED,
     [PointType] CHAR(1) NOT NULL CHECK ([PointType] IN ('S', 'B')), -- S = Station (pickup/drop), B = Bridge endpoint
     [Name] NVARCHAR(100) NULL,
     [IsPickupAllowed] BIT NOT NULL DEFAULT 0,
@@ -173,8 +183,8 @@ CREATE TABLE [dbo].[Ride] (
     [PassengerUserId] UNIQUEIDENTIFIER NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [StartedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
-    [EndedAt] UtcStamp NOT NULL,
-    [PriceFinal] DECIMAL(12,2) NOT NULL,
+    [EndedAt] UtcStamp,
+    [PriceFinal] DECIMAL(12,2),
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Scheduled'),
     [Payment] UNIQUEIDENTIFIER,
     CONSTRAINT [PK_Ride] PRIMARY KEY CLUSTERED ([RideId]),
@@ -428,6 +438,7 @@ CREATE TABLE [dbo].[VehicleLocationLive] (
     [VehicleId] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
     [Lat] DECIMAL(9,6) NOT NULL,
     [Lng] DECIMAL(9,6) NOT NULL,
+    [Location] AS GEOGRAPHY::Point([Lat], [Lng], 4326) PERSISTED,
     [UpdatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE()
 );
 
