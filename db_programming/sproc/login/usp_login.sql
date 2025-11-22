@@ -6,9 +6,10 @@ CREATE OR ALTER PROCEDURE dbo.usp_Login
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;  -- Ensure errors terminate the procedure
 
     -- Hash the incoming password using the same function used at signup
-    DECLARE @PasswordHashInput NVARCHAR(MAX) =
+    DECLARE @PasswordHashInput VARCHAR(64) =
         dbo.fn_HashPassword(@PasswordPlain);
 
     DECLARE
@@ -37,8 +38,8 @@ BEGIN
         RETURN;
     END;
 
-    -- 2. Check password
-    IF @PasswordHashStored <> @PasswordHashInput
+    -- 2. Check password - CRITICAL: Cast both to same type for comparison
+    IF CAST(@PasswordHashStored AS VARCHAR(64)) <> @PasswordHashInput
     BEGIN
         RAISERROR('Invalid credentials.', 16, 1);
         RETURN;
@@ -58,6 +59,6 @@ BEGIN
         @UserId     AS UserId,
         @Role       AS Role,
         @AccountType AS AccountType,
-        @Email      AS Email
+        @Email      AS Email;
 END;
 GO
