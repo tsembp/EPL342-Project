@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuthStore } from "@/lib/store";
 import { toast } from "sonner";
 import { Car } from "lucide-react";
 
 export default function Signup() {
   const navigate = useNavigate();
+  const signup = useAuthStore((state) => state.signup);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -28,18 +30,58 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      toast.success("Account created!");
+    try {
+      // Map UI role to SQL role codes
+      const roleMap: { [key: string]: string } = {
+        'Passenger': 'P',
+        'Driver': 'D',
+        'Operator': 'O',
+        'Inspector': 'I'
+      };
+
+      // Map gender to single character
+      const genderMap: { [key: string]: string } = {
+        'Male': 'M',
+        'Female': 'F',
+        'Other': 'M', // Default to M for other options
+        'Prefer not to say': 'M'
+      };
+
+      const accountType = (formData.role === 'Operator' || formData.role === 'Inspector') ? 'staff' : 'user';
+      const sqlRole = roleMap[formData.role];
+
+      await signup({
+        accountType: accountType,
+        role: sqlRole,
+        email: formData.email,
+        username: formData.username,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dob: formData.dob,
+        gender: genderMap[formData.gender],
+        phone: formData.phone,
+        address: formData.address
+      });
+
+      toast.success("Account created successfully!");
       
       // Redirect based on role
-      if (formData.role === "Driver" || formData.role === "Operator") {
+      if (formData.role === "Driver") {
+        toast.info("Please upload your driver documents for verification");
         navigate("/driver/documents");
+      } else if (formData.role === "Operator" || formData.role === "Inspector") {
+        toast.info("Your account needs admin approval");
+        navigate("/pending-approval");
       } else {
+        toast.success("You can now log in!");
         navigate("/login");
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Signup failed");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (

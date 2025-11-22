@@ -19,13 +19,15 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      login(email, `user_${Math.random().toString(36).substr(2, 9)}`);
+    try {
+      await login(email, password);
       toast.success("Logged in successfully");
       navigate("/map");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Login failed");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (

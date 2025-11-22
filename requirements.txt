@@ -1,4 +1,6 @@
 Flask
+Flask-Session
+Flask-CORS
 pyodbc
 python-dotenv
 Faker
