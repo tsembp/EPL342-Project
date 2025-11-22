@@ -1061,17 +1061,21 @@ def seed_rides(
         started_at = datetime.utcnow() - timedelta(hours=random.randint(1, 72))
         duration = random.randint(10, 90)
         ended_at = started_at + timedelta(minutes=duration)
-        price_final = random_money(10, 100)
-        status = random.choice(['Completed', 'InProgress', 'Scheduled'])
         
-        # Calculate distance and duration for completed/in-progress rides
-        distance_km = None
-        duration_minutes = None
-        if status in ['Completed', 'InProgress']:
-            # Generate realistic distance (2-50 km for typical urban rides)
-            distance_km = round(random.uniform(2.0, 50.0), 2)
-            # Use the calculated duration from timestamps
-            duration_minutes = duration
+        # Status: mostly completed for testing payments, some in progress
+        status = random.choices(
+            ['Completed', 'InProgress'], 
+            weights=[0.8, 0.2],  # 80% completed, 20% in progress
+            k=1
+        )[0]
+        
+        # Generate realistic distance (2-50 km for typical urban rides)
+        distance_km = round(random.uniform(2.0, 50.0), 2)
+        # Use the calculated duration from timestamps
+        duration_minutes = duration
+        
+        # Price is always set (will be dynamic in real usage, but seed with base price)
+        price_final = random_money(10, 100)
         
         ride_id = insert_and_return_identity(
             cursor,
