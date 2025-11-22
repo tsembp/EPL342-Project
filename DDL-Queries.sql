@@ -681,7 +681,9 @@ ADD CONSTRAINT [FK_InAppMessage_Ride]
     ON DELETE NO ACTION,
     CONSTRAINT [FK_InAppMessage_RecipientUser]
     FOREIGN KEY ([RecipientUserId]) REFERENCES [dbo].[User]([UserId])
-    ON DELETE NO ACTION;
+    ON DELETE NO ACTION,
+    CONSTRAINT [CK_InAppMessage_DifferentSenderRecipient]
+    CHECK ([SenderUserId] <> [RecipientUserId]);
 
 /* GDPR: Request & Log */
 ALTER TABLE [dbo].[GdprRequest]
