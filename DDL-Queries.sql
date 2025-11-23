@@ -363,6 +363,8 @@ CREATE TABLE [dbo].[ItineraryLeg] (
     [ZoneId] INT NOT NULL,
     [FromPointId] INT NOT NULL,
     [ToPointId]   INT NOT NULL,
+    [ApproxStartTime] UtcStamp NOT NULL,
+    [ApproxEndTime] UtcStamp NOT NULL,
     CONSTRAINT [PK_ItineraryLeg] PRIMARY KEY CLUSTERED ([LegId]),
     CONSTRAINT [UQ_ItineraryLeg_SeqNo_RideRequest] UNIQUE ([SeqNo], [RideRequestId])
 );
