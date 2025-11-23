@@ -1,6 +1,7 @@
 CREATE OR ALTER PROCEDURE dbo.usp_BuildItineraryForRequest
     @RequestId INT,
-    @Debug BIT = 0 -- for testing
+    @Debug BIT = 0, -- for testing
+    @AvgSpeedKmh DECIMAL(5,2) = 50.0 -- default average speed in km/h
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -11,13 +12,18 @@ BEGIN
     DECLARE @CurrentZone INT;
     DECLARE @SeqNo INT = 1;
     DECLARE @PathFound BIT = 0;
+    DECLARE @PickupTime DATETIME2(0);
+    DECLARE @LegId INT;
+    DECLARE @SearchRadiusMeters DECIMAL(10,2) = 5000.0; -- 5km default
+
 
     ----------------------------------------------------------------------
-    -- 1. Get pickup/dropoff points from request
+    -- 1. Get pickup/dropoff points and pickup time from request
     ----------------------------------------------------------------------
     SELECT 
         @PickupPointId = PickUpPoint,
-        @DropoffPointId = DropOffPoint
+        @DropoffPointId = DropOffPoint,
+        @PickupTime = PickupAt
     FROM dbo.RideRequest
     WHERE RequestId = @RequestId;
 
@@ -51,8 +57,30 @@ BEGIN
 
         DELETE FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId;
 
-        INSERT INTO dbo.ItineraryLeg (RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId)
-        VALUES (@RequestId, 1, @OriginZoneId, @PickupPointId, @DropoffPointId);
+        -- Calculate distance and time
+        DECLARE @Distance FLOAT;
+        DECLARE @DurationMinutes INT;
+        
+        SELECT @Distance = 
+            zpFrom.Location.STDistance(zpTo.Location) / 1000.0 -- convert meters to km
+        FROM dbo.ZonePoint zpFrom
+        CROSS JOIN dbo.ZonePoint zpTo
+        WHERE zpFrom.PointId = @PickupPointId
+          AND zpTo.PointId = @DropoffPointId;
+
+        SET @DurationMinutes = CEILING((@Distance / @AvgSpeedKmh) * 60);
+
+        INSERT INTO dbo.ItineraryLeg (
+            RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId,
+            ApproxStartTime, ApproxEndTime
+        )
+        VALUES (
+            @RequestId, 1, @OriginZoneId, @PickupPointId, @DropoffPointId,
+            @PickupTime,
+            DATEADD(MINUTE, @DurationMinutes, @PickupTime)
+        );
+
+        SET @LegId = SCOPE_IDENTITY();
 
         COMMIT TRANSACTION;
 
@@ -60,6 +88,11 @@ BEGIN
             SELECT * FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
 
         PRINT 'Itinerary built successfully for Request ' + CAST(@RequestId AS VARCHAR(20));
+
+        EXEC dbo.usp_DispatchOfferCreation 
+            @ItineraryLegId = @LegId,
+            @SearchRadiusMeters = @SearchRadiusMeters;
+
         RETURN;
     END;
 
@@ -210,7 +243,7 @@ BEGIN
     ORDER BY z.SeqNo DESC;  -- reverse: origin->dest order
 
     ----------------------------------------------------------------------
-    -- 7. Build itinerary legs from edges
+    -- 7. Build itinerary legs from edges with time calculations
     ----------------------------------------------------------------------
     BEGIN TRANSACTION;
 
@@ -220,11 +253,16 @@ BEGIN
         @EdgeFromZone INT,
         @EdgeToZone INT,
         @ExitPointId INT,
-        @EntryPointId INT;
+        @EntryPointId INT,
+        @LegDistanceKm FLOAT,
+        @LegDurationMin INT,
+        @CurrentStartTime DATETIME2(0),
+        @CurrentEndTime DATETIME2(0);
 
     SET @SeqNo = 1;
     SET @CurrentZone = @OriginZoneId;
     DECLARE @PrevPointId INT = @PickupPointId;
+    SET @CurrentStartTime = @PickupTime;
 
     DECLARE edge_cursor CURSOR LOCAL FAST_FORWARD FOR
         SELECT FromZoneId, ToZoneId, ExitPointId, EntryPointId
@@ -236,13 +274,33 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
+        -- Calculate distance for this leg segment
+        SELECT @LegDistanceKm = 
+            zpFrom.Location.STDistance(zpTo.Location) / 1000.0 -- meters to km
+        FROM dbo.ZonePoint zpFrom
+        CROSS JOIN dbo.ZonePoint zpTo
+        WHERE zpFrom.PointId = @PrevPointId
+          AND zpTo.PointId = @ExitPointId;
+
+        -- Calculate duration in minutes
+        SET @LegDurationMin = CEILING((@LegDistanceKm / @AvgSpeedKmh) * 60);
+        SET @CurrentEndTime = DATEADD(MINUTE, @LegDurationMin, @CurrentStartTime);
+
         -- Leg within current zone: prev point -> exit point
-        INSERT INTO dbo.ItineraryLeg (RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId)
-        VALUES (@RequestId, @SeqNo, @CurrentZone, @PrevPointId, @ExitPointId);
+        INSERT INTO dbo.ItineraryLeg (
+            RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId,
+            ApproxStartTime, ApproxEndTime
+        )
+        VALUES (
+            @RequestId, @SeqNo, @CurrentZone, @PrevPointId, @ExitPointId,
+            @CurrentStartTime, @CurrentEndTime
+        );
 
         SET @SeqNo       = @SeqNo + 1;
         SET @CurrentZone = @EdgeToZone;
         SET @PrevPointId = @EntryPointId;
+        SET @CurrentStartTime = DATEADD(MINUTE, 2, @CurrentEndTime); -- 2-minute buffer before next leg
+
 
         FETCH NEXT FROM edge_cursor INTO @EdgeFromZone, @EdgeToZone, @ExitPointId, @EntryPointId;
     END;
@@ -250,9 +308,26 @@ BEGIN
     CLOSE edge_cursor;
     DEALLOCATE edge_cursor;
 
+    -- Calculate final leg distance and time
+    SELECT @LegDistanceKm = 
+        zpFrom.Location.STDistance(zpTo.Location) / 1000.0
+    FROM dbo.ZonePoint zpFrom
+    CROSS JOIN dbo.ZonePoint zpTo
+    WHERE zpFrom.PointId = @PrevPointId
+      AND zpTo.PointId = @DropoffPointId;
+
+    SET @LegDurationMin = CEILING((@LegDistanceKm / @AvgSpeedKmh) * 60);
+    SET @CurrentEndTime = DATEADD(MINUTE, @LegDurationMin, @CurrentStartTime);
+
     -- Final leg in destination zone: last entry point -> dropoff
-    INSERT INTO dbo.ItineraryLeg (RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId)
-    VALUES (@RequestId, @SeqNo, @DestZoneId, @PrevPointId, @DropoffPointId);
+    INSERT INTO dbo.ItineraryLeg (
+        RideRequestId, SeqNo, ZoneId, FromPointId, ToPointId,
+        ApproxStartTime, ApproxEndTime
+    )
+    VALUES (
+        @RequestId, @SeqNo, @DestZoneId, @PrevPointId, @DropoffPointId,
+        @CurrentStartTime, @CurrentEndTime
+    );
 
     COMMIT TRANSACTION;
 
@@ -264,5 +339,38 @@ BEGIN
         SELECT * FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
 
     PRINT 'Itinerary built successfully for Request ' + CAST(@RequestId AS VARCHAR(20));
+
+    -- Initialize RideRequestProgress
+    DECLARE @TotalLegs INT;
+    SELECT @TotalLegs = COUNT(*) FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId;
+    
+    INSERT INTO dbo.RideRequestProgress (RequestId, TotalLegs, AcceptedLegs, Status)
+    VALUES (@RequestId, @TotalLegs, 0, 'AwaitingDrivers');
+    
+    DECLARE leg_cursor CURSOR LOCAL FAST_FORWARD FOR
+        SELECT LegId FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
+    
+    OPEN leg_cursor;
+    FETCH NEXT FROM leg_cursor INTO @LegId;
+    
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC dbo.usp_DispatchOfferCreation 
+            @ItineraryLegId = @LegId,
+            @SearchRadiusMeters = @SearchRadiusMeters;
+        
+        FETCH NEXT FROM leg_cursor INTO @LegId;
+    END;
+    
+    CLOSE leg_cursor;
+    DEALLOCATE leg_cursor;
+    
+    IF @Debug = 1
+    BEGIN
+        PRINT 'Dispatch offers created for all legs';
+        SELECT * FROM dbo.DispatchOffer do
+        INNER JOIN dbo.ItineraryLeg il ON do.LegId = il.LegId
+        WHERE il.RideRequestId = @RequestId;
+    END
 END;
 GO
