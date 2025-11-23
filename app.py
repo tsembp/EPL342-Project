@@ -244,6 +244,80 @@ def get_operator_dashboard():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route("/api/operator/pending-person-documents", methods=["GET"])
+@require_auth
+@require_role('O', 'I')
+def get_pending_person_documents():
+    operator_id = session['user_id']
+    try: 
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_GetPendingPersonDocumentsForReview @OperatorId=?
+                """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in pending-documents endpoint:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/pending-vehicle-documents", methods=["GET"])
+@require_auth
+@require_role('O', 'I')
+def get_pending_vehicle_documents():
+    operator_id = session['user_id']
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_GetPendingVehicleDocumentsForReview @OperatorId=?
+                """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in pending-vehicle-documents endpoint:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/review-person-document", methods=["POST"])
+@require_auth
+@require_role('O', 'I')
+def review_person_document():
+    data = request.get_json()
+    operator_id = session['user_id']
+    doc_id = data.get("docId")
+    status = data.get("status")
+    comment = data.get("comment", None)
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_ReviewPersonDocument @OperatorId=?, @DocId=?, @NewStatus=?, @ReviewComment=?
+                """, operator_id, doc_id, status, comment)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/operator/review-vehicle-document", methods=["POST"])
+@require_auth
+@require_role('O', 'I')
+def review_vehicle_document():
+    data = request.get_json()
+    operator_id = session['user_id']
+    veh_doc_id = data.get("vehDocId")
+    status = data.get("status")
+    comment = data.get("comment", None)
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_ReviewVehicleDocument @OperatorId=?, @VehDocId=?, @NewStatus=?, @ReviewComments=?
+                """, operator_id, veh_doc_id, status, comment)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 PAGE = """
 <!doctype html>
 <html>

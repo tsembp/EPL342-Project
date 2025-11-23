@@ -239,3 +239,29 @@ export const getOperatorReports = (params: {
   const query = new URLSearchParams(params);
   return fetchAPI<ReportRow[]>(`/operator/reports?${query}`);
 };
+
+export const getPendingPersonDocuments = () =>
+  fetchAPI<any[]>("/operator/pending-person-documents");
+
+export const getPendingVehicleDocuments = () =>
+  fetchAPI<any[]>("/operator/pending-vehicle-documents");
+
+export const reviewPersonDocument = (params: {
+  docId: number;
+  status: "Accepted" | "Rejected";
+  comment?: string;
+}) =>
+  fetchAPI<{ success: boolean }>("/operator/review-person-document", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const reviewVehicleDocument = (params: {
+  vehDocId: number;
+  status: "Accepted" | "Rejected";
+  comment?: string;
+}) =>
+  fetchAPI<{ success: boolean }>("/operator/review-vehicle-document", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
