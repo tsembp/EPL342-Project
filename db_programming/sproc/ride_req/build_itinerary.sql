@@ -13,6 +13,9 @@ BEGIN
     DECLARE @SeqNo INT = 1;
     DECLARE @PathFound BIT = 0;
     DECLARE @PickupTime DATETIME2(0);
+    DECLARE @LegId INT;
+    DECLARE @SearchRadiusMeters DECIMAL(10,2) = 5000.0; -- 5km default
+
 
     ----------------------------------------------------------------------
     -- 1. Get pickup/dropoff points and pickup time from request
@@ -77,12 +80,19 @@ BEGIN
             DATEADD(MINUTE, @DurationMinutes, @PickupTime)
         );
 
+        SET @LegId = SCOPE_IDENTITY();
+
         COMMIT TRANSACTION;
 
         IF @Debug = 1
             SELECT * FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
 
         PRINT 'Itinerary built successfully for Request ' + CAST(@RequestId AS VARCHAR(20));
+
+        EXEC dbo.usp_DispatchOfferCreation 
+            @ItineraryLegId = @LegId,
+            @SearchRadiusMeters = @SearchRadiusMeters;
+
         RETURN;
     END;
 
@@ -329,5 +339,38 @@ BEGIN
         SELECT * FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
 
     PRINT 'Itinerary built successfully for Request ' + CAST(@RequestId AS VARCHAR(20));
+
+    -- Initialize RideRequestProgress
+    DECLARE @TotalLegs INT;
+    SELECT @TotalLegs = COUNT(*) FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId;
+    
+    INSERT INTO dbo.RideRequestProgress (RequestId, TotalLegs, AcceptedLegs, Status)
+    VALUES (@RequestId, @TotalLegs, 0, 'AwaitingDrivers');
+    
+    DECLARE leg_cursor CURSOR LOCAL FAST_FORWARD FOR
+        SELECT LegId FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId ORDER BY SeqNo;
+    
+    OPEN leg_cursor;
+    FETCH NEXT FROM leg_cursor INTO @LegId;
+    
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC dbo.usp_DispatchOfferCreation 
+            @ItineraryLegId = @LegId,
+            @SearchRadiusMeters = @SearchRadiusMeters;
+        
+        FETCH NEXT FROM leg_cursor INTO @LegId;
+    END;
+    
+    CLOSE leg_cursor;
+    DEALLOCATE leg_cursor;
+    
+    IF @Debug = 1
+    BEGIN
+        PRINT 'Dispatch offers created for all legs';
+        SELECT * FROM dbo.DispatchOffer do
+        INNER JOIN dbo.ItineraryLeg il ON do.LegId = il.LegId
+        WHERE il.RideRequestId = @RequestId;
+    END
 END;
 GO
