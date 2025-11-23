@@ -1,9 +1,32 @@
 import { useState, useEffect } from "react";
+
+const SERVICE_TYPES = [
+  { key: "bridged_route", label: "Bridged Route" },
+  { key: "heavy_cargo", label: "Heavy Cargo" },
+  { key: "light_cargo", label: "Light Cargo" },
+  { key: "luxury_route", label: "Luxury Route" },
+  { key: "simple_route", label: "Simple Route" },
+];
+
+const RIDE_TYPES = [
+  { key: "fully_autonomous", label: "Fully Autonomous" },
+  { key: "small_cargo_van", label: "Small Cargo Van" },
+  { key: "teledriving", label: "Teledriving" },
+  { key: "vehicle_no_driver", label: "No Driver" },
+  { key: "vehicle_with_driver", label: "With Driver" },
+];
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { MapView } from "@/components/MapView";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Navigation, Loader2, Circle } from "lucide-react";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
@@ -17,6 +40,8 @@ export default function Map() {
   const [pickupStation, setPickupStation] = useState<Station | null>(null);
   const [dropoffStation, setDropoffStation] = useState<Station | null>(null);
   const [fareEstimate, setFareEstimate] = useState<{ min: number; max: number } | null>(null);
+  const [serviceType, setServiceType] = useState<string | null>(null);
+  const [rideType, setRideType] = useState<string | null>(null);
   const [routeWaypoints, setRouteWaypoints] = useState<RouteWaypoint[]>([]);
   const [routeDistance, setRouteDistance] = useState<number>(0);
 
@@ -128,10 +153,12 @@ export default function Map() {
     : undefined;
 
   const handleRequestRide = () => {
-    if (!pickupStation || !dropoffStation) return;
+    if (!pickupStation || !dropoffStation || !serviceType || !rideType) return;
     console.log("Request ride", { 
       pickupPointId: pickupStation.pointId,
       dropoffPointId: dropoffStation.pointId,
+      serviceType,
+      rideType,
     });
   };
 
@@ -172,7 +199,7 @@ export default function Map() {
                   {Math.round(routeDistance)} km
                 </Badge>
               </div>
-              
+
               <div className="space-y-2 mb-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Circle className="h-3 w-3 text-primary fill-primary" />
@@ -183,8 +210,47 @@ export default function Map() {
                   <span className="text-muted-foreground">{dropoffStation.name}</span>
                 </div>
               </div>
-              
-              <Button onClick={handleRequestRide} className="w-full h-12">
+
+
+              {/* Service Type Dropdown */}
+              <div className="mb-3">
+                <p className="text-sm font-medium mb-1">Select Service Type</p>
+                <Select value={serviceType ?? undefined} onValueChange={setServiceType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a service type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_TYPES.map((type) => (
+                      <SelectItem key={type.key} value={type.key}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ride Type Dropdown */}
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-1">Select Ride Type</p>
+                <Select value={rideType ?? undefined} onValueChange={setRideType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a ride type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RIDE_TYPES.map((type) => (
+                      <SelectItem key={type.key} value={type.key}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={handleRequestRide}
+                className="w-full h-12"
+                disabled={!serviceType || !rideType}
+              >
                 Request ride
               </Button>
             </Card>
