@@ -147,5 +147,36 @@ export type UserRole = "passenger" | "driver";
 export type Location = {
   lat: number;
   lon: number;
-  label?: string;
+  label: string;
+};
+
+export type Station = {
+  pointId: number;
+  zoneId: number;
+  latitude: number;
+  longitude: number;
+  name: string;
+  isPickupAllowed: boolean;
+  isDropoffAllowed: boolean;
+  zoneName: string;
+};
+
+export type Zone = {
+  zoneId: number;
+  minLat: number;
+  minLng: number;
+  maxLat: number;
+  maxLng: number;
+  name: string;
+};
+
+export type RouteWaypoint = {
+  sequenceNumber: number;
+  pointId: number;
+  latitude: number;
+  longitude: number;
+  pointType: 'S' | 'B'; // S = Station, B = Bridge
+  pointName: string;
+  zoneId: number;
+  pointRole: 'pickup' | 'dropoff' | 'bridge_exit' | 'bridge_entry' | 'waypoint';
 };

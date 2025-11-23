@@ -185,6 +185,146 @@ def get_current_user():
         }), 200
     return jsonify({'authenticated': False}), 401
 
+# Stations/Zones endpoints
+@app.route("/api/stations", methods=["GET"])
+def get_stations():
+    """Get all available stations (pickup/dropoff points)"""
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                # Get all stations (PointType='S') with IsPickupAllowed or IsDropoffAllowed
+                cur.execute("""
+                    SELECT 
+                        zp.PointId,
+                        zp.ZoneId,
+                        zp.Latitude,
+                        zp.Longitude,
+                        zp.Name,
+                        zp.IsPickupAllowed,
+                        zp.IsDropoffAllowed,
+                        gz.Name as ZoneName
+                    FROM [dbo].[ZonePoint] zp
+                    JOIN [dbo].[Geofencezone] gz ON zp.ZoneId = gz.ZoneId
+                    WHERE zp.PointType = 'S'
+                    ORDER BY gz.Name, zp.Name
+                """)
+                
+                stations = []
+                for row in cur.fetchall():
+                    stations.append({
+                        'pointId': row[0],
+                        'zoneId': row[1],
+                        'latitude': float(row[2]),
+                        'longitude': float(row[3]),
+                        'name': row[4],
+                        'isPickupAllowed': bool(row[5]),
+                        'isDropoffAllowed': bool(row[6]),
+                        'zoneName': row[7]
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'stations': stations,
+                    'total': len(stations)
+                }), 200
+                
+    except Exception as e:
+        print(f"Error fetching stations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/zones", methods=["GET"])
+def get_zones():
+    """Get all geofence zones"""
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        ZoneId,
+                        MinLat,
+                        MinLng,
+                        MaxLat,
+                        MaxLng,
+                        Name
+                    FROM [dbo].[Geofencezone]
+                    ORDER BY ZoneId
+                """)
+                
+                zones = []
+                for row in cur.fetchall():
+                    zones.append({
+                        'zoneId': row[0],
+                        'minLat': float(row[1]),
+                        'minLng': float(row[2]),
+                        'maxLat': float(row[3]),
+                        'maxLng': float(row[4]),
+                        'name': row[5]
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'zones': zones,
+                    'total': len(zones)
+                }), 200
+                
+    except Exception as e:
+        print(f"Error fetching zones: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/route/visualization", methods=["GET"])
+def get_route_visualization():
+    """Get route waypoints including bridge points for visualization"""
+    pickup_point_id = request.args.get('pickupPointId', type=int)
+    dropoff_point_id = request.args.get('dropoffPointId', type=int)
+    
+    if not pickup_point_id or not dropoff_point_id:
+        return jsonify({
+            'success': False, 
+            'error': 'Both pickupPointId and dropoffPointId are required'
+        }), 400
+    
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                # Call stored procedure to get route waypoints
+                print(f"Calling usp_GetRouteVisualization with pickup={pickup_point_id}, dropoff={dropoff_point_id}")
+                cur.execute("""
+                    EXEC dbo.usp_GetRouteVisualization 
+                        @PickupPointId=?, 
+                        @DropoffPointId=?
+                """, pickup_point_id, dropoff_point_id)
+                
+                waypoints = []  
+                for row in cur.fetchall():
+                    print(f"Row: {row}")
+                    waypoints.append({
+                        'sequenceNumber': row[0],
+                        'pointId': row[1],
+                        'latitude': float(row[2]),
+                        'longitude': float(row[3]),
+                        'pointType': row[4],
+                        'pointName': row[5] if row[5] else f"Point {row[1]}",
+                        'zoneId': row[6],
+                        'pointRole': row[7]
+                    })
+                
+                print(f"Retrieved {len(waypoints)} waypoints")
+                return jsonify({
+                    'success': True,
+                    'waypoints': waypoints,
+                    'totalWaypoints': len(waypoints)
+                }), 200
+                
+    except pyodbc.Error as e:
+        print(f"Database error getting route visualization: {e}")
+        print(f"Error details: {e.args}")
+        return jsonify({'success': False, 'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"Error getting route visualization: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Example protected endpoints using decorators
 @app.route("/api/passenger/profile", methods=["GET"])
 @require_auth
