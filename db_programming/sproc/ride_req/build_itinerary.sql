@@ -289,7 +289,8 @@ BEGIN
         SET @SeqNo       = @SeqNo + 1;
         SET @CurrentZone = @EdgeToZone;
         SET @PrevPointId = @EntryPointId;
-        SET @CurrentStartTime = @CurrentEndTime; -- next leg starts when this one ends
+        SET @CurrentStartTime = DATEADD(MINUTE, 2, @CurrentEndTime); -- 2-minute buffer before next leg
+
 
         FETCH NEXT FROM edge_cursor INTO @EdgeFromZone, @EdgeToZone, @ExitPointId, @EntryPointId;
     END;
