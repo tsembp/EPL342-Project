@@ -256,6 +256,19 @@ CREATE TABLE [dbo].[RideRequest] (
     CONSTRAINT [CK_RideRequest_Status] CHECK ([Status] IN ('Pending','Accepted','Declined','Cancelled','Completed','Edited'))
 );
 
+CREATE TABLE [dbo].[RideRequestProgress] (
+    [RequestId] INT NOT NULL PRIMARY KEY,
+    [TotalLegs] INT NOT NULL,
+    [AcceptedLegs] INT NOT NULL DEFAULT 0,
+    [Status] NVARCHAR(50) NOT NULL DEFAULT 'AwaitingDrivers',
+    [UpdatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [FK_RideRequestProgress_RideRequest]
+        FOREIGN KEY ([RequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
+        ON DELETE CASCADE,
+    CONSTRAINT [CK_RideRequestProgress_Status] 
+        CHECK ([Status] IN ('AwaitingDrivers', 'AllAccepted', 'RidesCreated', 'Failed'))
+);
+
 CREATE TABLE [dbo].[RideRequestLog] (
     [LogEntryId] BIGINT IDENTITY(1,1) PRIMARY KEY,
     [RequestId] INT NOT NULL, -- same ID as in RideRequest

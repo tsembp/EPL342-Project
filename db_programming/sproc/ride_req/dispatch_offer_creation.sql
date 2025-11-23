@@ -52,7 +52,13 @@ BEGIN
         FROM [dbo].[AllowedRideProfile]
         WHERE RideProfileId = @RideProfileId;
 
-        -- Find eligible drivers 
+        -- Get leg time window
+        DECLARE @LegStartTime DATETIME2(0), @LegEndTime DATETIME2(0);
+        SELECT @LegStartTime = ApproxStartTime, @LegEndTime = ApproxEndTime
+        FROM [dbo].[ItineraryLeg]
+        WHERE LegId = @ItineraryLegId;
+
+        -- Find eligible drivers WITHOUT time conflicts
         INSERT INTO [dbo].[DispatchOffer] ([LegId], [RecipientUserId], [Status], [SentAt])
         SELECT DISTINCT
             @ItineraryLegId,
@@ -60,14 +66,10 @@ BEGIN
             'Sent',
             GETUTCDATE()
         FROM [dbo].[UserServiceEnrollment] enroll
-        INNER JOIN [dbo].[User] u
-            ON enroll.UserId = u.UserId
-        INNER JOIN [dbo].[DriverAvailability] avail
-            ON enroll.EnrollId = avail.EnrollId
-        INNER JOIN [dbo].[VehicleLocationLive] vloc
-            ON enroll.VehicleId = vloc.VehicleId
-        INNER JOIN [dbo].[Vehicle] v 
-            ON enroll.VehicleId = v.VehicleId
+        INNER JOIN [dbo].[User] u ON enroll.UserId = u.UserId
+        INNER JOIN [dbo].[DriverAvailability] avail ON enroll.EnrollId = avail.EnrollId
+        INNER JOIN [dbo].[VehicleLocationLive] vloc ON enroll.VehicleId = vloc.VehicleId
+        INNER JOIN [dbo].[Vehicle] v ON enroll.VehicleId = v.VehicleId
         WHERE 
             (u.Role = 'D' OR u.Role = 'C')
             AND enroll.ServiceType = @ServiceTypeId
@@ -80,6 +82,17 @@ BEGIN
             AND avail.AvailabilityDate = CAST(@PickupTime AS DATE)
             AND CAST(@PickupTime AS TIME(0)) BETWEEN avail.StartsAt AND avail.EndsAt
             AND vloc.Location.STDistance(@PickupLocation) <= @SearchRadiusMeters
+            -- NEW: Check no overlapping rides
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM [dbo].[Ride] existing_ride
+                INNER JOIN [dbo].[DispatchOffer] do_offer ON existing_ride.OfferId = do_offer.OfferId
+                INNER JOIN [dbo].[ItineraryLeg] il ON do_offer.LegId = il.LegId
+                WHERE existing_ride.DriverUserId = enroll.UserId
+                    AND existing_ride.Status IN ('Scheduled', 'InProgress')
+                    AND (@LegStartTime < il.ApproxEndTime AND @LegEndTime > il.ApproxStartTime)
+            )
+            -- Existing checks
             AND NOT EXISTS (
                 SELECT 1 
                 FROM [dbo].[Ride] active_ride
