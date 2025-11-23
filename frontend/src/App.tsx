@@ -15,7 +15,17 @@ import History from "./pages/History";
 import Credit from "./pages/Credit";
 import Profile from "./pages/Profile";
 import TripDetail from "./pages/TripDetail";
-import Operator from "./pages/Operator";
+import OperatorDashboard from "./pages/operator/OperatorDashboard";
+import Overview from "./pages/operator/Overview";
+import UsersDrivers from "./pages/operator/UsersDrivers";
+import Vehicles from "./pages/operator/Vehicles";
+import ServiceTypesProfiles from "./pages/operator/ServiceTypesProfiles";
+import Enrollments from "./pages/operator/Enrollments";
+import Documents from "./pages/operator/Documents";
+import GDPRPrivacy from "./pages/operator/GDPRPrivacy";
+import RidesOperations from "./pages/operator/RidesOperations";
+import ReportsAnalytics from "./pages/operator/ReportsAnalytics";
+import SystemAuditLogs from "./pages/operator/SystemAuditLogs";
 import GDPRRequest from "./pages/GDPRRequest";
 import NotFound from "./pages/NotFound";
 
@@ -53,7 +63,19 @@ function App() {
             <Route path="/credit" element={<ProtectedRoute><Credit /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
-            <Route path="/operator" element={<ProtectedRoute><Operator /></ProtectedRoute>} />
+            <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
+              <Route path="overview" element={<Overview />} />
+              <Route path="users" element={<UsersDrivers />} />
+              <Route path="vehicles" element={<Vehicles />} />
+              <Route path="services" element={<ServiceTypesProfiles />} />
+              <Route path="enrollments" element={<Enrollments />} />
+              <Route path="documents" element={<Documents />} />
+              <Route path="gdpr" element={<GDPRPrivacy />} />
+              <Route path="rides" element={<RidesOperations />} />
+              <Route path="reports" element={<ReportsAnalytics />} />
+              <Route path="logs" element={<SystemAuditLogs />} />
+              <Route index element={<Overview />} />
+            </Route>
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
