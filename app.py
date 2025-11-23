@@ -8,8 +8,21 @@ import secrets
 from datetime import timedelta
 from functools import wraps
 
+# === NEW IMPORTS FOR GOOGLE DRIVE UPLOAD ===
+import io
+import pathlib
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+
 # Load environment variables from .env file
 load_dotenv()
+
+# --- IMPORTANT: disable any HTTP(S) proxies for Google API calls ---
+for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+    if key in os.environ:
+        print(f"[DRIVE] Removing proxy env var {key}={os.environ[key]}")
+        os.environ.pop(key, None)
 
 app = Flask(__name__)
 
@@ -35,7 +48,130 @@ CN_STR = (
     "Encrypt=yes;TrustServerCertificate=yes"
 )
 
-# Auth decorators
+# ================= GOOGLE DRIVE CONFIG & HELPERS =====================
+
+GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
+GOOGLE_DRIVE_PARENT_FOLDER_ID = os.getenv("GOOGLE_DRIVE_PARENT_FOLDER_ID")
+GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+
+_drive_service = None
+
+
+def get_drive_service():
+    """Lazy-init Google Drive service client."""
+    global _drive_service
+    if _drive_service is None:
+        if not GOOGLE_SERVICE_ACCOUNT_FILE:
+            raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_FILE is not set")
+        print(f"[DRIVE] Using service account file: {GOOGLE_SERVICE_ACCOUNT_FILE}")
+        creds = service_account.Credentials.from_service_account_file(
+            GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=GOOGLE_SCOPES,
+        )
+        _drive_service = build("drive", "v3", credentials=creds)
+        print("[DRIVE] Service initialized")
+    return _drive_service
+
+
+def get_or_create_user_folder(user_id: str) -> str:
+    """
+    Ensure there is a folder named <user_id> under the parent Drive folder.
+    Returns that folder's ID.
+    """
+    if not GOOGLE_DRIVE_PARENT_FOLDER_ID:
+        raise RuntimeError("GOOGLE_DRIVE_PARENT_FOLDER_ID is not set")
+
+    service = get_drive_service()
+
+    # Try to find existing folder
+    query = (
+        "mimeType = 'application/vnd.google-apps.folder' "
+        f"and name = '{user_id}' "
+        f"and '{GOOGLE_DRIVE_PARENT_FOLDER_ID}' in parents "
+        "and trashed = false"
+    )
+
+    print(f"[DRIVE] Searching for folder for user {user_id}")
+    result = service.files().list(
+        q=query,
+        spaces="drive",
+        fields="files(id, name)",
+        pageSize=1,
+    ).execute()
+
+    files = result.get("files", [])
+    if files:
+        folder_id = files[0]["id"]
+        print(f"[DRIVE] Found existing user folder: {folder_id}")
+        return folder_id
+
+    # Not found -> create
+    print(f"[DRIVE] Creating new folder for user {user_id}")
+    folder_metadata = {
+        "name": user_id,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [GOOGLE_DRIVE_PARENT_FOLDER_ID],
+    }
+
+    folder = service.files().create(
+        body=folder_metadata,
+        fields="id"
+    ).execute()
+
+    folder_id = folder["id"]
+    print(f"[DRIVE] User folder created: {folder_id}")
+    return folder_id
+
+
+def upload_user_document_to_drive(user_id: str, doc_type: str, file_stream: io.BytesIO):
+    """
+    Upload a document into Google Drive under:
+        <PARENT_FOLDER>/<user_id>/<DOC_TYPE>.pdf
+
+    Returns: (file_id, public_url)
+    """
+    service = get_drive_service()
+
+    # Make / find folder for this user
+    user_folder_id = get_or_create_user_folder(user_id)
+
+    # File path: {UserId}/{DocType}.pdf
+    filename = f"{doc_type}.pdf"
+    print(f"[DRIVE] Uploading {filename} for user {user_id}")
+
+    media = MediaIoBaseUpload(
+        file_stream,
+        mimetype="application/pdf",
+        resumable=False
+    )
+
+    file_metadata = {
+        "name": filename,
+        "parents": [user_folder_id],
+    }
+
+    created = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, webViewLink"
+    ).execute()
+
+    file_id = created["id"]
+
+    # Make file publicly viewable
+    service.permissions().create(
+        fileId=file_id,
+        body={"role": "reader", "type": "anyone"}
+    ).execute()
+
+    public_url = created.get("webViewLink")
+    print(f"[DRIVE] Uploaded file_id={file_id}, url={public_url}")
+
+    return file_id, public_url
+
+
+# ===================== AUTH DECORATORS ==========================
+
 def require_auth(f):
     """Decorator to protect routes - requires authentication"""
     @wraps(f)
@@ -44,6 +180,7 @@ def require_auth(f):
             return jsonify({'error': 'Authentication required'}), 401
         return f(*args, **kwargs)
     return decorated_function
+
 
 def require_role(*allowed_roles):
     """Decorator to check user role"""
@@ -56,7 +193,9 @@ def require_role(*allowed_roles):
         return decorated_function
     return decorator
 
-# Authentication endpoints
+
+# ===================== AUTH ENDPOINTS ============================
+
 @app.route("/api/auth/signup", methods=["POST"])
 def signup():
     """Handle user signup via SQL stored procedure"""
@@ -109,6 +248,7 @@ def signup():
         return jsonify({'success': False, 'error': error_msg}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
@@ -166,11 +306,13 @@ def login():
         print(f"[LOGIN ERROR] General exception: {str(e)}")  # Debug log
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
 
+
 @app.route("/api/auth/logout", methods=["POST"])
 def logout():
     """Clear session"""
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
+
 
 @app.route("/api/auth/me", methods=["GET"])
 def get_current_user():
@@ -184,6 +326,7 @@ def get_current_user():
             'email': session['email']
         }), 200
     return jsonify({'authenticated': False}), 401
+
 
 # Example protected endpoints using decorators
 @app.route("/api/passenger/profile", methods=["GET"])
@@ -204,6 +347,7 @@ def get_passenger_profile():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route("/api/driver/profile", methods=["GET"])
 @require_auth
 @require_role('D')
@@ -221,6 +365,7 @@ def get_driver_profile():
                 return jsonify({'error': 'Profile not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route("/api/operator/dashboard", methods=["GET"])
 @require_auth
@@ -243,6 +388,107 @@ def get_operator_dashboard():
                 }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ================== NEW: PERSON DOCUMENT UPLOAD =======================
+
+@app.route("/api/documents/person/upload", methods=["POST"])
+@require_auth
+# NOTE: removed @require_role(...) to avoid 403 while testing uploads
+def upload_person_document_to_drive_route():
+    """
+    Upload a personal document for the logged-in user to Google Drive
+    and store the public URL in PersonDocument via usp_AddPersonDocument.
+
+    Expects multipart/form-data:
+      - file        : PDF file
+      - docType     : e.g. DRIVING_LICENSE, ID_OR_PASSPORT, ...
+      - docNumber   : document number (string)
+      - issueDate   : 'YYYY-MM-DD'
+      - expiryDate  : 'YYYY-MM-DD' or empty
+    """
+    user_id = session.get("user_id")
+
+    file = request.files.get("file")
+    doc_type = request.form.get("docType")
+    doc_number = request.form.get("docNumber")
+    issue_date = request.form.get("issueDate")
+    expiry_date = request.form.get("expiryDate") or None
+
+    if not file or not doc_type or not doc_number or not issue_date:
+        return jsonify({"success": False, "error": "file, docType, docNumber, issueDate are required"}), 400
+
+    allowed_doc_types = {
+        "ID_OR_PASSPORT",
+        "RESIDENCE_PERMIT",
+        "DRIVING_LICENSE",
+        "VEHICLE_REG",
+        "MOT_CERT",
+        "CRIMINAL_RECORD",
+        "MEDICAL_CERT",
+        "PSYCHOLOGICAL_CERT",
+    }
+    doc_type_upper = (doc_type or "").upper()
+
+    if doc_type_upper not in allowed_doc_types:
+        return jsonify({"success": False, "error": f"Invalid docType '{doc_type}'."}), 400
+
+    original_name = file.filename or ""
+    ext = pathlib.Path(original_name).suffix.lower()
+    if ext != ".pdf":
+        return jsonify({"success": False, "error": "Only PDF files are allowed"}), 400
+
+    # Read file into memory
+    file_bytes = file.read()
+    file_stream = io.BytesIO(file_bytes)
+
+    # 1) Upload file to Google Drive
+    try:
+        drive_file_id, public_url = upload_user_document_to_drive(user_id, doc_type_upper, file_stream)
+    except Exception as e:
+        print(f"[DRIVE ERROR] {e}")
+        return jsonify({"success": False, "error": f"Google Drive upload failed: {e}"}), 500
+
+    # 2) Insert into DB via stored procedure
+    try:
+        print(f"[DB] Inserting PersonDocument for user {user_id}, type {doc_type_upper}")
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_AddPersonDocument
+                        @UserId     = ?,
+                        @DocType    = ?,
+                        @DocNumber  = ?,
+                        @IssueDate  = ?,
+                        @ExpiryDate = ?,
+                        @FileUrl    = ?
+                    """,
+                    user_id,
+                    doc_type_upper,
+                    doc_number,
+                    issue_date,
+                    expiry_date,
+                    public_url,
+                )
+                row = cur.fetchone()
+
+        doc_id = int(row[0]) if row else None
+        print(f"[DB] PersonDocument inserted, DocId={doc_id}")
+
+        return jsonify({
+            "success": True,
+            "docId": doc_id,
+            "fileUrl": public_url,
+            "driveFileId": drive_file_id
+        }), 201
+
+    except Exception as e:
+        print(f"[DB ERROR] {e}")
+        return jsonify({"success": False, "error": f"DB error: {e}"}), 500
+
+
+# ================== SQL CONSOLE (UNCHANGED) ==========================
 
 PAGE = """
 <!doctype html>

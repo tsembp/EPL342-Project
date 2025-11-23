@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, FileText, CheckCircle2 } from "lucide-react";
+import { FileText, CheckCircle2 } from "lucide-react";
 
 type DocumentType = {
   id: string;
@@ -34,24 +34,27 @@ type DocumentData = {
 export default function DriverDocuments() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<Record<string, DocumentData>>(
-    REQUIRED_DOCUMENTS.reduce((acc, doc) => ({
-      ...acc,
-      [doc.id]: { docNumber: "", issueDate: "", expiryDate: "", file: null }
-    }), {})
+    REQUIRED_DOCUMENTS.reduce(
+      (acc, doc) => ({
+        ...acc,
+        [doc.id]: { docNumber: "", issueDate: "", expiryDate: "", file: null },
+      }),
+      {} as Record<string, DocumentData>
+    )
   );
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (docId: string, file: File | null) => {
-    setDocuments(prev => ({
+    setDocuments((prev) => ({
       ...prev,
-      [docId]: { ...prev[docId], file }
+      [docId]: { ...prev[docId], file },
     }));
   };
 
   const handleFieldChange = (docId: string, field: keyof DocumentData, value: string) => {
-    setDocuments(prev => ({
+    setDocuments((prev) => ({
       ...prev,
-      [docId]: { ...prev[docId], [field]: value }
+      [docId]: { ...prev[docId], [field]: value },
     }));
   };
 
@@ -62,13 +65,56 @@ export default function DriverDocuments() {
     return hasBasicInfo && hasExpiry;
   };
 
-  const allDocumentsComplete = REQUIRED_DOCUMENTS.every(doc => 
+  const allDocumentsComplete = REQUIRED_DOCUMENTS.every((doc) =>
     isDocumentComplete(doc.id, doc)
   );
 
+  async function uploadPersonDocument(
+    docId: string,
+    docMeta: DocumentType,
+    data: DocumentData
+  ) {
+    if (!data.file) {
+      throw new Error(`No file selected for ${docMeta.label}`);
+    }
+    // MUST match the DocType values allowed in PersonDocument.CK_PersonalDocType
+    const DOC_TYPE_MAP: Record<string, string> = {
+      identity: "ID_OR_PASSPORT",
+      residence: "RESIDENCE_PERMIT",
+      driving_license: "DRIVING_LICENSE",
+      vehicle_license: "VEHICLE_REG",
+      mot: "MOT_CERT",
+      criminal_record: "CRIMINAL_RECORD",
+      medical: "MEDICAL_CERT",
+      psychological: "PSYCHOLOGICAL_CERT",
+    };
+
+    const formData = new FormData();
+    formData.append("file", data.file);
+    formData.append("docType", DOC_TYPE_MAP[docId]); // backend expects these exact strings
+    formData.append("docNumber", data.docNumber);
+    formData.append("issueDate", data.issueDate);
+    formData.append("expiryDate", docMeta.hasExpiry ? data.expiryDate : "");
+
+    const res = await fetch("http://localhost:5000/api/documents/person/upload", {
+      method: "POST",
+      body: formData,
+      credentials: "include", // send Flask session cookie
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok || !json.success) {
+      console.error("Upload failed for", docMeta.label, res.status, json);
+      throw new Error(json.error || `Upload failed for ${docMeta.label}`);
+    }
+
+    return json as { success: true; docId: number; fileUrl: string; driveFileId: string };
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!allDocumentsComplete) {
       toast.error("Please complete all documents");
       return;
@@ -76,12 +122,21 @@ export default function DriverDocuments() {
 
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const uploads = REQUIRED_DOCUMENTS.map((doc) =>
+        uploadPersonDocument(doc.id, doc, documents[doc.id])
+      );
+
+      await Promise.all(uploads);
+
       toast.success("Documents submitted for review");
       navigate("/pending-approval");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Failed to upload documents");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -96,14 +151,14 @@ export default function DriverDocuments() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {REQUIRED_DOCUMENTS.map((doc) => {
-            const isComplete = isDocumentComplete(doc.id, doc);
+            const complete = isDocumentComplete(doc.id, doc);
             return (
-              <Card key={doc.id} className={isComplete ? "border-success" : ""}>
+              <Card key={doc.id} className={complete ? "border-success" : ""}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       {doc.label}
-                      {isComplete && <CheckCircle2 className="h-5 w-5 text-success" />}
+                      {complete && <CheckCircle2 className="h-5 w-5 text-success" />}
                     </CardTitle>
                   </div>
                   <CardDescription className="text-xs">
@@ -165,7 +220,7 @@ export default function DriverDocuments() {
                       <Input
                         id={`${doc.id}-file`}
                         type="file"
-                        accept="image/*,.pdf"
+                        accept=".pdf"
                         onChange={(e) => handleFileChange(doc.id, e.target.files?.[0] || null)}
                         required
                         className="h-10"
@@ -186,9 +241,9 @@ export default function DriverDocuments() {
           })}
 
           <div className="pt-4">
-            <Button 
-              type="submit" 
-              className="w-full h-12" 
+            <Button
+              type="submit"
+              className="w-full h-12"
               disabled={loading || !allDocumentsComplete}
             >
               {loading ? "Submitting..." : "Submit All Documents"}

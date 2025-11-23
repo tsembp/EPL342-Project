@@ -4,7 +4,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_AddPersonDocument
     @DocType    NVARCHAR(100),
     @DocNumber  NVARCHAR(100),
     @IssueDate  DATETIME2,
-    @ExpiryDate DATETIME2 = NULL
+    @ExpiryDate DATETIME2 = NULL,
+    @FileUrl    NVARCHAR(512)
 )
 AS
 BEGIN
@@ -12,10 +13,9 @@ BEGIN
 
     -- Validate user type
     IF NOT EXISTS (
-        SELECT 1
-        FROM [dbo].[User] U
-        WHERE U.UserId = @UserId
-          AND U.Role IN ('D','C')
+        SELECT 1 FROM dbo.[User]
+        WHERE UserId = @UserId
+          AND Role IN ('D', 'C')
     )
     BEGIN
         RAISERROR('User does not exist or is not a Driver/Company Representative.', 16, 1);
@@ -54,69 +54,51 @@ BEGIN
     -- Validate uniqueness
     IF EXISTS (
         SELECT 1
-        FROM [dbo].[PersonDocument] PD
-        WHERE PD.UserId = @UserId
-          AND PD.DocType = @DocType
-          AND PD.DocNo = @DocNumber
+        FROM dbo.PersonDocument
+        WHERE UserId = @UserId
+          AND DocType = @DocType
+          AND DocNo = @DocNumber
     )
     BEGIN
-        RAISERROR('Document with the same type and number already exists for this user.', 16, 1);
+        RAISERROR('Document with same type+number already exists for this user.', 16, 1);
         RETURN;
     END;
 
     IF EXISTS (
         SELECT 1
-        FROM [dbo].[PersonDocument] PD
-        WHERE PD.DocNo = @DocNumber
+        FROM dbo.PersonDocument
+        WHERE DocNo = @DocNumber
     )
     BEGIN
-        RAISERROR('Document with the same number already exists.', 16, 1);
+        RAISERROR('Document with that number exists globally.', 16, 1);
         RETURN;
     END;
 
-    IF EXISTS(
+    IF EXISTS (
         SELECT 1
-        FROM [dbo].[PersonDocument] PD
-        WHERE PD.UserId = @UserId
-          AND PD.DocType = @DocType
-          AND PD.Status IN ('Pending', 'Accepted')
+        FROM dbo.PersonDocument
+        WHERE UserId = @UserId
+          AND DocType = @DocType
+          AND Status IN ('Pending', 'Accepted')
     )
     BEGIN
-        RAISERROR('Document with the same type and status in (Pending, Accepted) already exists for this user.', 16, 1);
+        RAISERROR('User already has this doc type in Pending/Accepted.', 16, 1);
         RETURN;
     END;
 
-    BEGIN TRY
-        INSERT INTO [dbo].[PersonDocument]
-        (
-            UserId,
-            DocType,
-            DocNo,
-            IssueDate,
-            ExpiryDate,
-            UploadedAt,
-            FileUrl
-        )
-        VALUES
-        (
-            @UserId,
-            @DocType,
-            @DocNumber,
-            @IssueDate,
-            @ExpiryDate,
-            GETUTCDATE(),
-            'https://storage-bucket.com/documents/' + CAST(@UserId AS NVARCHAR(36)) + '/' + @DocType + '_' + @DocNumber + '.pdf' -- dummy URL
-        );
+    IF (@FileUrl IS NULL OR LTRIM(RTRIM(@FileUrl)) = '')
+    BEGIN
+        RAISERROR('FileUrl cannot be empty.', 16, 1);
+        RETURN;
+    END;
 
-        -- Return the created doc
-        SELECT SCOPE_IDENTITY() AS DocId;
-    END TRY
-    BEGIN CATCH
-        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrSev INT = ERROR_SEVERITY();
-        DECLARE @ErrState INT = ERROR_STATE();
+    INSERT INTO dbo.PersonDocument (
+        UserId, DocType, DocNo, IssueDate, ExpiryDate, UploadedAt, FileUrl
+    )
+    VALUES (
+        @UserId, @DocType, @DocNumber, @IssueDate, @ExpiryDate, GETUTCDATE(), @FileUrl
+    );
 
-        RAISERROR(@ErrMsg, @ErrSev, @ErrState);
-    END CATCH;
+    SELECT SCOPE_IDENTITY() AS DocId;
 END;
 GO

@@ -98,7 +98,7 @@ BEGIN
         Status               = @NewStatus,
         ReviewedByOperatorId = @OperatorId,
         ReviewedAt           = SYSUTCDATETIME(),
-        ReviewComment       = @ReviewComment
+        ReviewComments       = @ReviewComment
     WHERE DocId = @DocId;
 
     -- If rejected, just stop here. User remains unverified or must re-upload.
