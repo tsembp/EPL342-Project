@@ -109,6 +109,14 @@ BEGIN
         -- Return count of offers created
         SELECT @@ROWCOUNT AS OffersCreated;
 
+        IF @@ROWCOUNT = 0
+        BEGIN
+            -- No eligible drivers found for this leg
+            UPDATE dbo.RideRequestProgress
+            SET Status = 'AwaitingDrivers', UpdatedAt = GETUTCDATE()
+            WHERE RequestId = @RideRequestId;
+            RETURN;
+        END
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH

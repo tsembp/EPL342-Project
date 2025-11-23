@@ -199,13 +199,26 @@ BEGIN
             ;THROW 50003, 'Cannot cancel a completed or already cancelled request', 1;
         END
         
-        -- Update status to Cancelled
+        -- Update ride req status to Cancelled
         UPDATE [dbo].[RideRequest]
         SET 
             [Status] = 'Cancelled',
             [UpdatedAt] = GETUTCDATE()
         WHERE [RequestId] = @RequestId;
-        
+
+        -- Expire all dispatch offers for this ride request
+        UPDATE dof
+        SET dof.Status = 'Expired', dof.RespondedAt = GETUTCDATE()
+        FROM dbo.DispatchOffer dof
+        INNER JOIN dbo.ItineraryLeg il ON dof.LegId = il.LegId
+        WHERE il.RideRequestId = @RequestId
+        AND dof.Status IN ('Sent', 'Accepted');
+
+        -- Mark RideRequestProgress as Failed
+        UPDATE dbo.RideRequestProgress
+        SET Status = 'Failed', UpdatedAt = GETUTCDATE()
+        WHERE RequestId = @RequestId;
+
         SELECT * FROM [dbo].[RideRequest] WHERE [RequestId] = @RequestId;
     END TRY
     BEGIN CATCH

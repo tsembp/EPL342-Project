@@ -30,8 +30,10 @@ BEGIN
 
         IF @AcceptedLegs < @TotalLegs
         BEGIN
-            RAISERROR('Not all legs have accepted offers. Accepted: %d, Total: %d', 16, 1, @AcceptedLegs, @TotalLegs);
-            ROLLBACK TRANSACTION;
+            -- Not all legs have accepted offers, keep waiting
+            UPDATE dbo.RideRequestProgress
+            SET Status = 'AwaitingDrivers', UpdatedAt = GETUTCDATE()
+            WHERE RequestId = @RequestId;
             RETURN;
         END;
 
