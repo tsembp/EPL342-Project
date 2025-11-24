@@ -13,7 +13,7 @@ BEGIN
         SELECT 1 
         FROM dbo.[User] 
         WHERE UserId = @UserId 
-          AND IsVerified = 1
+          AND Verified = 1
     )
     BEGIN
         RAISERROR('User not found or not verified.', 16, 1);
