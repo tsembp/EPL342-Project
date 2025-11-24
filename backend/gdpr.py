@@ -1,0 +1,90 @@
+import json
+from flask import Blueprint, jsonify, request, session
+from db import get_connection
+from decorators import require_auth
+
+gdpr_bp = Blueprint("gdpr", __name__, url_prefix="/api/gdpr")
+
+
+@gdpr_bp.route("/export", methods=["GET"])
+@require_auth
+def get_gdpr_export():
+    user_id = session.get("user_id")
+    gdpr_id = request.args.get("gdprId")
+
+    if gdpr_id is None:
+        gdpr_id = 0
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_ExecuteDataExport
+                        @UserId = ?, 
+                        @GdprId = ?
+                """, user_id, gdpr_id)
+
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"error": "No export data found"}), 404
+
+                export_json_str = row[0]
+
+        export_data = json.loads(export_json_str)
+        return jsonify(export_data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@gdpr_bp.route("/request", methods=["POST"])
+@require_auth
+def submit_gdpr_request():
+    data = request.json or {}
+    user_id = session.get("user_id")
+    request_type = data.get("type")
+    reason = data.get("reason")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_SubmitRequest 
+                        @UserId=?, 
+                        @RequestType=?, 
+                        @Reason=?
+                """, user_id, request_type, reason)
+
+                row = cur.fetchone()
+                gdpr_id = row[0] if row else None
+
+        return jsonify({"success": True, "gdprId": gdpr_id}), 200
+
+    except Exception as e:
+        print("Error in submit-gdpr-request endpoint:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@gdpr_bp.route("/my-requests", methods=["GET"])
+@require_auth
+def my_gdpr_requests():
+    user_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        G.GdprId,
+                        G.[Type],
+                        G.[Status],
+                        G.RequestedAt,
+                        G.[Reason]
+                    FROM dbo.GdprRequest AS G
+                    WHERE G.UserId = ?
+                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
+                """, user_id)
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
