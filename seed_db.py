@@ -1578,26 +1578,26 @@ def main():
     try:
         cursor = conn.cursor()
 
-        print("Seeding Admins...")
-        admin_ids = seed_admins(cursor, CONFIG["NUM_ADMINS"])
+        # print("Seeding Admins...")
+        # admin_ids = seed_admins(cursor, CONFIG["NUM_ADMINS"])
 
-        print("Seeding Operators...")
-        operator_ids = seed_operators(cursor, CONFIG["NUM_OPERATORS"], admin_ids)
+        # print("Seeding Operators...")
+        # operator_ids = seed_operators(cursor, CONFIG["NUM_OPERATORS"], admin_ids)
 
-        print("Seeding Users & Roles...")
-        users = seed_users_and_roles(
-            cursor,
-            CONFIG["NUM_DRIVERS"],
-            CONFIG["NUM_PASSENGERS"],
-            CONFIG["NUM_COMPANY_REPS"],
-        )
-        driver_ids = users["D"]
-        passenger_ids = users["P"]
-        company_rep_ids = users["C"]
-        all_user_ids = driver_ids + passenger_ids + company_rep_ids
+        # print("Seeding Users & Roles...")
+        # users = seed_users_and_roles(
+        #     cursor,
+        #     CONFIG["NUM_DRIVERS"],
+        #     CONFIG["NUM_PASSENGERS"],
+        #     CONFIG["NUM_COMPANY_REPS"],
+        # )
+        # driver_ids = users["D"]
+        # passenger_ids = users["P"]
+        # company_rep_ids = users["C"]
+        # all_user_ids = driver_ids + passenger_ids + company_rep_ids
 
-        print("Seeding UserPreferences...")
-        seed_user_preferences(cursor, all_user_ids)
+        # print("Seeding UserPreferences...")
+        # seed_user_preferences(cursor, all_user_ids)
 
         print("Seeding ServiceTypes, RideTypes, VehicleTypes from combo_specs...")
         (
@@ -1606,91 +1606,91 @@ def main():
             vehicle_type_ids,
         ) = seed_service_ride_vehicle_types_from_combos(cursor)
 
-        print("Seeding Zones...")
-        zone_ids, grid = seed_zones(cursor, CONFIG["NUM_ZONES"])
+        # print("Seeding Zones...")
+        # zone_ids, grid = seed_zones(cursor, CONFIG["NUM_ZONES"])
 
-        print("Seeding ZonePoints (stations and bridge endpoints)...")
-        zone_points = seed_zone_points(cursor, zone_ids)
+        # print("Seeding ZonePoints (stations and bridge endpoints)...")
+        # zone_points = seed_zone_points(cursor, zone_ids)
 
-        print("Seeding Bridges...")
-        bridge_ids, bridge_map = seed_bridges(cursor, grid, zone_points)
+        # print("Seeding Bridges...")
+        # bridge_ids, bridge_map = seed_bridges(cursor, grid, zone_points)
 
-        print("Seeding Vehicles...")
-        vehicle_ids_with_status = seed_vehicles(
-            cursor,
-            CONFIG["NUM_VEHICLES"],
-            vehicle_type_ids,
-            owner_user_ids=driver_ids + company_rep_ids,
-        )
-        vehicle_ids = [vid for vid, _ in vehicle_ids_with_status]
+        # print("Seeding Vehicles...")
+        # vehicle_ids_with_status = seed_vehicles(
+        #     cursor,
+        #     CONFIG["NUM_VEHICLES"],
+        #     vehicle_type_ids,
+        #     owner_user_ids=driver_ids + company_rep_ids,
+        # )
+        # vehicle_ids = [vid for vid, _ in vehicle_ids_with_status]
 
         print("Seeding AllowedRideProfiles from combo_specs...")
         ride_profile_ids = seed_allowed_ride_profiles(
             cursor, service_type_ids, ride_type_ids, vehicle_type_ids
         )
 
-        print("Seeding UserServiceEnrollments...")
-        seed_user_service_enrollments(
-            cursor,
-            drivers=driver_ids,
-            vehicles=vehicle_ids,
-            service_type_ids=service_type_ids,
-            ride_type_ids=ride_type_ids,
-            operator_ids=operator_ids,
-        )
+        # print("Seeding UserServiceEnrollments...")
+        # seed_user_service_enrollments(
+        #     cursor,
+        #     drivers=driver_ids,
+        #     vehicles=vehicle_ids,
+        #     service_type_ids=service_type_ids,
+        #     ride_type_ids=ride_type_ids,
+        #     operator_ids=operator_ids,
+        # )
 
-        print("Seeding Driver Availability...")
-        seed_driver_availability(
-            cursor, driver_ids, vehicle_ids, service_type_ids, ride_type_ids, zone_ids
-        )
+        # print("Seeding Driver Availability...")
+        # seed_driver_availability(
+        #     cursor, driver_ids, vehicle_ids, service_type_ids, ride_type_ids, zone_ids
+        # )
 
-        print("Seeding RideRequests...")
-        request_info = seed_ride_requests(
-            cursor,
-            CONFIG["NUM_RIDE_REQUESTS"],
-            passenger_ids,
-            ride_profile_ids,
-            zone_ids,
-            zone_points,
-        )
+        # print("Seeding RideRequests...")
+        # request_info = seed_ride_requests(
+        #     cursor,
+        #     CONFIG["NUM_RIDE_REQUESTS"],
+        #     passenger_ids,
+        #     ride_profile_ids,
+        #     zone_ids,
+        #     zone_points,
+        # )
 
-        print("Seeding ItineraryLegs...")
-        leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid, zone_points)
+        # print("Seeding ItineraryLegs...")
+        # leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid, zone_points)
 
-        print("Seeding DispatchOffers...")
-        offer_ids = seed_dispatch_offers(cursor, leg_ids, driver_ids)
+        # print("Seeding DispatchOffers...")
+        # offer_ids = seed_dispatch_offers(cursor, leg_ids, driver_ids)
 
-        print("Seeding Rides...")
-        rides_info = seed_rides(
-            cursor,
-            CONFIG["NUM_RIDES"],
-            driver_ids,
-            passenger_ids,
-            vehicle_ids,
-            offer_ids,
-        )
+        # print("Seeding Rides...")
+        # rides_info = seed_rides(
+        #     cursor,
+        #     CONFIG["NUM_RIDES"],
+        #     driver_ids,
+        #     passenger_ids,
+        #     vehicle_ids,
+        #     offer_ids,
+        # )
 
-        print("Seeding Payments (only for completed rides)...")
-        payment_ids = seed_payments(cursor, rides_info)
+        # print("Seeding Payments (only for completed rides)...")
+        # payment_ids = seed_payments(cursor, rides_info)
 
-        print("Seeding Ratings...")
-        rating_ids = seed_ratings(
-            cursor,
-            CONFIG["NUM_RATINGS"],
-            rides_info,
-        )
+        # print("Seeding Ratings...")
+        # rating_ids = seed_ratings(
+        #     cursor,
+        #     CONFIG["NUM_RATINGS"],
+        #     rides_info,
+        # )
 
-        print("Seeding PersonDocuments (only for Drivers and Company Representatives)...")
-        users_with_documents = driver_ids + company_rep_ids
-        seed_person_documents(cursor, users_with_documents, operator_ids)
+        # print("Seeding PersonDocuments (only for Drivers and Company Representatives)...")
+        # users_with_documents = driver_ids + company_rep_ids
+        # seed_person_documents(cursor, users_with_documents, operator_ids)
 
-        print("Seeding VehicleDocuments...")
-        seed_vehicle_documents(
-            cursor,
-            vehicle_ids_with_status,
-            CONFIG["NUM_VEHICLE_DOCS_PER_VEHICLE"],
-            operator_ids,
-        )
+        # print("Seeding VehicleDocuments...")
+        # seed_vehicle_documents(
+        #     cursor,
+        #     vehicle_ids_with_status,
+        #     CONFIG["NUM_VEHICLE_DOCS_PER_VEHICLE"],
+        #     operator_ids,
+        # )
 
         conn.commit()
         print("Seeding completed successfully.")
