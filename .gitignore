@@ -1,3 +1,4 @@
 .env
 frontend/node_modules
 flask_session
+__pycache__/

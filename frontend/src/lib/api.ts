@@ -263,7 +263,7 @@ export const reviewVehicleDocument = (params: {
   });
 
 export async function getMyGdprRequests() {
-  const res = await fetch("/api/gdpr/my-requests", {
+  const res = await fetch("/gdpr/my-requests", {
     credentials: "include",
   });
   if (!res.ok) throw new Error("Failed to fetch GDPR requests");

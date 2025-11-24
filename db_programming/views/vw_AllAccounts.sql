@@ -1,4 +1,4 @@
-CREATE OR ALTER VIEW dbo.vAllAccounts AS
+CREATE OR ALTER VIEW dbo.vw_AllAccounts AS
 SELECT 
     U.UserId,
     U.Email,
