@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/store";
-import { User, RefreshCw, FileText, BarChart3, LogOut } from "lucide-react";
+import { User, RefreshCw, FileText, BarChart3, LogOut, Download } from "lucide-react";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -60,6 +60,7 @@ export default function Profile() {
               </div>
             </Card>
 
+            {/* GDPR Request */}
             <Card
               className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={() => navigate("/gdpr")}
@@ -75,6 +76,22 @@ export default function Profile() {
               </div>
             </Card>
 
+            <Card
+              className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => navigate("/gdpr/export")}
+            >
+              <div className="flex items-center gap-3">
+                <Download className="h-5 w-5 text-primary" />
+                <div className="flex-1">
+                  <h3 className="font-semibold">Download my data</h3>
+                  <p className="text-sm text-muted-foreground">
+                    View or export the data stored about your account
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Operator Panel */}
             <Card
               className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={() => navigate("/operator")}

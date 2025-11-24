@@ -209,13 +209,6 @@ export const getDriverEarnings = (params: { month: number; year: number }) => {
   return fetchAPI<DriverEarnings>(`/driver/earnings?${query}`);
 };
 
-// GDPR
-export const submitGDPRRequest = (data: { reason: string; user_id: string }) =>
-  fetchAPI("/gdpr/request", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
 // Geofence
 export const getGeofenceTiles = () =>
   fetchAPI<GeofenceData>("/geofence/tiles");
@@ -243,6 +236,45 @@ export const getOperatorReports = (params: {
   return fetchAPI<ReportRow[]>(`/operator/reports?${query}`);
 };
 
+export const getPendingPersonDocuments = () =>
+  fetchAPI<any[]>("/operator/pending-person-documents");
+
+export const getPendingVehicleDocuments = () =>
+  fetchAPI<any[]>("/operator/pending-vehicle-documents");
+
+export const reviewPersonDocument = (params: {
+  docId: number;
+  status: "Accepted" | "Rejected";
+  comment?: string;
+}) =>
+  fetchAPI<{ success: boolean }>("/operator/review-person-document", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const reviewVehicleDocument = (params: {
+  vehDocId: number;
+  status: "Accepted" | "Rejected";
+  comment?: string;
+}) =>
+  fetchAPI<{ success: boolean }>("/operator/review-vehicle-document", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export async function getMyGdprRequests() {
+  const res = await fetch("/api/gdpr/my-requests", {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch GDPR requests");
+  return res.json();
+}
+
+export const submitGDPRRequest = (data: { reason: string; type: string }) =>
+  fetchAPI("/gdpr/request", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 // Stations & Zones
 export const getStations = async (): Promise<Station[]> => {
   const response = await fetchAPI<{ success: boolean; stations: Station[]; total: number }>('/stations');
