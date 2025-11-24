@@ -1,3 +1,4 @@
+import json
 from flask import Flask, render_template_string, request, jsonify, session
 from flask_session import Session
 from flask_cors import CORS
@@ -317,6 +318,40 @@ def review_vehicle_document():
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/gdpr/export", methods=["GET"])
+@require_auth
+def get_gdpr_export():
+    user_id = session.get("user_id")
+    gdpr_id = request.args.get("gdprId")  # optional, if you want to bind to a specific request
+
+    # If you don't care about linking to a specific GdprRequest, 
+    # you can just pass NULL or 0 for @GdprId
+    if gdpr_id is None:
+        gdpr_id = 0
+
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_ExecuteDataExport
+                        @UserId = ?, 
+                        @GdprId = ?
+                """, user_id, gdpr_id)
+
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"error": "No export data found"}), 404
+
+                export_json_str = row[0]  # ExportJson
+
+        # export_json_str is already JSON string from SQL
+        # Parse it into Python dict to send proper JSON
+        export_data = json.loads(export_json_str)
+        return jsonify(export_data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/gdpr/request", methods=["POST"])
 @require_auth
@@ -342,6 +377,7 @@ def submit_gdpr_request():
         return jsonify({"success": True, "gdprId": gdpr_id}), 200
 
     except Exception as e:
+        print("Error in submit-gdpr-request endpoint:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/gdpr/my-requests", methods=["GET"])
@@ -368,69 +404,6 @@ def my_gdpr_requests():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@app.route("/api/operator/gdpr-requests", methods=["GET"])
-@require_auth
-@require_role('O', 'I')  # Operator or Inspector
-def get_gdpr_requests():
-    try:
-        with pyodbc.connect(CN_STR, timeout=10) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT 
-                        G.GdprId,
-                        U.Username,
-                        U.Email,
-                        G.[Type],
-                        G.[Status],
-                        G.RequestedAt,
-                        G.[Reason]
-                    FROM dbo.GdprRequest AS G
-                    INNER JOIN dbo.[User] AS U
-                        ON U.UserId = G.UserId
-                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
-                """)
-                columns = [c[0] for c in cur.description]
-                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-                return jsonify(rows), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route("/api/operator/pending-gdpr-requests", methods=["GET"])
-@require_auth
-@require_role('O', 'I')  # Operator or Inspector
-def get_pending_gdpr_requests():
-    try:
-        with pyodbc.connect(CN_STR, timeout=10) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    EXEC dbo.usp_Gdpr_GetPendingRequests
-                """)
-                columns = [column[0] for column in cur.description]
-                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-                return jsonify(rows), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route("/api/operator/review-gdpr-request", methods=["POST"])
-@require_auth
-@require_role('O', 'I')
-def review_gdpr_request():
-    data = request.get_json()
-    operator_id = session['user_id']
-    gdpr_id = data.get("gdprId")
-    status = data.get("status")  # "Completed" or "Denied"
-    note = data.get("note", None)
-    try:
-        with pyodbc.connect(CN_STR, timeout=10) as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    EXEC dbo.usp_Gdpr_UpdateStatus @GdprId=?, @NewStatus=?, @ActorAdminId=?, @ActorNote=?
-                """, gdpr_id, status, operator_id, note)
-        return jsonify({"success": True}), 200
-    except Exception as e:
-        print("GDPR review error:", e)  # <--- Add this for debugging
-        return jsonify({"error": str(e)}), 500
-
 PAGE = """
 <!doctype html>
 <html>

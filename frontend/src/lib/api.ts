@@ -259,25 +259,6 @@ export const reviewVehicleDocument = (params: {
     body: JSON.stringify(params),
   });
 
-export async function getGdprRequests() {
-  const res = await fetch("/api/operator/gdpr-requests", {
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("Failed to fetch GDPR requests");
-  return res.json();
-}
-
-
-export const reviewGdprRequest = (params: {
-  gdprId: number;
-  status: "Completed" | "Denied";
-  note?: string;
-}) =>
-  fetchAPI<{ success: boolean }>("/operator/review-gdpr-request", {
-    method: "POST",
-    body: JSON.stringify(params),
-  });
-
 export async function getMyGdprRequests() {
   const res = await fetch("/api/gdpr/my-requests", {
     credentials: "include",
