@@ -1,3 +1,4 @@
+import json
 from flask import Flask, render_template_string, request, jsonify, session
 from flask_session import Session
 from flask_cors import CORS
@@ -415,6 +416,165 @@ def get_operator_dashboard():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route("/api/operator/pending-person-documents", methods=["GET"])
+@require_auth
+@require_role('O', 'I')
+def get_pending_person_documents():
+    operator_id = session['user_id']
+    try: 
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_GetPendingPersonDocumentsForReview @OperatorId=?
+                """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in pending-documents endpoint:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/pending-vehicle-documents", methods=["GET"])
+@require_auth
+@require_role('O', 'I')
+def get_pending_vehicle_documents():
+    operator_id = session['user_id']
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_GetPendingVehicleDocumentsForReview @OperatorId=?
+                """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in pending-vehicle-documents endpoint:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/review-person-document", methods=["POST"])
+@require_auth
+@require_role('O', 'I')
+def review_person_document():
+    data = request.get_json()
+    operator_id = session['user_id']
+    doc_id = data.get("docId")
+    status = data.get("status")
+    comment = data.get("comment", None)
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_ReviewPersonDocument @OperatorId=?, @DocId=?, @NewStatus=?, @ReviewComment=?
+                """, operator_id, doc_id, status, comment)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/operator/review-vehicle-document", methods=["POST"])
+@require_auth
+@require_role('O', 'I')
+def review_vehicle_document():
+    data = request.get_json()
+    operator_id = session['user_id']
+    veh_doc_id = data.get("vehDocId")
+    status = data.get("status")
+    comment = data.get("comment", None)
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_ReviewVehicleDocument @OperatorId=?, @VehDocId=?, @NewStatus=?, @ReviewComments=?
+                """, operator_id, veh_doc_id, status, comment)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/gdpr/export", methods=["GET"])
+@require_auth
+def get_gdpr_export():
+    user_id = session.get("user_id")
+    gdpr_id = request.args.get("gdprId")  # optional, if you want to bind to a specific request
+
+    # If you don't care about linking to a specific GdprRequest, 
+    # you can just pass NULL or 0 for @GdprId
+    if gdpr_id is None:
+        gdpr_id = 0
+
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_ExecuteDataExport
+                        @UserId = ?, 
+                        @GdprId = ?
+                """, user_id, gdpr_id)
+
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"error": "No export data found"}), 404
+
+                export_json_str = row[0]  # ExportJson
+
+        # export_json_str is already JSON string from SQL
+        # Parse it into Python dict to send proper JSON
+        export_data = json.loads(export_json_str)
+        return jsonify(export_data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/gdpr/request", methods=["POST"])
+@require_auth
+def submit_gdpr_request():
+    data = request.json
+    user_id = session.get("user_id")
+    request_type = data.get("type")  # "DataAccess", "DataDeletion", etc.
+    reason = data.get("reason")
+
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_SubmitRequest 
+                        @UserId=?, 
+                        @RequestType=?, 
+                        @Reason=?
+                """, user_id, request_type, reason)
+
+                row = cur.fetchone()  # SELECT @GdprId AS GdprRequestId;
+                gdpr_id = row[0] if row else None
+
+        return jsonify({"success": True, "gdprId": gdpr_id}), 200
+
+    except Exception as e:
+        print("Error in submit-gdpr-request endpoint:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/gdpr/my-requests", methods=["GET"])
+@require_auth
+def my_gdpr_requests():
+    user_id = session['user_id']
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        G.GdprId,
+                        G.[Type],
+                        G.[Status],
+                        G.RequestedAt,
+                        G.[Reason]
+                    FROM dbo.GdprRequest AS G
+                    WHERE G.UserId = ?
+                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
+                """, user_id)
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @app.route("/api/passenger/request-ride", methods=["POST"])
 @require_auth
 @require_role('P')

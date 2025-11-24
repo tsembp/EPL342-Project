@@ -142,7 +142,7 @@ export type DriverEarnings = {
   }>;
 };
 
-export type UserRole = "passenger" | "driver";
+export type UserRole = "passenger" | "driver" | "operator";
 
 export type Location = {
   lat: number;
