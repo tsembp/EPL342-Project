@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Map, Package, CreditCard, History, User } from "lucide-react";
+import { Car, CreditCard, History, User, House } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -7,8 +7,7 @@ export function BottomNav() {
   const userRole = useAuthStore((state) => state.userRole);
   
   const tabs = [
-    { to: "/map", icon: Map, label: "Map" },
-    { to: "/services", icon: Package, label: "Services" },
+    { to: "/home", icon: House, label: userRole === "driver" ? "Earnings" : "Home" },
     { to: "/credit", icon: CreditCard, label: userRole === "driver" ? "Earnings" : "Credit" },
     { to: "/history", icon: History, label: "History" },
     { to: "/profile", icon: User, label: "Profile" },
