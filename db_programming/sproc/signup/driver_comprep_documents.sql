@@ -15,27 +15,51 @@ BEGIN
         SELECT 1
         FROM [dbo].[User] U
         WHERE U.UserId = @UserId
-          AND U.Role IN ('D','C')
+          AND U.Role IN ('D','C','P')
     )
     BEGIN
         RAISERROR('User does not exist or is not a Driver/Company Representative.', 16, 1);
         RETURN;
     END;
 
-    -- Validate DocType
-    IF @DocType NOT IN (
-        'ID_OR_PASSPORT',
-        'RESIDENCE_PERMIT',
-        'DRIVING_LICENSE',
-        'VEHICLE_REG',
-        'MOT_CERT',
-        'CRIMINAL_RECORD',
-        'MEDICAL_CERT',
-        'PSYCHOLOGICAL_CERT'
-    )
+    DECLARE @UserRole CHAR(1);
+
+    SELECT @UserRole = U.Role
+    FROM dbo.[User] AS U
+    WHERE U.UserId = @UserId;
+
+    -- Role-specific DocType validation
+    IF @UserRole = 'P'
     BEGIN
-        RAISERROR('Invalid DocType.', 16, 1);
-        RETURN;
+        -- Passengers: only these 4
+        IF @DocType NOT IN (
+            'ID_OR_PASSPORT',
+            'DRIVING_LICENSE',
+            'CRIMINAL_RECORD',
+            'MEDICAL_CERT'
+        )
+        BEGIN
+            RAISERROR('Passengers can only upload ID, License, Criminal Record, or Medical Certificate.', 16, 1);
+            RETURN;
+        END;
+    END
+    ELSE
+    BEGIN
+        -- Drivers & Company Reps: full allowed list
+        IF @DocType NOT IN (
+            'ID_OR_PASSPORT',
+            'RESIDENCE_PERMIT',
+            'DRIVING_LICENSE',
+            'VEHICLE_REG',
+            'MOT_CERT',
+            'CRIMINAL_RECORD',
+            'MEDICAL_CERT',
+            'PSYCHOLOGICAL_CERT'
+        )
+        BEGIN
+            RAISERROR('Invalid DocType.', 16, 1);
+            RETURN;
+        END; 
     END;
 
     -- Validate dates

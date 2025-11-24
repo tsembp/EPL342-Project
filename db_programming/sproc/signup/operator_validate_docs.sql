@@ -108,13 +108,14 @@ BEGIN
     END;
 
     -- Only auto-verify Drivers and Company Reps
-    IF @UserRole NOT IN ('D', 'C')
+    IF @UserRole NOT IN ('D', 'C', 'P')
     BEGIN
         RETURN;
     END;
 
     -- Check if user has all required document types approved
-    DECLARE @RequiredDocCount INT = 8; -- Total required docs
+    DECLARE @RequiredDocCountForDriver INT = 8; -- Total required docs
+    DECLARE @RequiredDocCountForPassenger INT = 4; -- Total required docs
     DECLARE @ApprovedDocCount INT;
 
     SELECT @ApprovedDocCount = COUNT(DISTINCT DocType)
@@ -132,7 +133,12 @@ BEGIN
                 'PSYCHOLOGICAL_CERT'
         );
 
-    IF @ApprovedDocCount < @RequiredDocCount
+    IF @ApprovedDocCount < @RequiredDocCountForDriver AND @UserRole IN ('D','C')
+    BEGIN
+            RETURN; -- Not all required docs approved yet
+    END;
+    
+    IF @ApprovedDocCount < @RequiredDocCountForPassenger AND @UserRole = 'P'
     BEGIN
             RETURN; -- Not all required docs approved yet
     END;
