@@ -10,52 +10,89 @@ import { submitGDPRRequest } from "@/lib/api";
 
 const REQUEST_TYPES = [
   { value: "DataAccess", label: "Access my data" },
-  { value: "DataDeletion", label: "Delete my data" },
   { value: "DataExport", label: "Export my data" },
+  { value: "DataDeletion", label: "Delete my data" },
   { value: "DataCorrection", label: "Correct my data" },
 ];
 
+function getReasonLabel(type: string) {
+  switch (type) {
+    case "DataDeletion":
+      return "Why do you want your data deleted?";
+    case "DataCorrection":
+      return "Describe what is incorrect and the correct data";
+    case "DataExport":
+      return "Additional notes for your export (optional)";
+    case "DataAccess":
+    default:
+      return "Additional details for your request (optional)";
+  }
+}
+
+function getReasonPlaceholder(type: string) {
+  switch (type) {
+    case "DataDeletion":
+      return "Example: I no longer use this service and want my personal data removed.";
+    case "DataCorrection":
+      return "Example: My date of birth is wrong; it should be 1998-01-05, not 1997-01-05.";
+    case "DataExport":
+      return "Optional: Anything specific you want us to highlight in your export.";
+    case "DataAccess":
+    default:
+      return "Optional: You can explain what data you’re particularly interested in.";
+  }
+}
+
+function getHelperText(type: string) {
+  switch (type) {
+    case "DataAccess":
+      return "We will show you the personal data stored about your account.";
+    case "DataExport":
+      return "We will generate a machine-readable export of your personal data.";
+    case "DataDeletion":
+      return "Your account data will be anonymized according to GDPR. This action cannot be undone.";
+    case "DataCorrection":
+      return "Describe which of your stored details are wrong and what the correct values should be.";
+    default:
+      return "";
+  }
+}
+
 export default function GDPRRequest() {
   const navigate = useNavigate();
+  const [type, setType] = useState<string>("DataAccess");
   const [reason, setReason] = useState("");
-  const [type, setType] = useState("DataAccess");
   const [loading, setLoading] = useState(false);
-
-  const submitGdprRequest = async () => {
-    try {
-      const response = await fetch("/api/gdpr/request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reason, type }),
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success("GDPR request submitted successfully");
-        navigate("/profile");
-      } else {
-        toast.error(data.error || "Failed to submit GDPR request");
-      }
-    } catch (error) {
-      toast.error("An error occurred while submitting the request");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Require a detailed reason for deletion / correction
+    if (
+      (type === "DataDeletion" || type === "DataCorrection") &&
+      reason.trim().length < 10
+    ) {
+      toast.error(
+        "Please provide a short explanation for deletion/correction (at least a few words)."
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       await submitGDPRRequest({ reason, type });
-      toast.success("GDPR request submitted successfully");
-      navigate("/profile");
+      toast.success("Your GDPR request has been submitted.");
+
+      // Decide where to send the user based on request type
+      if (type === "DataAccess" || type === "DataExport") {
+        // Show them their data/export page
+        navigate("/gdpr/export");
+      } else {
+        // For deletion / correction we just go back to profile
+        navigate("/profile");
+      }
     } catch (err: any) {
-      toast.error(err?.message || "Failed to submit GDPR request");
+      toast.error(err?.message || "Failed to submit GDPR request.");
     } finally {
       setLoading(false);
     }
@@ -67,34 +104,41 @@ export default function GDPRRequest() {
       <div className="max-w-2xl mx-auto p-4">
         <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Type selector */}
             <div className="space-y-2">
               <Label htmlFor="type">Request type</Label>
               <select
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-12 border rounded px-3"
+                className="w-full h-12 border rounded px-3 bg-background"
                 required
               >
                 {REQUEST_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reason">Request reason</Label>
-              <Textarea
-                id="reason"
-                placeholder="Please explain your data request..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                required
-                className="min-h-32"
-              />
               <p className="text-xs text-muted-foreground">
-                Your request will be processed according to GDPR regulations.
+                {getHelperText(type)}
               </p>
             </div>
+
+            {/* Reason / description */}
+            <div className="space-y-2">
+              <Label htmlFor="reason">{getReasonLabel(type)}</Label>
+              <Textarea
+                id="reason"
+                placeholder={getReasonPlaceholder(type)}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="min-h-32"
+                // required only for deletion/correction
+                required={type === "DataDeletion" || type === "DataCorrection"}
+              />
+            </div>
+
             <Button type="submit" className="w-full h-12" disabled={loading}>
               {loading ? "Submitting..." : "Submit request"}
             </Button>

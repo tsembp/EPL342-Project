@@ -10,7 +10,6 @@ const operatorSections = [
   { label: "Service Types & Profiles", path: "/operator/services" },
   { label: "Enrollments", path: "/operator/enrollments" },
   { label: "Documents", path: "/operator/documents" },
-  { label: "GDPR & Privacy", path: "/operator/gdpr" },
   { label: "Rides & Operations", path: "/operator/rides" },
   { label: "Reports & Analytics", path: "/operator/reports" },
   { label: "System & Audit Logs", path: "/operator/logs" },

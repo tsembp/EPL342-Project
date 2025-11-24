@@ -22,12 +22,12 @@ import Vehicles from "./pages/operator/Vehicles";
 import ServiceTypesProfiles from "./pages/operator/ServiceTypesProfiles";
 import Enrollments from "./pages/operator/Enrollments";
 import Documents from "./pages/operator/Documents";
-import GDPRPrivacy from "./pages/operator/GDPRPrivacy";
 import RidesOperations from "./pages/operator/RidesOperations";
 import ReportsAnalytics from "./pages/operator/ReportsAnalytics";
 import SystemAuditLogs from "./pages/operator/SystemAuditLogs";
-import GDPRRequest from "./pages/GDPRRequest";
 import NotFound from "./pages/NotFound";
+import GDPRRequest from "./pages/GDPRRequest";
+import GDPRExport from "@/pages/GDPRExport";
 
 const queryClient = new QueryClient();
 
@@ -70,14 +70,13 @@ function App() {
               <Route path="services" element={<ServiceTypesProfiles />} />
               <Route path="enrollments" element={<Enrollments />} />
               <Route path="documents" element={<Documents />} />
-              <Route path="gdpr" element={<GDPRPrivacy />} />
               <Route path="rides" element={<RidesOperations />} />
               <Route path="reports" element={<ReportsAnalytics />} />
               <Route path="logs" element={<SystemAuditLogs />} />
               <Route index element={<Overview />} />
             </Route>
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
-            
+            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
