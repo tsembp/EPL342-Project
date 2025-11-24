@@ -55,7 +55,7 @@ BEGIN
 
     DECLARE @UserId UNIQUEIDENTIFIER = NEWID();
     
-    DECLARE @Verified BIT = CASE WHEN @Role = 'P' THEN 1 ELSE 0 END;
+    DECLARE @Verified BIT = 0;
 
     BEGIN TRY
         BEGIN TRAN;
