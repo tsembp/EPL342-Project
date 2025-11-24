@@ -318,6 +318,119 @@ def review_vehicle_document():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/gdpr/request", methods=["POST"])
+@require_auth
+def submit_gdpr_request():
+    data = request.json
+    user_id = session.get("user_id")
+    request_type = data.get("type")  # "DataAccess", "DataDeletion", etc.
+    reason = data.get("reason")
+
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_SubmitRequest 
+                        @UserId=?, 
+                        @RequestType=?, 
+                        @Reason=?
+                """, user_id, request_type, reason)
+
+                row = cur.fetchone()  # SELECT @GdprId AS GdprRequestId;
+                gdpr_id = row[0] if row else None
+
+        return jsonify({"success": True, "gdprId": gdpr_id}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/gdpr/my-requests", methods=["GET"])
+@require_auth
+def my_gdpr_requests():
+    user_id = session['user_id']
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        G.GdprId,
+                        G.[Type],
+                        G.[Status],
+                        G.RequestedAt,
+                        G.[Reason]
+                    FROM dbo.GdprRequest AS G
+                    WHERE G.UserId = ?
+                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
+                """, user_id)
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/operator/gdpr-requests", methods=["GET"])
+@require_auth
+@require_role('O', 'I')  # Operator or Inspector
+def get_gdpr_requests():
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        G.GdprId,
+                        U.Username,
+                        U.Email,
+                        G.[Type],
+                        G.[Status],
+                        G.RequestedAt,
+                        G.[Reason]
+                    FROM dbo.GdprRequest AS G
+                    INNER JOIN dbo.[User] AS U
+                        ON U.UserId = G.UserId
+                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
+                """)
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/pending-gdpr-requests", methods=["GET"])
+@require_auth
+@require_role('O', 'I')  # Operator or Inspector
+def get_pending_gdpr_requests():
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_GetPendingRequests
+                """)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route("/api/operator/review-gdpr-request", methods=["POST"])
+@require_auth
+@require_role('O', 'I')
+def review_gdpr_request():
+    data = request.get_json()
+    operator_id = session['user_id']
+    gdpr_id = data.get("gdprId")
+    status = data.get("status")  # "Completed" or "Denied"
+    note = data.get("note", None)
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_Gdpr_UpdateStatus @GdprId=?, @NewStatus=?, @ActorAdminId=?, @ActorNote=?
+                """, gdpr_id, status, operator_id, note)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print("GDPR review error:", e)  # <--- Add this for debugging
+        return jsonify({"error": str(e)}), 500
+
 PAGE = """
 <!doctype html>
 <html>

@@ -1,63 +1,80 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getGdprRequests, reviewGdprRequest } from "@/lib/api";
 import GDPRPrivacyTable, { GDPRRow } from "./GDPRPrivacyTable";
-
-const demoGDPR: GDPRRow[] = [
-  {
-    id: "1",
-    user: "John Doe",
-    requestType: "Data Deletion",
-    requestedAt: "2025-11-20 09:00",
-    status: "pending",
-  },
-  {
-    id: "2",
-    user: "Jane Smith",
-    requestType: "Data Export",
-    requestedAt: "2025-11-18 15:30",
-    status: "completed",
-  },
-  {
-    id: "3",
-    user: "Alex Brown",
-    requestType: "Preference Update",
-    requestedAt: "2025-11-17 12:10",
-    status: "rejected",
-  },
-  {
-    id: "4",
-    user: "Maria Green",
-    requestType: "Data Export",
-    requestedAt: "2025-11-21 10:45",
-    status: "pending",
-  },
-];
 
 export default function GDPRPrivacy() {
   const [tab, setTab] = useState("pending");
   const [selected, setSelected] = useState<GDPRRow | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const filtered = demoGDPR.filter((d) => d.status === tab);
+  const { data = [] } = useQuery({
+    queryKey: ["gdprRequests"],
+    queryFn: getGdprRequests,
+  });
+
+
+  const allRows: GDPRRow[] = (data || []).map((row: any) => {
+    const rawStatus = (row.Status ?? row.status ?? "Pending").toString().toLowerCase();
+
+    const status =
+      rawStatus === "denied"
+        ? "rejected"
+        : rawStatus === "completed"
+        ? "completed"
+        : "pending";
+
+    return {
+      id: row.GdprId?.toString() ?? row.id?.toString() ?? "",
+      user: row.Username ?? row.Email ?? row.user ?? "Unknown",
+      requestType: row.Type ?? row.requestType ?? "Unknown",
+      requestedAt: row.RequestedAt
+        ? new Date(row.RequestedAt).toLocaleString()
+        : row.requestedAt ?? "",
+      status,                      // now matches tab values
+      reason: row.Reason ?? row.reason ?? "",
+    };
+  });
+
+
+  const filtered = allRows.filter((r) => r.status === tab);
 
   function handleReview(row: GDPRRow) {
     setSelected(row);
     setModalOpen(true);
   }
 
-  function handleAction(action: "complete" | "reject") {
+  async function handleAction(action: "complete" | "reject") {
     setModalOpen(false);
-    toast({
-      title: `Request ${action === "complete" ? "completed" : "rejected"}`,
-      description: `GDPR request for ${selected?.user} (${selected?.requestType}) has been ${action === "complete" ? "completed" : "rejected"}.`,
-    });
-    // Here you would update state or refetch data
+    if (!selected) return;
+    try {
+      await reviewGdprRequest({
+        gdprId: Number(selected.id),
+        status: action === "complete" ? "Completed" : "Denied",
+        note: reviewNote,
+      });
+      toast({
+        title: `Request ${action === "complete" ? "completed" : "rejected"}`,
+        description: `GDPR request for ${selected.user} (${selected.requestType}) has been ${action === "complete" ? "completed" : "rejected"}.`,
+      });
+      setReviewNote("");
+      queryClient.invalidateQueries({ queryKey: ["gdprRequests"] });
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e.message || "Failed to update GDPR request status",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
@@ -93,11 +110,17 @@ export default function GDPRPrivacy() {
           <div className="space-y-2">
             <div><b>User:</b> {selected?.user}</div>
             <div><b>Request Type:</b> {selected?.requestType}</div>
-            <div><b>Requested At:</b> {selected?.requestedAt}</div>
+            <div><b>Reason:</b> {selected?.reason}</div>
+            <Textarea
+              placeholder="Add a note (optional)"
+              value={reviewNote}
+              onChange={e => setReviewNote(e.target.value)}
+              className="min-h-24"
+            />
           </div>
           <DialogFooter>
             <Button variant="destructive" onClick={() => handleAction("reject")}>Reject</Button>
-            <Button onClick={() => handleAction("complete")}>Mark as Completed</Button>
+            <Button onClick={() => handleAction("complete")}>Complete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

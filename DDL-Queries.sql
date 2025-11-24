@@ -201,6 +201,7 @@ CREATE TABLE [dbo].[GdprRequest] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
     [Type] NVARCHAR(100) NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT('Pending'),
+    [Reason] NVARCHAR(MAX),
     [RequestedAt] UtcStamp NOT NULL,
     [DecidedAt] UtcStamp,
     CONSTRAINT [PK_GdprRequest] PRIMARY KEY CLUSTERED ([GdprId]),
