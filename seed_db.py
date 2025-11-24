@@ -559,7 +559,6 @@ def seed_zones(cursor, num_zones):
 
     return zone_ids, grid
 
-
 def seed_zone_points(cursor, zone_ids):
     """
     Create ZonePoints for each zone:
