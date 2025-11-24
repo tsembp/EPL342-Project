@@ -12,6 +12,9 @@ import type {
   DriverEarnings,
   ReportRow,
   Location,
+  Station,
+  Zone,
+  RouteWaypoint,
 } from "@/types/api";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
@@ -272,3 +275,20 @@ export const submitGDPRRequest = (data: { reason: string; type: string }) =>
     method: "POST",
     body: JSON.stringify(data),
   });
+// Stations & Zones
+export const getStations = async (): Promise<Station[]> => {
+  const response = await fetchAPI<{ success: boolean; stations: Station[]; total: number }>('/stations');
+  return response.stations;
+};
+
+export const getZones = async (): Promise<Zone[]> => {
+  const response = await fetchAPI<{ success: boolean; zones: Zone[]; total: number }>('/zones');
+  return response.zones;
+};
+
+export const getRouteVisualization = async (pickupPointId: number, dropoffPointId: number): Promise<RouteWaypoint[]> => {
+  const response = await fetchAPI<{ success: boolean; waypoints: RouteWaypoint[]; totalWaypoints: number }>(
+    `/route/visualization?pickupPointId=${pickupPointId}&dropoffPointId=${dropoffPointId}`
+  );
+  return response.waypoints;
+};

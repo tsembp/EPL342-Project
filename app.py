@@ -186,6 +186,177 @@ def get_current_user():
         }), 200
     return jsonify({'authenticated': False}), 401
 
+# Stations/Zones endpoints
+@app.route("/api/stations", methods=["GET"])
+def get_stations():
+    """
+    Get available stations (ZonePoints) filtered by:
+    - pointType: 'S' (station), 'B' (bridge), or both (default: both)
+    - isPickupAllowed: true/false (optional)
+    - isDropoffAllowed: true/false (optional)
+    """
+    point_type = request.args.get("pointType")  # 'S', 'B', or None (both)
+    is_pickup_allowed = request.args.get("isPickupAllowed")
+    is_dropoff_allowed = request.args.get("isDropoffAllowed")
+
+    # Build WHERE clauses
+    where_clauses = []
+    params = []
+
+    # PointType filter
+    if point_type in ("S", "B"):
+        where_clauses.append("zp.PointType = ?")
+        params.append(point_type)
+    else:
+        where_clauses.append("zp.PointType IN ('S', 'B')")
+
+    # isPickupAllowed filter
+    if is_pickup_allowed is not None:
+        where_clauses.append("zp.IsPickupAllowed = ?")
+        params.append(1 if is_pickup_allowed.lower() == "true" else 0)
+
+    # isDropoffAllowed filter
+    if is_dropoff_allowed is not None:
+        where_clauses.append("zp.IsDropoffAllowed = ?")
+        params.append(1 if is_dropoff_allowed.lower() == "true" else 0)
+
+    where_sql = " AND ".join(where_clauses)
+
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                sql = f"""
+                    SELECT 
+                        zp.PointId,
+                        zp.ZoneId,
+                        zp.Latitude,
+                        zp.Longitude,
+                        zp.Name,
+                        zp.IsPickupAllowed,
+                        zp.IsDropoffAllowed,
+                        gz.Name as ZoneName,
+                        zp.PointType
+                    FROM [dbo].[ZonePoint] zp
+                    JOIN [dbo].[Geofencezone] gz ON zp.ZoneId = gz.ZoneId
+                    WHERE {where_sql}
+                    ORDER BY gz.Name, zp.Name
+                """
+                cur.execute(sql, *params)
+                stations = []
+                for row in cur.fetchall():
+                    stations.append({
+                        'pointId': row[0],
+                        'zoneId': row[1],
+                        'latitude': float(row[2]),
+                        'longitude': float(row[3]),
+                        'name': row[4],
+                        'isPickupAllowed': bool(row[5]),
+                        'isDropoffAllowed': bool(row[6]),
+                        'zoneName': row[7],
+                        'pointType': row[8]
+                    })
+                return jsonify({
+                    'success': True,
+                    'stations': stations,
+                    'total': len(stations)
+                }), 200
+    except Exception as e:
+        print(f"Error fetching stations: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/zones", methods=["GET"])
+def get_zones():
+    """Get all geofence zones"""
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        ZoneId,
+                        MinLat,
+                        MinLng,
+                        MaxLat,
+                        MaxLng,
+                        Name
+                    FROM [dbo].[Geofencezone]
+                    ORDER BY ZoneId
+                """)
+                
+                zones = []
+                for row in cur.fetchall():
+                    zones.append({
+                        'zoneId': row[0],
+                        'minLat': float(row[1]),
+                        'minLng': float(row[2]),
+                        'maxLat': float(row[3]),
+                        'maxLng': float(row[4]),
+                        'name': row[5]
+                    })
+                
+                return jsonify({
+                    'success': True,
+                    'zones': zones,
+                    'total': len(zones)
+                }), 200
+                
+    except Exception as e:
+        print(f"Error fetching zones: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route("/api/route/visualization", methods=["GET"])
+def get_route_visualization():
+    """Get route waypoints including bridge points for visualization"""
+    pickup_point_id = request.args.get('pickupPointId', type=int)
+    dropoff_point_id = request.args.get('dropoffPointId', type=int)
+    
+    if not pickup_point_id or not dropoff_point_id:
+        return jsonify({
+            'success': False, 
+            'error': 'Both pickupPointId and dropoffPointId are required'
+        }), 400
+    
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                # Call stored procedure to get route waypoints
+                print(f"Calling usp_GetRouteVisualization with pickup={pickup_point_id}, dropoff={dropoff_point_id}")
+                cur.execute("""
+                    EXEC dbo.usp_GetRouteVisualization 
+                        @PickupPointId=?, 
+                        @DropoffPointId=?
+                """, pickup_point_id, dropoff_point_id)
+                
+                waypoints = []  
+                for row in cur.fetchall():
+                    print(f"Row: {row}")
+                    waypoints.append({
+                        'sequenceNumber': row[0],
+                        'pointId': row[1],
+                        'latitude': float(row[2]),
+                        'longitude': float(row[3]),
+                        'pointType': row[4],
+                        'pointName': row[5] if row[5] else f"Point {row[1]}",
+                        'zoneId': row[6],
+                        'pointRole': row[7]
+                    })
+                
+                print(f"Retrieved {len(waypoints)} waypoints")
+                return jsonify({
+                    'success': True,
+                    'waypoints': waypoints,
+                    'totalWaypoints': len(waypoints)
+                }), 200
+                
+    except pyodbc.Error as e:
+        print(f"Database error getting route visualization: {e}")
+        print(f"Error details: {e.args}")
+        return jsonify({'success': False, 'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"Error getting route visualization: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Example protected endpoints using decorators
 @app.route("/api/passenger/profile", methods=["GET"])
 @require_auth
@@ -404,6 +575,95 @@ def my_gdpr_requests():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route("/api/passenger/request-ride", methods=["POST"])
+@require_auth
+@require_role('P')
+def request_ride():
+    """
+    Create a new ride request for the logged-in passenger.
+    Expects: JSON with pickupPointId, dropoffPointId, rideProfileId, numOfPeople, pickupAt (ISO string)
+    """
+    data = request.json
+    user_id = session['user_id']
+
+    try:
+        pickup_point_id = int(data.get("pickupPointId"))
+        dropoff_point_id = int(data.get("dropoffPointId"))
+        ride_profile_id = data.get("rideProfileId")
+        num_of_people = int(data.get("numOfPeople", 1))
+        pickup_at = data.get("pickupAt")  # ISO string
+
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_RideRequest_Create
+                        @PassengerId=?,
+                        @NumOfPeople=?,
+                        @PickupAt=?,
+                        @PickUpPointId=?,
+                        @DropOffPointId=?,
+                        @RideProfileId=?
+                """, user_id, num_of_people, pickup_at, pickup_point_id, dropoff_point_id, ride_profile_id)
+                row = cur.fetchone()
+                if row:
+                    return jsonify({"success": True, "requestId": row[0]}), 201
+                else:
+                    return jsonify({"success": False, "error": "No requestId returned"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+@app.route("/api/meta/enums", methods=["GET"])
+def get_enums():
+    """Return valid ride profiles (service, ride, vehicle combos) and enums"""
+    try:
+        with pyodbc.connect(CN_STR, timeout=10) as conn:
+            with conn.cursor() as cur:
+                # Service types
+                cur.execute("SELECT ServiceTypeId, Name FROM dbo.Servicetype WHERE Active = 1")
+                services = [(row[0], row[1]) for row in cur.fetchall()]
+
+                # Ride types
+                cur.execute("SELECT RideTypeId, Name FROM dbo.Ridetype")
+                ride_types = [(row[0], row[1]) for row in cur.fetchall()]
+
+                # Vehicle types
+                cur.execute("SELECT VehicleTypeId, Name, NumOfSeats FROM dbo.VehicleType")
+                veh_types = [(row[0], row[1], row[2]) for row in cur.fetchall()]
+
+                # Allowed ride profiles WITH seat count
+                cur.execute("""
+                    SELECT 
+                        arp.RideProfileId,
+                        st.ServiceTypeId, st.Name,
+                        rt.RideTypeId, rt.Name,
+                        vt.VehicleTypeId, vt.Name,
+                        vt.NumOfSeats
+                    FROM dbo.AllowedRideProfile arp
+                    JOIN dbo.Servicetype st ON arp.ServiceTypeId = st.ServiceTypeId
+                    JOIN dbo.Ridetype rt ON arp.RideTypeId = rt.RideTypeId
+                    JOIN dbo.VehicleType vt ON arp.VehicleTypeId = vt.VehicleTypeId
+                """)
+                combo_specs = []
+                for row in cur.fetchall():
+                    combo_specs.append({
+                        "ride_profile_id": str(row[0]),
+                        "service_type_id": row[1],
+                        "service_type_name": row[2],
+                        "ride_type_id": row[3],
+                        "ride_type_name": row[4],
+                        "vehicle_type_id": row[5],
+                        "vehicle_type_name": row[6],
+                        "num_seats": row[7],  # <-- add this
+                    })
+
+                return jsonify({
+                    "services": services,
+                    "ride_types": ride_types,
+                    "veh_types": veh_types,
+                    "combo_specs": combo_specs
+                }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 PAGE = """
 <!doctype html>
 <html>

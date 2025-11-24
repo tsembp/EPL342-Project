@@ -4,8 +4,32 @@ import random
 import pyodbc
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from shapely.geometry import Point
+import geopandas as gpd
+from pathlib import Path
 
 load_dotenv()
+
+# ---------------------------------------------------
+# LOAD ACCURATE CYPRUS LAND BOUNDARY
+# ---------------------------------------------------
+print("Loading Cyprus boundary from GeoJSON...")
+cyprus_boundary_file = Path("seed_data/cyprus_boundary.geojson")
+
+if not cyprus_boundary_file.exists():
+    print("❌ Cyprus boundary file not found!")
+    print("Please run: python download_cyprus_boundary.py")
+    exit(1)
+
+cyprus_gdf = gpd.read_file(cyprus_boundary_file)
+cyprus_land = cyprus_gdf.geometry.iloc[0]
+print(f"✅ Loaded Cyprus boundary (type: {cyprus_land.geom_type})")
+
+
+def is_on_land(lat, lng):
+    """Check if a point is within accurate Cyprus land boundary."""
+    point = Point(lng, lat)  # Shapely uses (x, y) = (lng, lat)
+    return cyprus_land.contains(point)
 
 # ---------------------------------------------------
 # ENV-BASED CONNECTION STRING (your format)
@@ -562,11 +586,12 @@ def seed_zones(cursor, num_zones):
 def seed_zone_points(cursor, zone_ids):
     """
     Create ZonePoints for each zone:
-    - 2-3 stations (type 'S') for pickup/dropoff
+    - 5-6 stations (type 'S') for pickup/dropoff (LAND ONLY - filtered)
     - 4 bridge endpoints (type 'B') at zone boundaries
     Returns: dict mapping zone_id -> {'stations': [...], 'bridges': {...}}
     """
     zone_points = {}
+    total_rejected = 0
 
     for zone_id in zone_ids:
         cursor.execute(
@@ -582,79 +607,83 @@ def seed_zone_points(cursor, zone_ids):
         station_points = []
         bridge_points = {}
 
-        num_stations = random.randint(2, 3)
-        for i in range(num_stations):
-            lat = random.uniform(float(min_lat), float(max_lat))
-            lng = random.uniform(float(min_lng), float(max_lng))
-
-            point_id = insert_and_return_identity(
-                cursor,
-                """
-                INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
-                OUTPUT INSERTED.PointId
-                VALUES (?, ?, ?, 'S', ?, 1, 1)
-                """,
-                (zone_id, round(lat, 6), round(lng, 6), f"Station {i+1}"),
-            )
-            station_points.append(point_id)
-
-        # Top
-        bridge_points["top"] = insert_and_return_identity(
-            cursor,
-            """
-            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
-            OUTPUT INSERTED.PointId
-            VALUES (?, ?, ?, 'B', ?, 0, 0)
-            """,
-            (zone_id, float(max_lat), mid_lng, "Bridge North"),
-        )
-
-        # Right
-        bridge_points["right"] = insert_and_return_identity(
-            cursor,
-            """
-            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
-            OUTPUT INSERTED.PointId
-            VALUES (?, ?, ?, 'B', ?, 0, 0)
-            """,
-            (zone_id, mid_lat, float(max_lng), "Bridge East"),
-        )
-
-        # Bottom
-        bridge_points["bottom"] = insert_and_return_identity(
-            cursor,
-            """
-            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
-            OUTPUT INSERTED.PointId
-            VALUES (?, ?, ?, 'B', ?, 0, 0)
-            """,
-            (zone_id, float(min_lat), mid_lng, "Bridge South"),
-        )
-
-        # Left
-        bridge_points["left"] = insert_and_return_identity(
-            cursor,
-            """
-            INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
-            OUTPUT INSERTED.PointId
-            VALUES (?, ?, ?, 'B', ?, 0, 0)
-            """,
-            (zone_id, mid_lat, float(min_lng), "Bridge West"),
-        )
+        # Generate 5-6 land-based stations per zone
+        target_stations = random.randint(5, 6)
+        lat_padding = (float(max_lat) - float(min_lat)) * 0.15
+        lng_padding = (float(max_lng) - float(min_lng)) * 0.15
+        
+        generated = 0
+        attempts = 0
+        max_attempts = target_stations * 100  # Avoid infinite loops for water zones
+        
+        while generated < target_stations and attempts < max_attempts:
+            attempts += 1
+            
+            # Generate random point with padding
+            lat = random.uniform(float(min_lat) + lat_padding, float(max_lat) - lat_padding)
+            lng = random.uniform(float(min_lng) + lng_padding, float(max_lng) - lng_padding)
+            
+            # Only insert if point is on land
+            if is_on_land(lat, lng):
+                point_id = insert_and_return_identity(
+                    cursor,
+                    """
+                    INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+                    OUTPUT INSERTED.PointId
+                    VALUES (?, ?, ?, 'S', ?, 1, 1)
+                    """,
+                    (zone_id, round(lat, 6), round(lng, 6), f"Station {generated + 1}"),
+                )
+                station_points.append(point_id)
+                generated += 1
+            else:
+                total_rejected += 1
+        
+        if generated < target_stations:
+            print(f"  ⚠️  Zone {zone_id}: Only generated {generated}/{target_stations} stations (mostly water)")
+        
+        # Bridge points - also filter for land
+        bridge_candidates = {
+            "top": (float(max_lat), mid_lng, "Bridge North"),
+            "right": (mid_lat, float(max_lng), "Bridge East"),
+            "bottom": (float(min_lat), mid_lng, "Bridge South"),
+            "left": (mid_lat, float(min_lng), "Bridge West"),
+        }
+        
+        for direction, (lat, lng, name) in bridge_candidates.items():
+            # Only create bridge point if it's on land
+            if is_on_land(lat, lng):
+                bridge_points[direction] = insert_and_return_identity(
+                    cursor,
+                    """
+                    INSERT INTO [dbo].[ZonePoint] (ZoneId, Latitude, Longitude, PointType, Name, IsPickupAllowed, IsDropoffAllowed)
+                    OUTPUT INSERTED.PointId
+                    VALUES (?, ?, ?, 'B', ?, 0, 0)
+                    """,
+                    (zone_id, lat, lng, name),
+                )
+            else:
+                bridge_points[direction] = None  # Mark as unavailable
+                total_rejected += 1
 
         zone_points[zone_id] = {"stations": station_points, "bridges": bridge_points}
 
+    print(f"  ✅ Generated {sum(len(zp['stations']) for zp in zone_points.values())} land-based stations")
+    print(f"  🌊 Rejected {total_rejected} sea-based points")
+    
     return zone_points
 
 
 def seed_bridges(cursor, grid, zone_points):
     """
     Create bridges connecting adjacent zones (right and down neighbors).
+    Only creates bridges if the bridge point exists (is on land).
     """
     bridge_ids = []
     bridge_map = {}
     num_rows = len(grid)
     num_cols = len(grid[0])
+    skipped_bridges = 0
 
     for r in range(num_rows):
         for c in range(num_cols):
@@ -662,35 +691,46 @@ def seed_bridges(cursor, grid, zone_points):
 
             if c < num_cols - 1:
                 right = grid[r][c + 1]
-                point_id = zone_points[current]["bridges"]["right"]
-
-                bridge_id = insert_and_return_identity(
-                    cursor,
-                    """
-                    INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
-                    OUTPUT INSERTED.BridgeId
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (point_id, current, right, f"Bridge {len(bridge_ids)+1}"),
-                )
-                bridge_ids.append(bridge_id)
-                bridge_map[(current, right)] = bridge_id
+                point_id = zone_points[current]["bridges"].get("right")
+                
+                # Only create bridge if the point exists (is on land)
+                if point_id is not None:
+                    bridge_id = insert_and_return_identity(
+                        cursor,
+                        """
+                        INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
+                        OUTPUT INSERTED.BridgeId
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (point_id, current, right, f"Bridge {len(bridge_ids)+1}"),
+                    )
+                    bridge_ids.append(bridge_id)
+                    bridge_map[(current, right)] = bridge_id
+                else:
+                    skipped_bridges += 1
 
             if r < num_rows - 1:
                 down = grid[r + 1][c]
-                point_id = zone_points[current]["bridges"]["bottom"]
-
-                bridge_id = insert_and_return_identity(
-                    cursor,
-                    """
-                    INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
-                    OUTPUT INSERTED.BridgeId
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (point_id, current, down, f"Bridge {len(bridge_ids)+1}"),
-                )
-                bridge_ids.append(bridge_id)
-                bridge_map[(current, down)] = bridge_id
+                point_id = zone_points[current]["bridges"].get("bottom")
+                
+                # Only create bridge if the point exists (is on land)
+                if point_id is not None:
+                    bridge_id = insert_and_return_identity(
+                        cursor,
+                        """
+                        INSERT INTO [dbo].[Bridge] (PointId, FromZoneId, ToZoneId, Name)
+                        OUTPUT INSERTED.BridgeId
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (point_id, current, down, f"Bridge {len(bridge_ids)+1}"),
+                    )
+                    bridge_ids.append(bridge_id)
+                    bridge_map[(current, down)] = bridge_id
+                else:
+                    skipped_bridges += 1
+    
+    print(f"  ✅ Created {len(bridge_ids)} land-based bridges")
+    print(f"  🌊 Skipped {skipped_bridges} water-based bridges")
 
     return bridge_ids, bridge_map
 
@@ -942,6 +982,11 @@ def seed_itinerary_legs(cursor, ride_requests_info, bridge_map, grid, zone_point
                 else:
                     to_point = bridge_point
 
+                # Skip this leg if either point is None (water zone)
+                if current_point is None or to_point is None:
+                    print(f"  ⚠️  Skipping leg {seq} for request {req_id}: water zone encountered")
+                    continue
+                
                 leg_id = insert_and_return_identity(
                     cursor,
                     """
@@ -955,6 +1000,9 @@ def seed_itinerary_legs(cursor, ride_requests_info, bridge_map, grid, zone_point
 
                 if not is_last_leg:
                     current_point = get_random_station_in_zone(to_zone, zone_points)
+                    if current_point is None:
+                        print(f"  ⚠️  No stations in zone {to_zone}, breaking path for request {req_id}")
+                        break
 
     return leg_ids
 
@@ -985,6 +1033,9 @@ def seed_ride_requests(
     cursor, num_requests, passenger_ids, ride_profile_ids, zone_ids, zone_points
 ):
     request_info = []
+    
+    # Filter out zones with no stations (water zones)
+    zones_with_stations = [z for z in zone_ids if zone_points[z]["stations"]]
 
     for _ in range(num_requests):
         passenger_id = random.choice(passenger_ids)
@@ -1002,9 +1053,10 @@ def seed_ride_requests(
         service_row = cursor.fetchone()
         is_bridged = service_row and service_row[0] == "bridged_route"
 
-        start_zone = random.choice(zone_ids)
+        # Only pick from zones that have stations
+        start_zone = random.choice(zones_with_stations)
         if is_bridged:
-            end_zone = random.choice([z for z in zone_ids if z != start_zone])
+            end_zone = random.choice([z for z in zones_with_stations if z != start_zone])
         else:
             end_zone = start_zone
 
@@ -1525,26 +1577,26 @@ def main():
     try:
         cursor = conn.cursor()
 
-        print("Seeding Admins...")
-        admin_ids = seed_admins(cursor, CONFIG["NUM_ADMINS"])
+        # print("Seeding Admins...")
+        # admin_ids = seed_admins(cursor, CONFIG["NUM_ADMINS"])
 
-        print("Seeding Operators...")
-        operator_ids = seed_operators(cursor, CONFIG["NUM_OPERATORS"], admin_ids)
+        # print("Seeding Operators...")
+        # operator_ids = seed_operators(cursor, CONFIG["NUM_OPERATORS"], admin_ids)
 
-        print("Seeding Users & Roles...")
-        users = seed_users_and_roles(
-            cursor,
-            CONFIG["NUM_DRIVERS"],
-            CONFIG["NUM_PASSENGERS"],
-            CONFIG["NUM_COMPANY_REPS"],
-        )
-        driver_ids = users["D"]
-        passenger_ids = users["P"]
-        company_rep_ids = users["C"]
-        all_user_ids = driver_ids + passenger_ids + company_rep_ids
+        # print("Seeding Users & Roles...")
+        # users = seed_users_and_roles(
+        #     cursor,
+        #     CONFIG["NUM_DRIVERS"],
+        #     CONFIG["NUM_PASSENGERS"],
+        #     CONFIG["NUM_COMPANY_REPS"],
+        # )
+        # driver_ids = users["D"]
+        # passenger_ids = users["P"]
+        # company_rep_ids = users["C"]
+        # all_user_ids = driver_ids + passenger_ids + company_rep_ids
 
-        print("Seeding UserPreferences...")
-        seed_user_preferences(cursor, all_user_ids)
+        # print("Seeding UserPreferences...")
+        # seed_user_preferences(cursor, all_user_ids)
 
         print("Seeding ServiceTypes, RideTypes, VehicleTypes from combo_specs...")
         (
@@ -1553,91 +1605,91 @@ def main():
             vehicle_type_ids,
         ) = seed_service_ride_vehicle_types_from_combos(cursor)
 
-        print("Seeding Zones...")
-        zone_ids, grid = seed_zones(cursor, CONFIG["NUM_ZONES"])
+        # print("Seeding Zones...")
+        # zone_ids, grid = seed_zones(cursor, CONFIG["NUM_ZONES"])
 
-        print("Seeding ZonePoints (stations and bridge endpoints)...")
-        zone_points = seed_zone_points(cursor, zone_ids)
+        # print("Seeding ZonePoints (stations and bridge endpoints)...")
+        # zone_points = seed_zone_points(cursor, zone_ids)
 
-        print("Seeding Bridges...")
-        bridge_ids, bridge_map = seed_bridges(cursor, grid, zone_points)
+        # print("Seeding Bridges...")
+        # bridge_ids, bridge_map = seed_bridges(cursor, grid, zone_points)
 
-        print("Seeding Vehicles...")
-        vehicle_ids_with_status = seed_vehicles(
-            cursor,
-            CONFIG["NUM_VEHICLES"],
-            vehicle_type_ids,
-            owner_user_ids=driver_ids + company_rep_ids,
-        )
-        vehicle_ids = [vid for vid, _ in vehicle_ids_with_status]
+        # print("Seeding Vehicles...")
+        # vehicle_ids_with_status = seed_vehicles(
+        #     cursor,
+        #     CONFIG["NUM_VEHICLES"],
+        #     vehicle_type_ids,
+        #     owner_user_ids=driver_ids + company_rep_ids,
+        # )
+        # vehicle_ids = [vid for vid, _ in vehicle_ids_with_status]
 
         print("Seeding AllowedRideProfiles from combo_specs...")
         ride_profile_ids = seed_allowed_ride_profiles(
             cursor, service_type_ids, ride_type_ids, vehicle_type_ids
         )
 
-        print("Seeding UserServiceEnrollments...")
-        seed_user_service_enrollments(
-            cursor,
-            drivers=driver_ids,
-            vehicles=vehicle_ids,
-            service_type_ids=service_type_ids,
-            ride_type_ids=ride_type_ids,
-            operator_ids=operator_ids,
-        )
+        # print("Seeding UserServiceEnrollments...")
+        # seed_user_service_enrollments(
+        #     cursor,
+        #     drivers=driver_ids,
+        #     vehicles=vehicle_ids,
+        #     service_type_ids=service_type_ids,
+        #     ride_type_ids=ride_type_ids,
+        #     operator_ids=operator_ids,
+        # )
 
-        print("Seeding Driver Availability...")
-        seed_driver_availability(
-            cursor, driver_ids, vehicle_ids, service_type_ids, ride_type_ids, zone_ids
-        )
+        # print("Seeding Driver Availability...")
+        # seed_driver_availability(
+        #     cursor, driver_ids, vehicle_ids, service_type_ids, ride_type_ids, zone_ids
+        # )
 
-        print("Seeding RideRequests...")
-        request_info = seed_ride_requests(
-            cursor,
-            CONFIG["NUM_RIDE_REQUESTS"],
-            passenger_ids,
-            ride_profile_ids,
-            zone_ids,
-            zone_points,
-        )
+        # print("Seeding RideRequests...")
+        # request_info = seed_ride_requests(
+        #     cursor,
+        #     CONFIG["NUM_RIDE_REQUESTS"],
+        #     passenger_ids,
+        #     ride_profile_ids,
+        #     zone_ids,
+        #     zone_points,
+        # )
 
-        print("Seeding ItineraryLegs...")
-        leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid, zone_points)
+        # print("Seeding ItineraryLegs...")
+        # leg_ids = seed_itinerary_legs(cursor, request_info, bridge_map, grid, zone_points)
 
-        print("Seeding DispatchOffers...")
-        offer_ids = seed_dispatch_offers(cursor, leg_ids, driver_ids)
+        # print("Seeding DispatchOffers...")
+        # offer_ids = seed_dispatch_offers(cursor, leg_ids, driver_ids)
 
-        print("Seeding Rides...")
-        rides_info = seed_rides(
-            cursor,
-            CONFIG["NUM_RIDES"],
-            driver_ids,
-            passenger_ids,
-            vehicle_ids,
-            offer_ids,
-        )
+        # print("Seeding Rides...")
+        # rides_info = seed_rides(
+        #     cursor,
+        #     CONFIG["NUM_RIDES"],
+        #     driver_ids,
+        #     passenger_ids,
+        #     vehicle_ids,
+        #     offer_ids,
+        # )
 
-        print("Seeding Payments (only for completed rides)...")
-        payment_ids = seed_payments(cursor, rides_info)
+        # print("Seeding Payments (only for completed rides)...")
+        # payment_ids = seed_payments(cursor, rides_info)
 
-        print("Seeding Ratings...")
-        rating_ids = seed_ratings(
-            cursor,
-            CONFIG["NUM_RATINGS"],
-            rides_info,
-        )
+        # print("Seeding Ratings...")
+        # rating_ids = seed_ratings(
+        #     cursor,
+        #     CONFIG["NUM_RATINGS"],
+        #     rides_info,
+        # )
 
-        print("Seeding PersonDocuments (only for Drivers and Company Representatives)...")
-        users_with_documents = driver_ids + company_rep_ids
-        seed_person_documents(cursor, users_with_documents, operator_ids)
+        # print("Seeding PersonDocuments (only for Drivers and Company Representatives)...")
+        # users_with_documents = driver_ids + company_rep_ids
+        # seed_person_documents(cursor, users_with_documents, operator_ids)
 
-        print("Seeding VehicleDocuments...")
-        seed_vehicle_documents(
-            cursor,
-            vehicle_ids_with_status,
-            CONFIG["NUM_VEHICLE_DOCS_PER_VEHICLE"],
-            operator_ids,
-        )
+        # print("Seeding VehicleDocuments...")
+        # seed_vehicle_documents(
+        #     cursor,
+        #     vehicle_ids_with_status,
+        #     CONFIG["NUM_VEHICLE_DOCS_PER_VEHICLE"],
+        #     operator_ids,
+        # )
 
         conn.commit()
         print("Seeding completed successfully.")
