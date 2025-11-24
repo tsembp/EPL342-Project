@@ -28,6 +28,8 @@ import SystemAuditLogs from "./pages/operator/SystemAuditLogs";
 import NotFound from "./pages/NotFound";
 import GDPRRequest from "./pages/GDPRRequest";
 import GDPRExport from "@/pages/GDPRExport";
+import CreateRide from "./pages/passenger/CreateRide";
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient();
 
@@ -51,14 +53,13 @@ function App() {
           <Toaster />
           <Sonner />
           <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/driver/documents" element={<DriverDocuments />} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
-            
-            <Route path="/map" element={<ProtectedRoute><Map /></ProtectedRoute>} />
-            <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/driver/documents" element={<DriverDocuments />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
+            <Route path="/ride" element={<ProtectedRoute><CreateRide /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/credit" element={<ProtectedRoute><Credit /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -16,7 +16,8 @@ interface MapViewProps {
   markers?: Array<{
     position: [number, number];
     popup?: string;
-    icon?: "default" | "pickup" | "dropoff" | "vehicle";
+    icon?: "default" | "pickup" | "dropoff" | "vehicle" | "station";
+    onClick?: () => void;
   }>;
   polyline?: [number, number][];
   className?: string;
@@ -75,11 +76,14 @@ export function MapView({
     });
 
     // Add markers
-    markers.forEach(({ position, popup, icon }) => {
+    markers.forEach(({ position, popup, icon, onClick }) => {
       const markerIcon = getMarkerIcon(icon || "default");
       const marker = L.marker(position, markerIcon ? { icon: markerIcon } : undefined);
       if (popup) {
         marker.bindPopup(popup);
+      }
+      if (onClick) {
+        marker.on('click', onClick);
       }
       marker.addTo(mapRef.current!);
     });
@@ -107,6 +111,7 @@ function getMarkerIcon(type: string) {
     pickup: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
     dropoff: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
     vehicle: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+    station: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
   };
 
   if (!iconUrls[type]) return null;
