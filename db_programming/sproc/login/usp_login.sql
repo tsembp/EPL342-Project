@@ -28,7 +28,7 @@ BEGIN
         @Role               = A.Role,
         @Verified           = A.Verified,
         @AccountType        = A.AccountType
-    FROM dbo.vAllAccounts AS A
+    FROM dbo.vw_AllAccounts AS A
     WHERE A.Email = @InputEmail;
 
     -- If no such account

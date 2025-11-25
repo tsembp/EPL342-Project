@@ -384,7 +384,6 @@ CREATE TABLE [dbo].[ItineraryLeg] (
     CONSTRAINT [UQ_ItineraryLeg_SeqNo_RideRequest] UNIQUE ([SeqNo], [RideRequestId])
 );
 
-
 CREATE TABLE [dbo].[VehicleDocument] (
     [VehDocId] INT IDENTITY(1,1) NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
