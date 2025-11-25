@@ -10,11 +10,15 @@ export const getOperatorReports = (params: {
   return fetchAPI<ReportRow[]>(`/operator/reports?${query}`);
 };
 
-export const getPendingPersonDocuments = () =>
-  fetchAPI<any[]>("/operator/pending-person-documents");
+export const getPendingPersonDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/pending-person-documents");
+  return Array.isArray(res) ? res : [];  // <-- SAFE FIX
+};
 
-export const getPendingVehicleDocuments = () =>
-  fetchAPI<any[]>("/operator/pending-vehicle-documents");
+export const getPendingVehicleDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/pending-vehicle-documents");
+  return Array.isArray(res) ? res : [];  // <-- SAFE FIX
+};
 
 export const reviewPersonDocument = (params: {
   docId: number;
