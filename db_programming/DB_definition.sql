@@ -425,8 +425,9 @@ CREATE TABLE [dbo].[UserServiceEnrollment] (
     [ServiceType] INT NOT NULL,
     [RideType] INT NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Pending',
-    [CheckedAt] UtcStamp,
     [CheckedById] UNIQUEIDENTIFIER,
+    [ReviewedAt] UtcStamp,
+    [ReviewComment] NVARCHAR(MAX),
     CONSTRAINT [PK_UserServiceEnrollment] PRIMARY KEY CLUSTERED ([EnrollId]),
     CONSTRAINT [CK_UserServiceEnrollment_Status] CHECK ([Status] IN ('Pending','Approved','Rejected'))
 );

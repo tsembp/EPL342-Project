@@ -2,21 +2,25 @@ import type { Location } from " @/types/api";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
-export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+// apiClient.ts
+export async function fetchAPI<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const res = await fetch(`http://localhost:8080/api${path}`, {
+    credentials: "include",
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...options?.headers,
+      ...(options.headers || {}),
     },
-    credentials: "include",
   });
 
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+  if (!res.ok) {
+    const text = await res.text(); // 👈 read JSON or plain text
+    console.error("API ERROR BODY:", text);
+    throw new Error(`API Error: ${res.status} ${res.statusText} - ${text}`);
   }
 
-  return response.json();
+  return res.json();
 }
-
-export type { Location };
