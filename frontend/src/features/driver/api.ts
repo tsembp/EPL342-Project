@@ -43,3 +43,23 @@ export const getDriverEarnings = (params: { month: number; year: number }) => {
   });
   return fetchAPI<DriverEarnings>(`/driver/earnings?${query}`);
 };
+
+export const checkServiceEnrollment = (params: {
+  userId: string;
+  vehicleId: number;
+  serviceTypeId: number;
+}) =>
+  fetchAPI("/driver/service-enroll/check", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const createServiceEnrollment = (params: {
+  userId: string;
+  vehicleId: number;
+  serviceTypeId: number;
+}) =>
+  fetchAPI("/driver/service-enroll/create", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
