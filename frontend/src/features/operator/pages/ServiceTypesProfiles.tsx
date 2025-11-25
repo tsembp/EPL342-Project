@@ -1,23 +1,89 @@
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import ServiceTypesTable, { ServiceTypeRow } from "./ServiceTypesTable";
 import AllowedProfilesTable, { AllowedProfileRow } from "./AllowedProfilesTable";
-import { useState } from "react";
-
-const demoServiceTypes: ServiceTypeRow[] = [
-  { id: "1", name: "Simple Passenger Ride", description: "Standard ride for up to 4 passengers.", active: true },
-  { id: "2", name: "Luxury Ride", description: "Premium vehicles for luxury rides.", active: true },
-  { id: "3", name: "Light Cargo", description: "Small van for light cargo.", active: false },
-];
-
-const demoAllowedProfiles: AllowedProfileRow[] = [
-  { id: "1", serviceType: "Simple Passenger Ride", rideType: "vehicle_with_driver", vehicleType: "Sedan", minPrice: 5.0, notes: "Standard" },
-  { id: "2", serviceType: "Luxury Ride", rideType: "vehicle_with_driver", vehicleType: "Luxury Car", minPrice: 15.0 },
-  { id: "3", serviceType: "Light Cargo", rideType: "vehicle_with_driver", vehicleType: "Van", minPrice: 10.0 },
-];
+import { getServiceTypes, getAllowedRideProfiles } from "@/features/operator/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ServiceTypesProfiles() {
   const [tab, setTab] = useState("service-types");
+
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypeRow[]>([]);
+  const [serviceTypesLoading, setServiceTypesLoading] = useState(false);
+
+  const [allowedProfiles, setAllowedProfiles] = useState<AllowedProfileRow[]>([]);
+  const [allowedProfilesLoading, setAllowedProfilesLoading] = useState(false);
+
+  const { toast } = useToast();
+
+  // Load service types from backend
+  useEffect(() => {
+    const loadServiceTypes = async () => {
+      try {
+        setServiceTypesLoading(true);
+        const rows = await getServiceTypes();
+
+        const mapped: ServiceTypeRow[] = rows.map((row: any) => ({
+          id: String(row.ServiceTypeId ?? row.serviceTypeId ?? row.id),
+          name: row.Name ?? row.name ?? "",
+          description: row.Description ?? row.description ?? "",
+          active:
+            row.IsActive === true ||
+            row.IsActive === 1 ||
+            row.Active === true ||
+            row.active === true,
+        }));
+
+        setServiceTypes(mapped);
+      } catch (err) {
+        console.error("Failed to load service types", err);
+        toast({
+          variant: "destructive",
+          title: "Failed to load service types",
+          description: "Please try again or contact an administrator.",
+        });
+      } finally {
+        setServiceTypesLoading(false);
+      }
+    };
+
+    loadServiceTypes();
+  }, [toast]);
+
+  useEffect(() => {
+    const loadAllowedProfiles = async () => {
+      try {
+        setAllowedProfilesLoading(true);
+        const rows = await getAllowedRideProfiles();
+
+        const mapped: AllowedProfileRow[] = rows.map((row: any) => ({
+          id: String(row.RideProfileId ?? row.rideProfileId ?? row.id),
+          serviceType:
+            row.ServiceTypeName ?? row.serviceType ?? row.ServiceType ?? "",
+          rideType: row.RideTypeName ?? row.rideType ?? "",
+          vehicleType:
+            row.VehicleTypeName ?? row.vehicleType ?? row.VehicleType ?? "",
+          minPrice: Number(row.MinBasePrice ?? row.MinPrice ?? row.minPrice ?? 0),
+          notes: row.Notes ?? row.notes ?? undefined,
+        }));
+
+        setAllowedProfiles(mapped);
+      } catch (err) {
+        console.error("Failed to load allowed ride profiles", err);
+        toast({
+          variant: "destructive",
+          title: "Failed to load allowed ride profiles",
+          description: "Please try again or contact an administrator.",
+        });
+      } finally {
+        setAllowedProfilesLoading(false);
+      }
+    };
+
+    loadAllowedProfiles();
+  }, [toast]);
+
   return (
     <div className="space-y-6">
       <Tabs value={tab} onValueChange={setTab}>
@@ -31,7 +97,12 @@ export default function ServiceTypesProfiles() {
             <h2 className="text-lg font-semibold">Service Types</h2>
             <Button>Add Service Type</Button>
           </div>
-          <ServiceTypesTable data={demoServiceTypes} />
+
+          {serviceTypesLoading ? (
+            <div className="text-sm text-muted-foreground">Loading service types…</div>
+          ) : (
+            <ServiceTypesTable data={serviceTypes} />
+          )}
         </TabsContent>
 
         <TabsContent value="allowed-profiles">
@@ -39,7 +110,12 @@ export default function ServiceTypesProfiles() {
             <h2 className="text-lg font-semibold">Allowed Ride Profiles</h2>
             <Button>Add Allowed Profile</Button>
           </div>
-          <AllowedProfilesTable data={demoAllowedProfiles} />
+
+          {allowedProfilesLoading ? (
+            <div className="text-sm text-muted-foreground">Loading allowed profiles…</div>
+          ) : (
+            <AllowedProfilesTable data={allowedProfiles} />
+          )}
         </TabsContent>
       </Tabs>
     </div>
