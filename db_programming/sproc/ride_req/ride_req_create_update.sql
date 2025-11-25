@@ -31,6 +31,25 @@ BEGIN
             RETURN;
         END
 
+        -- Validate service type and points - if NOT bridged route -> ensure pickup & dropoff at same zone
+        DECLARE @ServiceType NVARCHAR(100);
+        SELECT @ServiceType = ST.Name
+        FROM [dbo].[AllowedRideProfile] ARP
+        JOIN [dbo].[Servicetype] ST ON ARP.ServiceTypeId = ST.ServiceTypeId
+        WHERE ARP.RideProfileId = @RideProfileId;
+
+        IF @ServiceType <> 'bridged_route'
+        BEGIN
+            DECLARE @PickupZone INT, @DropoffZone INT;
+            SELECT @PickupZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @PickUpPointId;
+            SELECT @DropoffZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @DropOffPointId;
+            IF @PickupZone <> @DropoffZone
+            BEGIN
+                ;THROW 50005, 'Pickup and dropoff must be in the same zone for this service type.', 1;
+                RETURN;
+            END
+        END
+
         -- Validate Pickup and DropOff points
         IF NOT EXISTS (
             SELECT 1
@@ -42,7 +61,7 @@ BEGIN
             WHERE ZP.[PointId] = @DropOffPointId
         )
         BEGIN
-            ;THROW 50005, 'Invalid PickUpPointId or DropOffPointId: One or both points do not exist.', 1;
+            ;THROW 50006, 'Invalid PickUpPointId or DropOffPointId: One or both points do not exist.', 1;
             RETURN;
         END
 
@@ -53,7 +72,7 @@ BEGIN
             WHERE ARP.[RideProfileId] = @RideProfileId
         )
         BEGIN
-            ;THROW 50002, 'Invalid RideProfileId: Ride profile does not exist for the given Passenger.', 1;
+            ;THROW 50007, 'Invalid RideProfileId: Ride profile does not exist for the given Passenger.', 1;
             RETURN;
         END
 
@@ -66,7 +85,7 @@ BEGIN
 
         IF @NumOfPeople > @VehicleSeats
         BEGIN
-            ;THROW 50003, 'Number of people exceeds the maximum allowed for the selected ride profile.', 1;
+            ;THROW 50008, 'Number of people exceeds the maximum allowed for the selected ride profile.', 1;
             RETURN;
         END 
 
