@@ -175,7 +175,7 @@ export type RouteWaypoint = {
   pointId: number;
   latitude: number;
   longitude: number;
-  pointType: 'S' | 'B'; // S = Station, B = Bridge
+  pointType: 'S' | 'B';
   pointName: string;
   zoneId: number;
   pointRole: 'pickup' | 'dropoff' | 'bridge_exit' | 'bridge_entry' | 'waypoint';

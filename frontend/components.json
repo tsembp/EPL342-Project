@@ -11,10 +11,17 @@
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+  "components": "@/components",
+  "utils": "@/lib/utils",
+  "ui": "@/components/ui",
+  "lib": "@/lib",
+  "hooks": "@/hooks",
+  "features": "@/features",
+  "pages": "@/features/pages",
+  "auth": "@/features/auth",
+  "driver": "@/features/driver",
+  "passenger": "@/features/passenger",
+  "operator": "@/features/operator",
+  "gdpr": "@/features/gdpr"
   }
 }
