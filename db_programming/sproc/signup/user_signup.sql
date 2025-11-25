@@ -19,7 +19,7 @@ BEGIN
     -- Input validation
     IF @Role NOT IN ('P','D','C')
     BEGIN
-        RAISERROR('Invalid Role. Must be P, D, or C.', 16, 1);
+        RAISERROR('Invalid Role. Must be Passenger("P"), Driver("D") or Company Representative("C").', 16, 1);
         RETURN;
     END;
 
@@ -55,7 +55,7 @@ BEGIN
 
     DECLARE @UserId UNIQUEIDENTIFIER = NEWID();
     
-    DECLARE @Verified BIT = 0;
+    DECLARE @Verified BIT = CASE WHEN @Role = 'P' THEN 1 ELSE 0 END;
 
     BEGIN TRY
         BEGIN TRAN;

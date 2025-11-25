@@ -150,6 +150,7 @@ CREATE TABLE [dbo].[Operator] (
 
 CREATE TABLE [dbo].[Passenger] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
+    [CanDrive] BIT NOT NULL DEFAULT 0,
     CONSTRAINT [PK_Passenger] PRIMARY KEY CLUSTERED ([UserId])
 );
 
@@ -483,6 +484,7 @@ ALTER TABLE [dbo].[Passenger]
 ADD CONSTRAINT [FK_Passenger_User]
     FOREIGN KEY ([UserId]) REFERENCES [dbo].[User]([UserId])
     ON DELETE CASCADE
+
 
 /* Rating → User (author, target) */
 ALTER TABLE [dbo].[Rating]

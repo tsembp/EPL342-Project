@@ -42,12 +42,11 @@ END;
 GO
 
 
--- STEP 2: Validate documents & verify user
 CREATE OR ALTER PROCEDURE [dbo].[usp_ReviewPersonDocument]
 (
     @OperatorId    UNIQUEIDENTIFIER,
     @DocId         INT,
-    @NewStatus     NVARCHAR(20),               -- 'Accepted', 'Rejected'
+    @NewStatus     NVARCHAR(20),        -- 'Accepted' or 'Rejected'
     @ReviewComment NVARCHAR(1000) = NULL
 )
 AS
@@ -63,37 +62,25 @@ BEGIN
     -- Validate operator
     IF NOT EXISTS (
         SELECT 1
-        FROM [dbo].[Operator] O
-        WHERE O.OperatorId = @OperatorId
-          AND O.Verified = 1
+        FROM dbo.[Operator] O
+        WHERE O.OperatorId = @OperatorId AND O.Verified = 1
     )
     BEGIN
         RAISERROR('Invalid or unverified operator.', 16, 1);
         RETURN;
     END;
 
-    DECLARE
-        @UserId   UNIQUEIDENTIFIER,
-        @UserRole CHAR(1),
-        @DocType  NVARCHAR(100);
-
-    SELECT
-        @UserId  = PD.UserId,
-        @DocType = PD.DocType,
-        @UserRole = U.Role
-    FROM [dbo].[PersonDocument] PD
-    INNER JOIN [dbo].[User] U
-        ON U.UserId = PD.UserId
-    WHERE PD.DocId = @DocId;
-
-    IF @UserId IS NULL
+    -- Make sure document exists
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.PersonDocument PD WHERE PD.DocId = @DocId
+    )
     BEGIN
         RAISERROR('Document not found.', 16, 1);
         RETURN;
     END;
 
-    -- Update review info on the document
-    UPDATE [dbo].[PersonDocument]
+    -- Update review info
+    UPDATE dbo.PersonDocument
     SET
         Status               = @NewStatus,
         ReviewedByOperatorId = @OperatorId,
@@ -101,21 +88,39 @@ BEGIN
         ReviewComments       = @ReviewComment
     WHERE DocId = @DocId;
 
-    -- If rejected, just stop here. User remains unverified or must re-upload.
-    IF @NewStatus = 'Rejected'
+END;
+GO
+
+
+CREATE OR ALTER PROCEDURE [dbo].[usp_ValidateUser]
+(
+    @UserId UNIQUEIDENTIFIER
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @UserRole CHAR(1);
+
+    -- Get user role
+    SELECT @UserRole = U.[Role]
+    FROM [dbo].[User] AS U
+    WHERE U.UserId = @UserId;
+
+    IF @UserRole IS NULL
     BEGIN
+        RAISERROR('User not found.', 16, 1);
         RETURN;
     END;
 
-    -- Only auto-verify Drivers and Company Reps
     IF @UserRole NOT IN ('D', 'C', 'P')
     BEGIN
         RETURN;
     END;
 
     -- Check if user has all required document types approved
-    DECLARE @RequiredDocCountForDriver INT = 8; -- Total required docs
-    DECLARE @RequiredDocCountForPassenger INT = 4; -- Total required docs
+    DECLARE @RequiredDocCountForDriver INT = 8; 
+    DECLARE @RequiredDocCountForPassenger INT = 4; 
     DECLARE @ApprovedDocCount INT;
 
     SELECT @ApprovedDocCount = COUNT(DISTINCT DocType)
@@ -133,21 +138,23 @@ BEGIN
                 'PSYCHOLOGICAL_CERT'
         );
 
-    IF @ApprovedDocCount < @RequiredDocCountForDriver AND @UserRole IN ('D','C')
+    IF @ApprovedDocCount = @RequiredDocCountForDriver AND @UserRole IN ('D','C')
     BEGIN
-            RETURN; -- Not all required docs approved yet
-    END;
-    
-    IF @ApprovedDocCount < @RequiredDocCountForPassenger AND @UserRole = 'P'
-    BEGIN
-            RETURN; -- Not all required docs approved yet
-    END;
-
-    BEGIN
-        -- All required docs are present & approved -> mark user verified
         UPDATE [dbo].[User]
         SET Verified = 1
         WHERE UserId = @UserId;
+        PRINT('Driver/CR verified successfully.');
+        RETURN;
+    END;
+    
+    IF @ApprovedDocCount = @RequiredDocCountForPassenger AND @UserRole = 'P'
+    BEGIN
+        UPDATE [dbo].[Passenger]
+        SET CanDrive = 1
+        WHERE UserId = @UserId;
+        PRINT('Passenger can now drive.');
+        RETURN;
     END;
 END;
 GO
+
