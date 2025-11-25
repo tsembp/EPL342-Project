@@ -27,7 +27,7 @@ BEGIN
             @ZoneId = leg.ZoneId,
             @FromPointId = leg.FromPointId,
             @PickupLocation = zp.Location,
-            @PickupTime = rr.PickupAt
+            @PickupTime = leg.ApproxStartTime
         FROM [dbo].[ItineraryLeg] leg
         INNER JOIN [dbo].[RideRequest] rr ON leg.RideRequestId = rr.RequestId
         INNER JOIN [dbo].[ZonePoint] zp ON leg.FromPointId = zp.PointId
