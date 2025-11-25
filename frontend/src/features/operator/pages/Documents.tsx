@@ -29,9 +29,10 @@ function mapPersonDoc(doc: any): DocumentRow {
     user: doc.Username ?? doc.Email ?? "",
     type: doc.DocType ?? "",
     submittedAt: doc.UploadedAt ? new Date(doc.UploadedAt).toLocaleString() : "",
-    status: doc.Status?.toLowerCase() ?? "pending",
+    status: doc.Status?.trim().toLowerCase() ?? "pending",
   };
 }
+
 
 function mapVehicleDoc(doc: any): DocumentRow {
   return {

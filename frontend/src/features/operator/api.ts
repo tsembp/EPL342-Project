@@ -10,11 +10,15 @@ export const getOperatorReports = (params: {
   return fetchAPI<ReportRow[]>(`/operator/reports?${query}`);
 };
 
-export const getPendingPersonDocuments = () =>
-  fetchAPI<any[]>("/operator/pending-person-documents");
+export const getPendingPersonDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/pending-person-documents");
+  return Array.isArray(res) ? res : []; 
+};
 
-export const getPendingVehicleDocuments = () =>
-  fetchAPI<any[]>("/operator/pending-vehicle-documents");
+export const getPendingVehicleDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/pending-vehicle-documents");
+  return Array.isArray(res) ? res : [];  
+};
 
 export const reviewPersonDocument = (params: {
   docId: number;
@@ -45,6 +49,19 @@ export const reviewGdprRequest = (params: {
   note?: string;
 }) =>
   fetchAPI<{ success: boolean }>("/operator/review-gdpr-request", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const getPendingServiceEnrollments = () =>
+  fetchAPI<any[]>("/operator/service-enrollments");
+
+export const reviewServiceEnrollment = (params: {
+  enrollId: number;
+  status: "Approved" | "Rejected";
+  comment?: string;
+}) =>
+  fetchAPI<{ success: boolean }>("/operator/service-enroll/review", {
     method: "POST",
     body: JSON.stringify(params),
   });

@@ -105,3 +105,64 @@ def review_vehicle_document():
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@operator_bp.route("/service-enrollments", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_service_enrollments():
+    """
+    Operator-side: list all service enrollments.
+    Uses dbo.usp_GetServiceEnrollmentsForReview.
+    """
+    operator_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetServiceEnrollmentsForReview @OperatorId=?
+                    """,
+                    operator_id,
+                )
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /service-enrollments:", e)
+        return jsonify({"error": str(e)}), 500
+
+@operator_bp.route("/service-enroll/review", methods=["POST"])
+@require_auth
+@require_role("O", "I")
+def review_service_enrollment():
+    data = request.get_json(silent=True) or {}
+
+    enroll_id = data.get("enrollId")
+    status = data.get("status")
+    comment = data.get("comment") or ""
+
+    if not enroll_id or status not in ("Approved", "Rejected"):
+        return jsonify({"error": "enrollId and valid status are required"}), 400
+
+    operator_id = session["user_id"]   # or however you store authenticated user
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_ReviewServiceEnrollment
+                        @OperatorId = ?,
+                        @EnrollmentId = ?,
+                        @NewStatus   = ?,
+                        @ReviewComment = ?
+                    """,
+                    (operator_id, enroll_id, status, comment)
+                )
+                conn.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
