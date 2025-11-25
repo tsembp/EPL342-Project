@@ -133,6 +133,7 @@ CREATE TABLE [dbo].[ZonePoint] (
     [IsPickupAllowed] BIT NOT NULL DEFAULT 0,
     [IsDropoffAllowed] BIT NOT NULL DEFAULT 0,
     CONSTRAINT [PK_ZonePoint] PRIMARY KEY CLUSTERED ([PointId]),
+    CONSTRAINT [CK_ZonePoint_PickDrop_OnlyStations] CHECK ((PointType = 'S') OR (PointType = 'B' AND IsPickupAllowed = 0 AND IsDropoffAllowed = 0)),
     CONSTRAINT [UQ_ZonePoint_LatLng_Zone] UNIQUE ([ZoneId], [Latitude], [Longitude])
 );
 
