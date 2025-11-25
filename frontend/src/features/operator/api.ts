@@ -65,3 +65,13 @@ export const reviewServiceEnrollment = (params: {
     method: "POST",
     body: JSON.stringify(params),
   });
+
+  export const getServiceTypes = async () => {
+  const res = await fetchAPI<any[]>("/operator/service-types");
+  return Array.isArray(res) ? res : [];
+};
+
+export const getAllowedRideProfiles = async () => {
+  const res = await fetchAPI<any[]>("/operator/allowed-ride-profiles");
+  return Array.isArray(res) ? res : [];
+};

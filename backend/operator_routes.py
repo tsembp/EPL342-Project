@@ -166,3 +166,39 @@ def review_service_enrollment():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@operator_bp.route("/service-types", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_service_types():
+    """
+    Returns all service types so the operator can view them in the dashboard.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_GetServiceTypes")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /service-types:", e)
+        return jsonify({"error": str(e)}), 500
+
+@operator_bp.route("/allowed-ride-profiles", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_allowed_ride_profiles():
+    """
+    Returns all allowed ride profiles (ServiceType x RideType x VehicleType).
+    Adjust column names if your table uses different ones.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_Operator_GetAllowedRideProfiles")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /allowed-ride-profiles:", e)
+        return jsonify({"error": str(e)}), 500
