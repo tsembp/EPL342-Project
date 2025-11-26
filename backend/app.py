@@ -25,8 +25,10 @@ Session(app)
 # CORS
 CORS(
     app,
+    resources={r"/*": {"origins": "http://localhost:8080"}},
     supports_credentials=True,
-    origins=app.config["CORS_ORIGINS"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Register blueprints
