@@ -28,7 +28,7 @@ BEGIN
 
     UPDATE dbo.UserServiceEnrollment
     SET Status      = @NewStatus,
-        CheckedAt       = GETUTCDATE(),
+        ReviewedAt       = GETUTCDATE(),
         CheckedById     = @CheckedById
     WHERE EnrollId = @EnrollId;
 END;
