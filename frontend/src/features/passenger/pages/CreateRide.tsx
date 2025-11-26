@@ -13,35 +13,83 @@ import {
   Clock,
   User,
   Search as SearchIcon,
+  Car,
+  Sparkles,
+  Truck,
+  Package,
+  Route,
+  Bot,
+  Gamepad2,
+  KeyRound
 } from "lucide-react";
 
-// Very simple pickup-time + rider type enums for now
-const PICKUP_TIMES = [
-  { value: "now", label: "Pickup now" },
-  { value: "in_15", label: "In 15 minutes" },
-  { value: "in_30", label: "In 30 minutes" },
-];
+const serviceIcons = {
+  simple_route: Car,
+  luxury_route: Sparkles,
+  light_cargo: Package,
+  heavy_cargo: Truck,
+  bridged_route: Route,
+};
 
-const RIDER_TYPES = [
-  { value: "me", label: "For me" },
-  { value: "other", label: "For someone else" },
-];
+const rideTypeIcons: Record<string, any> = {
+  fully_autonomous: Bot,
+  teledriving: Gamepad2,
+  vehicle_no_driver: KeyRound,
+  vehicle_with_driver: Car,
+  small_cargo_van: Truck,
+};
 
 export default function CreateRide() {
   const [stations, setStations] = useState<Station[]>([]);
   const [pickup, setPickup] = useState<Station | null>(null);
   const [dropoff, setDropoff] = useState<Station | null>(null);
-  const [pickupTime, setPickupTime] = useState<string>("now");
-  const [riderType, setRiderType] = useState<string>("me");
+  // Pickup time selection: preset intervals
+  const pickupOptions = [
+    { label: "In 5 minutes", value: 5 },
+    { label: "In 15 minutes", value: 15 },
+    { label: "In 30 minutes", value: 30 },
+    { label: "In 1 hour", value: 60 },
+    { label: "In 2 hours", value: 120 },
+    { label: "In 3 hours", value: 180 },
+  ];
+  const [pickupTimeMinutes, setPickupTimeMinutes] = useState<number>(5);
   const [isLoadingStations, setIsLoadingStations] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // For now, we’ll pick a default ride profile from meta/enums
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [rideTypes, setRideTypes] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [selected, setSelected] = useState({
+    serviceType: "",
+    rideType: "",
+    vehicleType: "",
+  });
+  const [comboError, setComboError] = useState<string | null>(null);
+  const [numOfPeople, setNumOfPeople] = useState(1);
 
   // ─────────────────────────────────────────────
   // Fetch meta/enums (ride profiles) + stations
   // ─────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchMetaAndStations() {
+      try {
+        setIsLoadingStations(true);
+        const metaRes = await fetch("/api/meta/enums");
+        const meta = await metaRes.json();
+        setProfiles(meta.combo_specs || []);
+        setServices(meta.services || []);
+        setRideTypes(meta.ride_types || []);
+        setVehicleTypes(meta.veh_types || []);
+        // ...fetch stations as before...
+      } catch (err) {
+        toast.error("Failed to load stations or ride profiles.");
+      } finally {
+        setIsLoadingStations(false);
+      }
+    }
+    fetchMetaAndStations();
+  }, []);
+
   useEffect(() => {
     async function fetchMetaAndStations() {
       try {
@@ -85,18 +133,20 @@ export default function CreateRide() {
         : "station") as "pickup" | "dropoff" | "station" | "default" | "vehicle",
       popup: `${station.name} (${station.zoneName})`,
       onClick: () => {
-        // Simple behaviour: if no pickup -> set pickup, else set dropoff
         if (!pickup) {
           setPickup(station);
         } else if (!dropoff) {
           setDropoff(station);
         } else {
-          // If both set, clicking toggles closest role
-          const sameAsPickup = pickup.pointId === station.pointId;
-          const sameAsDropoff = dropoff.pointId === station.pointId;
-          if (sameAsPickup) setPickup(null);
-          else if (sameAsDropoff) setDropoff(null);
-          else setDropoff(station);
+          // If both are set, clicking any other point sets pickup to that point and clears dropoff
+          if (station.pointId !== pickup.pointId && station.pointId !== dropoff.pointId) {
+            setPickup(station);
+            setDropoff(null);
+          } else if (station.pointId === pickup.pointId) {
+            setPickup(null);
+          } else if (station.pointId === dropoff.pointId) {
+            setDropoff(null);
+          }
         }
       },
     };
@@ -117,18 +167,95 @@ export default function CreateRide() {
       ? [dropoff.latitude, dropoff.longitude]
       : (DEFAULT_MAP_CENTER as [number, number]);
 
+  const filteredRideTypeIds = selected.serviceType
+    ? Array.from(
+        new Set(
+          profiles
+            .filter((p) => String(p.service_type_id) === selected.serviceType)
+            .map((p) => p.ride_type_id)
+        )
+      )
+    : [];
+
+  const filteredRideTypes = filteredRideTypeIds.map((id) => {
+    // rideTypes is an array of [id, name]
+    const rideType = Array.isArray(rideTypes)
+      ? rideTypes.find((rt) => String(rt[0]) === String(id))
+      : null;
+    return rideType
+      ? { id: rideType[0], name: rideType[1] }
+      : { id, name: id };
+  });
+
+  const filteredVehicleTypeIds = selected.serviceType && selected.rideType
+    ? Array.from(
+        new Set(
+          profiles
+            .filter(
+              (p) =>
+                String(p.service_type_id) === selected.serviceType &&
+                String(p.ride_type_id) === selected.rideType
+            )
+            .map((p) => p.vehicle_type_id)
+        )
+      )
+    : [];
+
+  const filteredVehicleTypes = filteredVehicleTypeIds.map((id) => {
+    // vehicleTypes is an array of [id, name]
+    const vehicleType = Array.isArray(vehicleTypes)
+      ? vehicleTypes.find((vt) => String(vt[0]) === String(id))
+      : null;
+    return vehicleType
+      ? { id: vehicleType[0], name: vehicleType[1] }
+      : { id, name: id };
+  });
+
+  useEffect(() => {
+    if (selected.serviceType && selected.rideType && selected.vehicleType) {
+      const valid = profiles.find(
+        (p) =>
+          String(p.service_type_id) === selected.serviceType &&
+          String(p.ride_type_id) === selected.rideType &&
+          String(p.vehicle_type_id) === selected.vehicleType
+      );
+      setComboError(valid ? null : "This combination is not available.");
+    } else {
+      setComboError(null);
+    }
+  }, [selected, profiles]);
+
   // ─────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────
-  function computePickupAtISO(): string {
+  function getMinMaxTime() {
     const now = new Date();
-    if (pickupTime === "in_15") {
-      now.setMinutes(now.getMinutes() + 15);
-    } else if (pickupTime === "in_30") {
-      now.setMinutes(now.getMinutes() + 30);
-    }
-    return now.toISOString();
+    const min = now.toISOString().slice(0, 16);
+    const maxDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const max = maxDate.toISOString().slice(0, 16);
+    return { min, max };
   }
+
+  // Removed pickupTime effect, not needed for preset intervals
+
+  function computePickupAtISO(): string {
+  // Compute ISO string for pickup time based on selected minutes from now
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + pickupTimeMinutes);
+  return now.toISOString().slice(0, 19); // "YYYY-MM-DDTHH:mm:ss"
+  }
+
+  const maxSeats = selected.serviceType && selected.rideType && selected.vehicleType
+    ? (() => {
+        const profile = profiles.find(
+          (p) =>
+            String(p.service_type_id) === selected.serviceType &&
+            String(p.ride_type_id) === selected.rideType &&
+            String(p.vehicle_type_id) === selected.vehicleType
+        );
+        return profile?.num_seats || 4;
+      })()
+    : 4;
 
   async function handleSearch() {
     if (!pickup || !dropoff) {
@@ -136,9 +263,15 @@ export default function CreateRide() {
       return;
     }
 
-    const profile = profiles[0];
+    // Find the correct profile based on selected service, ride, and vehicle type
+    const profile = profiles.find(
+      (p) =>
+        String(p.service_type_id) === selected.serviceType &&
+        String(p.ride_type_id) === selected.rideType &&
+        String(p.vehicle_type_id) === selected.vehicleType
+    );
     if (!profile) {
-      toast.error("Ride configuration not available.");
+      toast.error("Ride configuration not available for selected options.");
       return;
     }
 
@@ -148,28 +281,30 @@ export default function CreateRide() {
     try {
       setIsSubmitting(true);
 
+      const requestBody = {
+        pickupPointId: pickup.pointId,
+        dropoffPointId: dropoff.pointId,
+        rideProfileId,
+        numOfPeople,
+        pickupAt,
+      };
+      console.log("Ride request payload:", requestBody);
+
       const res = await fetch("/api/passenger/request-ride", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          pickupPointId: pickup.pointId,
-          dropoffPointId: dropoff.pointId,
-          rideProfileId,
-          numOfPeople: 1,
-          pickupAt,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        toast.success("Ride requested!");
-        // Reset minimal state so user can create another ride
-        setPickup(null);
-        setDropoff(null);
-        setPickupTime("now");
-        setRiderType("me");
+  toast.success("Ride requested!");
+  // Reset minimal state so user can create another ride
+  setPickup(null);
+  setDropoff(null);
+  setPickupTimeMinutes(5); // reset to default interval
       } else {
         toast.error(data.error || "Failed to request ride");
       }
@@ -210,101 +345,223 @@ export default function CreateRide() {
             <h2 className="mb-4 text-xl font-semibold text-neutral-50">
               Get a ride
             </h2>
-
             <div className="space-y-3 text-sm">
-              {/* Pickup */}
-              <div className="flex flex-col gap-1">
+              {/* Service Type Dropdown */}
+              <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                  Pickup location
+                  Service Type
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
-                  <MapPin className="h-4 w-4 text-neutral-400" />
+                <div className="relative mt-2">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Car className="h-5 w-5 text-emerald-500" />
+                  </span>
                   <select
-                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
-                    value={pickup?.pointId ?? ""}
-                    onChange={(e) => {
-                      const station = stations.find(
-                        (s) => s.pointId === Number(e.target.value),
-                      );
-                      setPickup(station ?? null);
-                    }}
+                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                    value={selected.serviceType}
+                    onChange={(e) =>
+                      setSelected((s) => ({
+                        ...s,
+                        serviceType: e.target.value,
+                        rideType: "",
+                        vehicleType: "",
+                      }))
+                    }
                   >
-                    <option value="">Choose pickup point</option>
-                    {stations.map((s) => (
-                      <option key={s.pointId} value={s.pointId}>
-                        {s.name} ({s.zoneName})
+                    <option value="">Choose service type</option>
+                    {services.map((item) => (
+                      <option key={item[0]} value={item[0]}>
+                        {item[1].replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                       </option>
                     ))}
                   </select>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                </div>
+              </div>
+
+              {/* Ride Type Dropdown */}
+              {selected.serviceType && (
+                <div className="mt-4">
+                  <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                    Ride Type
+                  </label>
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Bot className="h-5 w-5 text-emerald-500" />
+                    </span>
+                    <select
+                      className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                      value={selected.rideType}
+                      onChange={(e) =>
+                        setSelected((s) => ({
+                          ...s,
+                          rideType: e.target.value,
+                          vehicleType: "",
+                        }))
+                      }
+                      disabled={!selected.serviceType}
+                    >
+                      <option value="">Choose ride type</option>
+                      {filteredRideTypes.length > 0 ? (
+                        filteredRideTypes.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No ride types available</option>
+                      )}
+                    </select>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Vehicle Type Dropdown */}
+              {selected.serviceType && selected.rideType && (
+                <div className="mt-4">
+                  <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                    Vehicle Type
+                  </label>
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Car className="h-5 w-5 text-emerald-500" />
+                    </span>
+                    <select
+                      className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                      value={selected.vehicleType}
+                      onChange={(e) => {
+                        setSelected((s) => ({
+                          ...s,
+                          vehicleType: e.target.value,
+                        }));
+                        setNumOfPeople(1); // reset people count on vehicle change
+                      }}
+                      disabled={!selected.serviceType || !selected.rideType}
+                    >
+                      <option value="">Choose vehicle type</option>
+                      {filteredVehicleTypes.length > 0 ? (
+                        filteredVehicleTypes.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No vehicle types available</option>
+                      )}
+                    </select>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Number of People Selection */}
+              {selected.serviceType && selected.rideType && selected.vehicleType && (
+                <div className="mt-4">
+                  <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                    Number of People
+                  </label>
+                  <div className="flex items-center gap-4 mt-2">
+                    <button
+                      type="button"
+                      className="p-2 rounded-full border bg-neutral-800 hover:bg-primary/10 transition disabled:opacity-50 text-emerald-400 font-bold"
+                      disabled={numOfPeople <= 1}
+                      onClick={() => setNumOfPeople(numOfPeople - 1)}
+                      aria-label="Decrease"
+                    >
+                      -
+                    </button>
+                    <span className="font-bold text-lg w-10 text-center text-emerald-400">{numOfPeople}</span>
+                    <button
+                      type="button"
+                      className="p-2 rounded-full border bg-neutral-800 hover:bg-primary/10 transition disabled:opacity-50 text-emerald-400 font-bold"
+                      disabled={numOfPeople >= maxSeats}
+                      onClick={() => setNumOfPeople(numOfPeople + 1)}
+                      aria-label="Increase"
+                    >
+                      +
+                    </button>
+                    <span className="text-muted-foreground text-xs">
+                      (Max {maxSeats} for this vehicle)
+                    </span>
+                  </div>
+                  {numOfPeople > maxSeats && (
+                    <Badge variant="destructive" className="mt-2">
+                      Too many people for this vehicle type!
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Combo error */}
+              {comboError && (
+                <Badge variant="destructive" className="mt-2">
+                  {comboError}
+                </Badge>
+              )}
+            </div>
+
+            <div className="space-y-3 text-sm">
+              {/* Pickup */}
+              <div className="flex flex-col gap-1 mt-6">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                  Pickup location
+                </label>
+                <div className="relative flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 cursor-pointer"
+                  onClick={() => {
+                    // Optionally open a modal or picker for stations
+                  }}
+                >
+                  <MapPin className="h-4 w-4 text-emerald-500" />
+                  <span className="flex-1 text-sm text-neutral-50">
+                    {pickup ? `${pickup.name} (${pickup.zoneName})` : "Choose pickup point"}
+                  </span>
                 </div>
               </div>
 
               {/* Dropoff */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 mt-2">
                 <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Dropoff location
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
-                  <Navigation2 className="h-4 w-4 text-neutral-400" />
-                  <select
-                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
-                    value={dropoff?.pointId ?? ""}
-                    onChange={(e) => {
-                      const station = stations.find(
-                        (s) => s.pointId === Number(e.target.value),
-                      );
-                      setDropoff(station ?? null);
-                    }}
-                  >
-                    <option value="">Choose dropoff point</option>
-                    {stations.map((s) => (
-                      <option key={s.pointId} value={s.pointId}>
-                        {s.name} ({s.zoneName})
-                      </option>
-                    ))}
-                  </select>
+                <div className="relative flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 cursor-pointer"
+                  onClick={() => {
+                    // Optionally open a modal or picker for stations
+                  }}
+                >
+                  <Navigation2 className="h-4 w-4 text-emerald-500" />
+                  <span className="flex-1 text-sm text-neutral-50">
+                    {dropoff ? `${dropoff.name} (${dropoff.zoneName})` : "Choose dropoff point"}
+                  </span>
                 </div>
               </div>
 
-              {/* Pickup time */}
+              {/* Pickup time selection (preset intervals) */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Pickup time
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
-                  <Clock className="h-4 w-4 text-neutral-400" />
+                <div className="relative mt-2">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Clock className="h-5 w-5 text-emerald-500" />
+                  </span>
                   <select
-                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
-                    value={pickupTime}
-                    onChange={(e) => setPickupTime(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                    value={pickupTimeMinutes}
+                    onChange={e => setPickupTimeMinutes(Number(e.target.value))}
                   >
-                    {PICKUP_TIMES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
+                    {pickupOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              {/* For me / Someone else */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                  Rider
-                </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
-                  <User className="h-4 w-4 text-neutral-400" />
-                  <select
-                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
-                    value={riderType}
-                    onChange={(e) => setRiderType(e.target.value)}
-                  >
-                    {RIDER_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
                 </div>
               </div>
 
@@ -332,7 +589,14 @@ export default function CreateRide() {
               <Button
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
                 disabled={
-                  isSubmitting || isLoadingStations || !pickup || !dropoff
+                  isSubmitting ||
+                  isLoadingStations ||
+                  !pickup ||
+                  !dropoff ||
+                  !selected.serviceType ||
+                  !selected.rideType ||
+                  !selected.vehicleType ||
+                  !!comboError
                 }
                 onClick={handleSearch}
               >
