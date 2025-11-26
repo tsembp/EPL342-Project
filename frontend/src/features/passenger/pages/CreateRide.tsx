@@ -78,7 +78,11 @@ export default function CreateRide() {
 
     return {
       position: [station.latitude, station.longitude] as [number, number],
-      icon: isPickup ? "pickup" : isDropoff ? "dropoff" : "station",
+      icon: (isPickup
+        ? "pickup"
+        : isDropoff
+        ? "dropoff"
+        : "station") as "pickup" | "dropoff" | "station" | "default" | "vehicle",
       popup: `${station.name} (${station.zoneName})`,
       onClick: () => {
         // Simple behaviour: if no pickup -> set pickup, else set dropoff
@@ -98,20 +102,20 @@ export default function CreateRide() {
     };
   });
 
-  const polyline =
+  const polyline: [number, number][] =
     pickup && dropoff
       ? [
-          [pickup.latitude, pickup.longitude],
-          [dropoff.latitude, dropoff.longitude],
+          [pickup.latitude, pickup.longitude] as [number, number],
+          [dropoff.latitude, dropoff.longitude] as [number, number],
         ]
-      : undefined;
+      : [];
 
   const mapCenter: [number, number] =
     pickup?.latitude !== undefined && pickup?.longitude !== undefined
       ? [pickup.latitude, pickup.longitude]
       : dropoff?.latitude !== undefined && dropoff?.longitude !== undefined
       ? [dropoff.latitude, dropoff.longitude]
-      : DEFAULT_MAP_CENTER as [number, number];
+      : (DEFAULT_MAP_CENTER as [number, number]);
 
   // ─────────────────────────────────────────────
   // Helpers
@@ -178,21 +182,21 @@ export default function CreateRide() {
   }
 
   // ─────────────────────────────────────────────
-  // UI
+  // UI – DARK THEME
   // ─────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen flex-col bg-white text-neutral-900">
+    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
       {/* Top bar – simple Uber-like */}
-      <header className="flex items-center justify-between border-b px-6 py-3">
+      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
         <div className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight">Ride</span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-neutral-600">
+        <div className="flex items-center gap-4 text-sm text-neutral-300">
           {/* Placeholder – you can wire actual auth actions later */}
-          <button className="rounded-full border px-4 py-1 hover:bg-neutral-50">
+          <button className="rounded-full border border-neutral-700 px-4 py-1 text-xs text-neutral-200 hover:bg-neutral-900">
             Login
           </button>
-          <button className="rounded-full bg-neutral-900 px-4 py-1 text-white hover:bg-black">
+          <button className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-medium text-neutral-950 hover:bg-emerald-400">
             Sign up
           </button>
         </div>
@@ -201,20 +205,22 @@ export default function CreateRide() {
       {/* Main layout: left panel + right map */}
       <main className="flex flex-1 flex-col lg:flex-row">
         {/* LEFT PANEL */}
-        <section className="flex w-full justify-center border-b bg-white px-4 py-6 lg:w-[380px] lg:border-b-0 lg:border-r">
-          <Card className="w-full max-w-md border-neutral-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-semibold">Get a ride</h2>
+        <section className="flex w-full justify-center border-b border-neutral-900 bg-neutral-950 px-4 py-6 lg:w-[380px] lg:border-b-0 lg:border-r">
+          <Card className="w-full max-w-md border border-neutral-800 bg-neutral-900/80 p-6 shadow-lg">
+            <h2 className="mb-4 text-xl font-semibold text-neutral-50">
+              Get a ride
+            </h2>
 
             <div className="space-y-3 text-sm">
               {/* Pickup */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Pickup location
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-                  <MapPin className="h-4 w-4 text-neutral-600" />
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
+                  <MapPin className="h-4 w-4 text-neutral-400" />
                   <select
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
                     value={pickup?.pointId ?? ""}
                     onChange={(e) => {
                       const station = stations.find(
@@ -235,13 +241,13 @@ export default function CreateRide() {
 
               {/* Dropoff */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Dropoff location
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-                  <Navigation2 className="h-4 w-4 text-neutral-600" />
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
+                  <Navigation2 className="h-4 w-4 text-neutral-400" />
                   <select
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
                     value={dropoff?.pointId ?? ""}
                     onChange={(e) => {
                       const station = stations.find(
@@ -262,13 +268,13 @@ export default function CreateRide() {
 
               {/* Pickup time */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Pickup time
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-                  <Clock className="h-4 w-4 text-neutral-600" />
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
+                  <Clock className="h-4 w-4 text-neutral-400" />
                   <select
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
                     value={pickupTime}
                     onChange={(e) => setPickupTime(e.target.value)}
                   >
@@ -283,13 +289,13 @@ export default function CreateRide() {
 
               {/* For me / Someone else */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
                   Rider
                 </label>
-                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-                  <User className="h-4 w-4 text-neutral-600" />
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-3 py-2.5">
+                  <User className="h-4 w-4 text-neutral-400" />
                   <select
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm text-neutral-50 outline-none"
                     value={riderType}
                     onChange={(e) => setRiderType(e.target.value)}
                   >
@@ -304,19 +310,27 @@ export default function CreateRide() {
 
               {/* Info / hint */}
               {pickup && dropoff && (
-                <div className="pt-1 text-xs text-neutral-500">
+                <div className="pt-1 text-xs text-neutral-400">
                   <span>Route from </span>
-                  <Badge variant="outline" className="mr-1">
+                  <Badge
+                    variant="outline"
+                    className="mr-1 border-neutral-700 bg-neutral-900 text-neutral-200"
+                  >
                     {pickup.zoneName}
                   </Badge>
                   <span>to </span>
-                  <Badge variant="outline">{dropoff.zoneName}</Badge>
+                  <Badge
+                    variant="outline"
+                    className="border-neutral-700 bg-neutral-900 text-neutral-200"
+                  >
+                    {dropoff.zoneName}
+                  </Badge>
                 </div>
               )}
 
               {/* Search button */}
               <Button
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 py-3 text-sm font-medium text-white hover:bg-black disabled:bg-neutral-300 disabled:text-neutral-500"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
                 disabled={
                   isSubmitting || isLoadingStations || !pickup || !dropoff
                 }
@@ -336,12 +350,12 @@ export default function CreateRide() {
         </section>
 
         {/* RIGHT MAP */}
-        <section className="relative flex-1 bg-neutral-100">
+        <section className="relative flex-1 border-t border-neutral-900 bg-neutral-900 lg:border-t-0 lg:border-l">
           <MapView center={mapCenter} markers={markers} polyline={polyline} />
         </section>
       </main>
 
-      {/* Bottom nav for mobile (unchanged) */}
+      {/* Bottom nav for mobile (unchanged, but dark bg from global layout) */}
       <BottomNav />
     </div>
   );
