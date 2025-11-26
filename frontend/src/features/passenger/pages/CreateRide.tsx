@@ -1,130 +1,104 @@
 import { useState, useEffect } from "react";
-import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MapView } from "@/components/MapView";
 import { BottomNav } from "@/components/BottomNav";
-import { toast } from "sonner";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import type { Station } from "@/types/api";
+import { toast } from "sonner";
 import {
-  Car,
-  Sparkles,
-  Truck,
-  Package,
-  Route,
+  MapPin,
+  Navigation2,
+  Clock,
   User,
-  ArrowLeft,
-  Bot,
-  Gamepad2,
-  KeyRound,
-  Plus,
-  Minus
+  Search as SearchIcon,
 } from "lucide-react";
-import { requestRide } from "@/lib/api";
 
-const serviceIcons = {
-  simple_route: Car,
-  luxury_route: Sparkles,
-  light_cargo: Package,
-  heavy_cargo: Truck,
-  bridged_route: Route,
-};
+// Very simple pickup-time + rider type enums for now
+const PICKUP_TIMES = [
+  { value: "now", label: "Pickup now" },
+  { value: "in_15", label: "In 15 minutes" },
+  { value: "in_30", label: "In 30 minutes" },
+];
 
-const rideTypeIcons: Record<string, any> = {
-  fully_autonomous: Bot, // robot icon
-  teledriving: Gamepad2, // remote controller icon
-  vehicle_no_driver: KeyRound, // rental key icon
-  vehicle_with_driver: Car, // fallback: car icon
-  small_cargo_van: Truck, // fallback: truck
-};
-
-function StepHeader({ step, total, title }) {
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h2 className="font-bold text-lg">{title}</h2>
-        <span className="text-xs text-muted-foreground">
-          Step {step} of {total}
-        </span>
-      </div>
-      <Progress value={Math.round((step / total) * 100)} className="w-32" />
-    </div>
-  );
-}
+const RIDER_TYPES = [
+  { value: "me", label: "For me" },
+  { value: "other", label: "For someone else" },
+];
 
 export default function CreateRide() {
-  const [step, setStep] = useState(0);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [rideTypes, setRideTypes] = useState<any[]>([]);
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
-  const [selected, setSelected] = useState({
-    serviceType: "",
-    rideType: "",
-    vehicleType: "",
-  });
-  const [error, setError] = useState<string | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
   const [pickup, setPickup] = useState<Station | null>(null);
   const [dropoff, setDropoff] = useState<Station | null>(null);
-  const [pickupStations, setPickupStations] = useState<Station[]>([]);
-  const [dropoffStations, setDropoffStations] = useState<Station[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [numOfPeople, setNumOfPeople] = useState(1);
+  const [pickupTime, setPickupTime] = useState<string>("now");
+  const [riderType, setRiderType] = useState<string>("me");
+  const [isLoadingStations, setIsLoadingStations] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // For now, we’ll pick a default ride profile from meta/enums
+  const [profiles, setProfiles] = useState<any[]>([]);
+
+  // ─────────────────────────────────────────────
+  // Fetch meta/enums (ride profiles) + stations
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    async function fetchProfiles() {
-      const res = await fetch("/api/meta/enums");
-      const data = await res.json();
-      setProfiles(data.combo_specs);
-      setServices(data.services);
-      setRideTypes(data.ride_types);
-      setVehicleTypes(data.veh_types);
+    async function fetchMetaAndStations() {
+      try {
+        setIsLoadingStations(true);
+
+        // meta/enums (for rideProfileId)
+        const metaRes = await fetch("/api/meta/enums");
+        const meta = await metaRes.json();
+        setProfiles(meta.combo_specs || []);
+
+        // all stations (pickup + dropoff)
+        const params = new URLSearchParams();
+        params.append("pointType", "S");
+        const stationRes = await fetch(`/api/stations?${params.toString()}`);
+        const stationData = await stationRes.json();
+        setStations(stationData.stations as Station[]);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load stations. Please try again.");
+      } finally {
+        setIsLoadingStations(false);
+      }
     }
-    fetchProfiles();
+
+    fetchMetaAndStations();
   }, []);
 
-  // Filter ride types by selected service
-  const filteredRideTypes = selected.serviceType
-    ? Array.from(
-        new Map(
-          profiles
-            .filter((p) => p.service_type_id === selected.serviceType)
-            .map((p) => [p.ride_type_id, p.ride_type_name])
-        ).entries()
-      ).map(([id, name]) => [id, name])
-    : [];
+  // ─────────────────────────────────────────────
+  // Map markers + path
+  // ─────────────────────────────────────────────
+  const markers = stations.map((station) => {
+    const isPickup = pickup?.pointId === station.pointId;
+    const isDropoff = dropoff?.pointId === station.pointId;
 
-  // Filter vehicle types by selected service+ride
-  const filteredVehicleTypes =
-    selected.serviceType && selected.rideType
-      ? Array.from(
-          new Map(
-            profiles
-              .filter(
-                (p) =>
-                  p.service_type_id === selected.serviceType &&
-                  p.ride_type_id === selected.rideType
-              )
-              .map((p) => [p.vehicle_type_id, p.vehicle_type_name])
-          ).entries()
-        ).map(([id, name]) => [id, name])
-      : [];
+    return {
+      position: [station.latitude, station.longitude] as [number, number],
+      icon: isPickup ? "pickup" : isDropoff ? "dropoff" : "station",
+      popup: `${station.name} (${station.zoneName})`,
+      onClick: () => {
+        // Simple behaviour: if no pickup -> set pickup, else set dropoff
+        if (!pickup) {
+          setPickup(station);
+        } else if (!dropoff) {
+          setDropoff(station);
+        } else {
+          // If both set, clicking toggles closest role
+          const sameAsPickup = pickup.pointId === station.pointId;
+          const sameAsDropoff = dropoff.pointId === station.pointId;
+          if (sameAsPickup) setPickup(null);
+          else if (sameAsDropoff) setDropoff(null);
+          else setDropoff(station);
+        }
+      },
+    };
+  });
 
-  const maxSeats =
-    selected.serviceType && selected.rideType && selected.vehicleType
-      ? (() => {
-          const profile = profiles.find(
-            (p) =>
-              p.service_type_id === selected.serviceType &&
-              p.ride_type_id === selected.rideType &&
-              p.vehicle_type_id === selected.vehicleType
-          );
-          return profile?.num_seats || 4; // fallback to 4
-        })()
-      : 4;
-
-  const pathPolyline =
+  const polyline =
     pickup && dropoff
       ? [
           [pickup.latitude, pickup.longitude],
@@ -132,515 +106,243 @@ export default function CreateRide() {
         ]
       : undefined;
 
+  const mapCenter: [number, number] =
+    pickup?.latitude !== undefined && pickup?.longitude !== undefined
+      ? [pickup.latitude, pickup.longitude]
+      : dropoff?.latitude !== undefined && dropoff?.longitude !== undefined
+      ? [dropoff.latitude, dropoff.longitude]
+      : DEFAULT_MAP_CENTER as [number, number];
 
-  // Validate combo
-  useEffect(() => {
-    if (selected.serviceType && selected.rideType && selected.vehicleType) {
-      const valid = profiles.find(
-        (p) =>
-          p.service_type_id === selected.serviceType &&
-          p.ride_type_id === selected.rideType &&
-          p.vehicle_type_id === selected.vehicleType
-      );
-      setError(valid ? null : "This combination is not available.");
-    } else {
-      setError(null);
+  // ─────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────
+  function computePickupAtISO(): string {
+    const now = new Date();
+    if (pickupTime === "in_15") {
+      now.setMinutes(now.getMinutes() + 15);
+    } else if (pickupTime === "in_30") {
+      now.setMinutes(now.getMinutes() + 30);
     }
-  }, [selected, profiles]);
-
-  // Fetch pickup stations
-  useEffect(() => {
-    if (step === 3) {
-      setIsLoading(true);
-      getStationsWithFilter({ isPickupAllowed: true }).then((stations) => {
-        setPickupStations(stations);
-        setIsLoading(false);
-      });
-    }
-  }, [step]);
-
-  // Fetch dropoff stations
-  useEffect(() => {
-    if (step === 4) {
-      setIsLoading(true);
-      getStationsWithFilter({ isDropoffAllowed: true }).then((stations) => {
-        setDropoffStations(stations);
-        setIsLoading(false);
-      });
-    }
-  }, [step]);
-
-  async function getStationsWithFilter(filter: {
-    isPickupAllowed?: boolean;
-    isDropoffAllowed?: boolean;
-  }) {
-    const params = new URLSearchParams();
-    params.append("pointType", "S");
-    if (filter.isPickupAllowed !== undefined)
-      params.append(
-        "isPickupAllowed",
-        filter.isPickupAllowed ? "true" : "false"
-      );
-    if (filter.isDropoffAllowed !== undefined)
-      params.append(
-        "isDropoffAllowed",
-        filter.isDropoffAllowed ? "true" : "false"
-      );
-    const response = await fetch(`/api/stations?${params.toString()}`);
-    const data = await response.json();
-    return data.stations as Station[];
+    return now.toISOString();
   }
 
-  // Markers for MapView
-  const pickupMarkers = pickupStations.map((station) => ({
-    position: [station.latitude, station.longitude] as [number, number],
-    icon: station.pointId === pickup?.pointId ? "pickup" : "station",
-    popup: `${station.name} (${station.zoneName})`,
-    onClick: () => setPickup(station),
-  }));
+  async function handleSearch() {
+    if (!pickup || !dropoff) {
+      toast.error("Select both pickup and dropoff locations.");
+      return;
+    }
 
-  const dropoffMarkers = dropoffStations.map((station) => ({
-    position: [station.latitude, station.longitude] as [number, number],
-    icon: station.pointId === dropoff?.pointId ? "dropoff" : "station",
-    popup: `${station.name} (${station.zoneName})`,
-    onClick: () => setDropoff(station),
-  }));
+    const profile = profiles[0];
+    if (!profile) {
+      toast.error("Ride configuration not available.");
+      return;
+    }
 
-  // Step titles
-  const stepTitles = [
-    "Select Service Type",
-    "Select Ride Type",
-    "Select Vehicle Type",
-    "Number of People",
-    "Select Pickup Location",
-    "Select Dropoff Location",
-    "Confirm Ride Request",
-  ];
+    const rideProfileId = profile.ride_profile_id;
+    const pickupAt = computePickupAtISO();
 
-  // Animation helper
-  function FadeIn({ children }) {
-    return <div className="animate-fade-in">{children}</div>;
+    try {
+      setIsSubmitting(true);
+
+      const res = await fetch("/api/passenger/request-ride", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          pickupPointId: pickup.pointId,
+          dropoffPointId: dropoff.pointId,
+          rideProfileId,
+          numOfPeople: 1,
+          pickupAt,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Ride requested!");
+        // Reset minimal state so user can create another ride
+        setPickup(null);
+        setDropoff(null);
+        setPickupTime("now");
+        setRiderType("me");
+      } else {
+        toast.error(data.error || "Failed to request ride");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error submitting ride request");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Top Title – spans full width */}
-      <header className="pt-8 pb-4 px-4 border-b bg-background">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-1">Plan Your Ride</h1>
-          <p className="text-muted-foreground">
-            Follow the steps below to request your ride
-          </p>
+    <div className="flex min-h-screen flex-col bg-white text-neutral-900">
+      {/* Top bar – simple Uber-like */}
+      <header className="flex items-center justify-between border-b px-6 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-semibold tracking-tight">Ride</span>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-neutral-600">
+          {/* Placeholder – you can wire actual auth actions later */}
+          <button className="rounded-full border px-4 py-1 hover:bg-neutral-50">
+            Login
+          </button>
+          <button className="rounded-full bg-neutral-900 px-4 py-1 text-white hover:bg-black">
+            Sign up
+          </button>
         </div>
       </header>
 
-      {/* Wizard takes the whole page */}
-      <main className="flex-1 flex flex-col pb-24">
-        <Card className="flex-1 rounded-none border-0 shadow-none px-4 py-6">
-          <div className="max-w-4xl mx-auto">
-            <StepHeader
-              step={step + 1}
-              total={stepTitles.length}
-              title={stepTitles[step]}
-            />
+      {/* Main layout: left panel + right map */}
+      <main className="flex flex-1 flex-col lg:flex-row">
+        {/* LEFT PANEL */}
+        <section className="flex w-full justify-center border-b bg-white px-4 py-6 lg:w-[380px] lg:border-b-0 lg:border-r">
+          <Card className="w-full max-w-md border-neutral-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-xl font-semibold">Get a ride</h2>
 
-            {step > 0 && (
-              <button
-                className="mb-4 flex items-center gap-2 text-muted-foreground hover:text-primary transition"
-                onClick={() => setStep(step - 1)}
-                aria-label="Back"
-              >
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-            )}
-
-            {/* STEP 0 – SERVICE TYPE */}
-            {step === 0 && (
-              <FadeIn>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {services.map((item) => {
-                    const Icon =
-                      serviceIcons[
-                        item[1]?.toLowerCase().replace(" ", "_")
-                      ] || Car;
-                    return (
-                      <button
-                        key={item[0]}
-                        className={`flex items-center gap-3 p-4 rounded-xl border transition-all w-full shadow-sm ${
-                          selected.serviceType === item[0]
-                            ? "border-primary bg-primary/10 ring-2 ring-primary"
-                            : "hover:bg-muted/50"
-                        }`}
-                        onClick={() =>
-                          setSelected((s) => ({
-                            ...s,
-                            serviceType: item[0],
-                            rideType: "",
-                            vehicleType: "",
-                          }))
-                        }
-                      >
-                        <Icon className="h-8 w-8 text-primary" />
-                        <span className="font-semibold">
-                          {item[1]
-                            .split("_")
-                            .map(
-                              (word) =>
-                                word.charAt(0).toUpperCase() + word.slice(1)
-                            )
-                            .join(" ")}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  className="btn btn-primary mt-6 w-full sm:w-auto"
-                  disabled={!selected.serviceType}
-                  onClick={() => setStep(1)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 1 – RIDE TYPE */}
-            {step === 1 && (
-              <FadeIn>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredRideTypes.map((item) => {
-                    const key = item[1]?.toLowerCase().replace(/ /g, "_");
-                    const Icon = rideTypeIcons[key] || User;
-                    return (
-                      <button
-                        key={item[0]}
-                        className={`flex items-center gap-3 p-4 rounded-xl border transition-all w-full shadow-sm ${
-                          selected.rideType === item[0]
-                            ? "border-primary bg-primary/10 ring-2 ring-primary"
-                            : "hover:bg-muted/50"
-                        }`}
-                        onClick={() =>
-                          setSelected((s) => ({
-                            ...s,
-                            rideType: item[0],
-                            vehicleType: "",
-                          }))
-                        }
-                      >
-                        <Icon className="h-8 w-8 text-primary" />
-                        <span className="font-semibold">
-                          {item[1]
-                            .split("_")
-                            .map(
-                              (word) =>
-                                word.charAt(0).toUpperCase() + word.slice(1)
-                            )
-                            .join(" ")}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  className="btn btn-primary mt-6 w-full sm:w-auto"
-                  disabled={!selected.rideType}
-                  onClick={() => setStep(2)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 2 – VEHICLE TYPE */}
-            {step === 2 && (
-              <FadeIn>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {filteredVehicleTypes.map((item) => (
-                    <button
-                      key={item[0]}
-                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-lg border transition-all shadow-sm text-xs ${
-                        selected.vehicleType === item[0]
-                          ? "border-primary bg-primary/10 ring-2 ring-primary"
-                          : "hover:bg-muted/50"
-                      }`}
-                      onClick={() =>
-                        setSelected((s) => ({ ...s, vehicleType: item[0] }))
-                      }
-                    >
-                      <Car className="h-6 w-6 text-primary mb-1" />
-                      <span className="font-semibold truncate">{item[1]}</span>
-                    </button>
-                  ))}
-                </div>
-                {error && (
-                  <Badge variant="destructive" className="mt-2">
-                    {error}
-                  </Badge>
-                )}
-                <button
-                  className="btn btn-primary mt-6 w-full sm:w-auto"
-                  disabled={!selected.vehicleType || !!error}
-                  onClick={() => setStep(3)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 3 – NUMBER OF PEOPLE */}
-            {step === 3 && (
-              <FadeIn>
-                <div className="mb-6">
-                  <label className="block font-semibold mb-2">
-                    How many people are riding?
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      className="p-2 rounded-full border bg-muted hover:bg-primary/10 transition disabled:opacity-50"
-                      disabled={numOfPeople <= 1}
-                      onClick={() => setNumOfPeople(numOfPeople - 1)}
-                      aria-label="Decrease"
-                    >
-                      <Minus className="h-5 w-5" />
-                    </button>
-                    <span className="font-bold text-lg w-10 text-center">{numOfPeople}</span>
-                    <button
-                      type="button"
-                      className="p-2 rounded-full border bg-muted hover:bg-primary/10 transition disabled:opacity-50"
-                      disabled={numOfPeople >= maxSeats}
-                      onClick={() => setNumOfPeople(numOfPeople + 1)}
-                      aria-label="Increase"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
-                    <span className="text-muted-foreground">
-                      (Max {maxSeats} for this vehicle)
-                    </span>
-                  </div>
-                  {numOfPeople > maxSeats && (
-                    <Badge variant="destructive" className="mt-2">
-                      Too many people for this vehicle type!
-                    </Badge>
-                  )}
-                </div>
-                <button
-                  className="btn btn-primary mt-6 w-full sm:w-auto"
-                  disabled={numOfPeople < 1 || numOfPeople > maxSeats}
-                  onClick={() => setStep(4)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 4 – PICKUP MAP */}
-            {step === 4 && (
-              <FadeIn>
-                <div className="h-[50vh] mb-4 rounded-xl overflow-hidden border">
-                  <MapView
-                    center={
-                      pickup
-                        ? [pickup.latitude, pickup.longitude]
-                        : DEFAULT_MAP_CENTER
-                    }
-                    markers={pickupMarkers}
-                  />
-                </div>
-                <button
-                  className="btn btn-primary w-full sm:w-auto"
-                  disabled={!pickup}
-                  onClick={() => setStep(5)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 5 – DROPOFF MAP */}
-            {step === 5 && (
-              <FadeIn>
-                <div className="h-[50vh] mb-4 rounded-xl overflow-hidden border">
-                  <MapView
-                    center={
-                      dropoff
-                        ? [dropoff.latitude, dropoff.longitude]
-                        : DEFAULT_MAP_CENTER
-                    }
-                    markers={dropoffMarkers}
-                  />
-                </div>
-                <button
-                  className="btn btn-success w-full sm:w-auto"
-                  disabled={!dropoff}
-                  onClick={() => setStep(6)}
-                >
-                  Next
-                </button>
-              </FadeIn>
-            )}
-
-            {/* STEP 6 – CONFIRMATION */}
-            {step === 6 && (
-              <FadeIn>
-                <div className="mb-6">
-                  <div className="rounded-xl border bg-muted/10 p-4 shadow-sm">
-                  {/* Ride Profile Section */}
-                  <div className="mb-4">
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" /> Ride Profile
-                    </h3>
-                    <div className="flex items-center gap-4 flex-wrap">
-                    {/* Service Type */}
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                      const service = services.find(s => s[0] === selected.serviceType);
-                      const Icon = serviceIcons[service?.[1]?.toLowerCase().replace(" ", "_")] || Car;
-                      return <Icon className="h-6 w-6 text-primary" />;
-                      })()}
-                      <span className="font-medium">{services.find(s => s[0] === selected.serviceType)?.[1]}</span>
-                    </div>
-                    {/* Ride Type */}
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                      const ride = rideTypes.find(r => r[0] === selected.rideType);
-                      const key = ride?.[1]?.toLowerCase().replace(/ /g, "_");
-                      const Icon = rideTypeIcons[key] || User;
-                      return <Icon className="h-6 w-6 text-primary" />;
-                      })()}
-                      <span className="font-medium">{rideTypes.find(r => r[0] === selected.rideType)?.[1]}</span>
-                    </div>
-                    {/* Vehicle Type */}
-                    <div className="flex items-center gap-2">
-                      <Car className="h-6 w-6 text-primary" />
-                      <span className="font-medium">{vehicleTypes.find(v => v[0] === selected.vehicleType)?.[1]}</span>
-                    </div>
-                    </div>
-                  </div>
-                  <hr className="my-4" />
-                  {/* Pickup Section */}
-                  <div className="mb-4">
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                    <ArrowLeft className="h-5 w-5 text-primary" /> Pickup
-                    </h3>
-                    <div className="flex items-center gap-2">
-                    <Badge variant="outline">{pickup?.zoneName}</Badge>
-                    <span className="font-medium">{pickup?.name}</span>
-                    </div>
-                  </div>
-                  <hr className="my-4" />
-                  {/* Dropoff Section */}
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                    <Car className="h-5 w-5 text-primary" /> Dropoff
-                    </h3>
-                    <div className="flex items-center gap-2">
-                    <Badge variant="outline">{dropoff?.zoneName}</Badge>
-                    <span className="font-medium">{dropoff?.name}</span>
-                    </div>
-                  </div>
-                  <div className="h-[40vh] mb-4 rounded-xl overflow-hidden border">
-                    <MapView
-                    center={
-                      pickup
-                      ? [pickup.latitude, pickup.longitude]
-                      : DEFAULT_MAP_CENTER
-                    }
-                    markers={[
-                      {
-                      position: [pickup.latitude, pickup.longitude],
-                      icon: "pickup",
-                      popup: pickup?.name,
-                      },
-                      {
-                      position: [dropoff.latitude, dropoff.longitude],
-                      icon: "dropoff",
-                      popup: dropoff?.name,
-                      },
-                    ]}
-                    polyline={pathPolyline}
-                    />
-                  </div>
-                  </div>
-                  <button
-                    className="btn btn-primary w-full sm:w-auto"
-                    disabled={
-                      !pickup ||
-                      !dropoff ||
-                      !selected.serviceType ||
-                      !selected.rideType ||
-                      !selected.vehicleType ||
-                      !numOfPeople
-                    }
-                    onClick={async () => {
-                      // Find rideProfileId for selected combo
-                      const profile = profiles.find(
-                        (p) =>
-                          p.service_type_id === selected.serviceType &&
-                          p.ride_type_id === selected.rideType &&
-                          p.vehicle_type_id === selected.vehicleType
+            <div className="space-y-3 text-sm">
+              {/* Pickup */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  Pickup location
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                  <MapPin className="h-4 w-4 text-neutral-600" />
+                  <select
+                    className="w-full bg-transparent text-sm outline-none"
+                    value={pickup?.pointId ?? ""}
+                    onChange={(e) => {
+                      const station = stations.find(
+                        (s) => s.pointId === Number(e.target.value),
                       );
-                      if (!profile) {
-                        toast.error("Invalid ride profile");
-                        return;
-                      }
-                      const rideProfileId = profile.ride_profile_id;
-                      const pickupAt = new Date(Date.now() + 2 * 60 * 1000).toISOString(); // 2 minutes from now
-
-                      try {
-                        const res = await fetch("/api/passenger/request-ride", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({
-                            pickupPointId: pickup.pointId,
-                            dropoffPointId: dropoff.pointId,
-                            rideProfileId,
-                            numOfPeople,
-                            pickupAt,
-                          }),
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          toast.success("Ride requested!");
-                          setStep(0);
-                          setSelected({
-                            serviceType: "",
-                            rideType: "",
-                            vehicleType: "",
-                          });
-                          setPickup(null);
-                          setDropoff(null);
-                          setNumOfPeople(1);
-                        } else {
-                          toast.error(data.error || "Failed to request ride");
-                        }
-                      } catch (err) {
-                        toast.error("Error submitting ride request");
-                      }
+                      setPickup(station ?? null);
                     }}
                   >
-                    Submit Request
-                  </button>
+                    <option value="">Choose pickup point</option>
+                    {stations.map((s) => (
+                      <option key={s.pointId} value={s.pointId}>
+                        {s.name} ({s.zoneName})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </FadeIn>
-            )}
-          </div>
-        </Card>
+              </div>
+
+              {/* Dropoff */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  Dropoff location
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                  <Navigation2 className="h-4 w-4 text-neutral-600" />
+                  <select
+                    className="w-full bg-transparent text-sm outline-none"
+                    value={dropoff?.pointId ?? ""}
+                    onChange={(e) => {
+                      const station = stations.find(
+                        (s) => s.pointId === Number(e.target.value),
+                      );
+                      setDropoff(station ?? null);
+                    }}
+                  >
+                    <option value="">Choose dropoff point</option>
+                    {stations.map((s) => (
+                      <option key={s.pointId} value={s.pointId}>
+                        {s.name} ({s.zoneName})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Pickup time */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  Pickup time
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                  <Clock className="h-4 w-4 text-neutral-600" />
+                  <select
+                    className="w-full bg-transparent text-sm outline-none"
+                    value={pickupTime}
+                    onChange={(e) => setPickupTime(e.target.value)}
+                  >
+                    {PICKUP_TIMES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* For me / Someone else */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  Rider
+                </label>
+                <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                  <User className="h-4 w-4 text-neutral-600" />
+                  <select
+                    className="w-full bg-transparent text-sm outline-none"
+                    value={riderType}
+                    onChange={(e) => setRiderType(e.target.value)}
+                  >
+                    {RIDER_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Info / hint */}
+              {pickup && dropoff && (
+                <div className="pt-1 text-xs text-neutral-500">
+                  <span>Route from </span>
+                  <Badge variant="outline" className="mr-1">
+                    {pickup.zoneName}
+                  </Badge>
+                  <span>to </span>
+                  <Badge variant="outline">{dropoff.zoneName}</Badge>
+                </div>
+              )}
+
+              {/* Search button */}
+              <Button
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 py-3 text-sm font-medium text-white hover:bg-black disabled:bg-neutral-300 disabled:text-neutral-500"
+                disabled={
+                  isSubmitting || isLoadingStations || !pickup || !dropoff
+                }
+                onClick={handleSearch}
+              >
+                {isSubmitting ? (
+                  "Requesting…"
+                ) : (
+                  <>
+                    <SearchIcon className="h-4 w-4" />
+                    Search
+                  </>
+                )}
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        {/* RIGHT MAP */}
+        <section className="relative flex-1 bg-neutral-100">
+          <MapView center={mapCenter} markers={markers} polyline={polyline} />
+        </section>
       </main>
 
-      {/* Bottom nav always at the bottom */}
+      {/* Bottom nav for mobile (unchanged) */}
       <BottomNav />
-
-      <style>{`
-        .animate-fade-in {
-          animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }
