@@ -130,19 +130,18 @@ export async function updateServiceType(
   });
 }
 
-
 export async function createAllowedRideProfile(payload: {
   serviceTypeId: number;
   rideTypeId: number;
   vehicleTypeId: number;
-  minBasePrice: number;
-  notes?: string;
+  profileName?: string;
 }) {
   return jsonRequest("/api/operator/allowed-ride-profiles", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
+
 
 export async function updateAllowedRideProfile(
   id: string,

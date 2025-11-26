@@ -1,1 +1,1 @@
-SELECT * FROM dbo.Servicetype
+SELECT * FROM dbo.AllowedRideProfile

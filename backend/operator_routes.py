@@ -317,6 +317,14 @@ def get_allowed_ride_profiles():
 def create_allowed_ride_profile():
     data = request.get_json(force=True) or {}
 
+    service_type_id = data.get("serviceTypeId")
+    ride_type_id = data.get("rideTypeId")
+    vehicle_type_id = data.get("vehicleTypeId")
+    profile_name = data.get("profileName")
+
+    if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
+        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
+
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -326,16 +334,9 @@ def create_allowed_ride_profile():
                         @ServiceTypeId=?,
                         @RideTypeId=?,
                         @VehicleTypeId=?,
-                        @MinBasePrice=?,
-                        @Notes=?;
+                        @ProfileName=?;
                     """,
-                    (
-                        data.get("serviceTypeId"),
-                        data.get("rideTypeId"),
-                        data.get("vehicleTypeId"),
-                        data.get("minBasePrice"),
-                        data.get("notes"),
-                    ),
+                    (service_type_id, ride_type_id, vehicle_type_id, profile_name),
                 )
                 cols = [c[0] for c in cur.description]
                 row = dict(zip(cols, cur.fetchone()))
@@ -345,11 +346,20 @@ def create_allowed_ride_profile():
         return jsonify({"error": "Failed to create allowed ride profile"}), 500
 
 
-@operator_bp.route("/allowed-ride-profiles/<int:ride_profile_id>", methods=["PUT"])
+
+@operator_bp.route("/allowed-ride-profiles/<ride_profile_id>", methods=["PUT"])
 @require_auth
 @require_role("O", "I")
 def update_allowed_ride_profile(ride_profile_id):
     data = request.get_json(force=True) or {}
+
+    service_type_id = data.get("serviceTypeId")
+    ride_type_id = data.get("rideTypeId")
+    vehicle_type_id = data.get("vehicleTypeId")
+    profile_name = data.get("profileName")
+
+    if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
+        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
 
     try:
         with get_connection() as conn:
@@ -361,16 +371,14 @@ def update_allowed_ride_profile(ride_profile_id):
                         @ServiceTypeId=?,
                         @RideTypeId=?,
                         @VehicleTypeId=?,
-                        @MinBasePrice=?,
-                        @Notes=?;
+                        @ProfileName=?;
                     """,
                     (
-                        ride_profile_id,
-                        data.get("serviceTypeId"),
-                        data.get("rideTypeId"),
-                        data.get("vehicleTypeId"),
-                        data.get("minBasePrice"),
-                        data.get("notes"),
+                        ride_profile_id,  # string GUID, SQL Server will cast to UNIQUEIDENTIFIER
+                        service_type_id,
+                        ride_type_id,
+                        vehicle_type_id,
+                        profile_name,
                     ),
                 )
                 cols = [c[0] for c in cur.description]

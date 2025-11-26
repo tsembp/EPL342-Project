@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getGdprRequests, reviewGdprRequest } from " @/features/operator/api";
+import { getGdprRequests, reviewGdprRequest } from "@/features/operator/api";
 import GDPRPrivacyTable, { GDPRRow } from "./GDPRPrivacyTable";
 
 export default function GDPRPrivacy() {
