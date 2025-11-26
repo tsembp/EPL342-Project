@@ -23,7 +23,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      const role = getRole;
+      const role = useAuthStore.getState().userRole;
 
       toast.success("Logged in successfully");
 

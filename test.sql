@@ -1,1 +1,1 @@
-SELECT * FROM dbo.AllowedRideProfile
+SELECT * FROM dbo.[User]
