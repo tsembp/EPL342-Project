@@ -1,6 +1,8 @@
 import { fetchAPI } from "@/lib/apiClient";
 import type { ReportRow } from "@/types/api";
 
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
 export const getOperatorReports = (params: {
   kind: string;
   from: string;
@@ -9,6 +11,24 @@ export const getOperatorReports = (params: {
   const query = new URLSearchParams(params);
   return fetchAPI<ReportRow[]>(`/operator/reports?${query}`);
 };
+
+async function jsonRequest(path: string, options: RequestInit = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Request failed (${res.status}): ${text}`);
+  }
+
+  return res.json();
+}
 
 export const getPendingPersonDocuments = async () => {
   const res = await fetchAPI<any[]>("/operator/pending-person-documents");
@@ -75,3 +95,67 @@ export const getAllowedRideProfiles = async () => {
   const res = await fetchAPI<any[]>("/operator/allowed-ride-profiles");
   return Array.isArray(res) ? res : [];
 };
+
+export async function createServiceType(payload: {
+  name: string;
+  description: string;
+  baseFare: number;
+  perKm: number;
+  perMin: number;
+  active: boolean;
+  validFrom?: string | null;
+  validTo?: string | null;
+}) {
+  return jsonRequest("/api/operator/service-types", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// api.ts
+export async function updateServiceType(
+  id: string,
+  payload: {
+    name: string;
+    description: string;
+    baseFare: number;
+    perKm: number;
+    perMin: number;
+    active: boolean;
+  }
+) {
+  return jsonRequest(`/api/operator/service-types/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export async function createAllowedRideProfile(payload: {
+  serviceTypeId: number;
+  rideTypeId: number;
+  vehicleTypeId: number;
+  minBasePrice: number;
+  notes?: string;
+}) {
+  return jsonRequest("/api/operator/allowed-ride-profiles", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAllowedRideProfile(
+  id: string,
+  payload: {
+    serviceTypeId: number;
+    rideTypeId: number;
+    vehicleTypeId: number;
+    minBasePrice: number;
+    notes?: string;
+  }
+) {
+  return jsonRequest(`/api/operator/allowed-ride-profiles/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
