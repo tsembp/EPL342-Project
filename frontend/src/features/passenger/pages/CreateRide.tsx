@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,32 @@ const rideTypeIcons: Record<string, any> = {
 };
 
 export default function CreateRide() {
+  // Car animation loading state for alternatives calculation
+  const [isCalculatingAlternatives, setIsCalculatingAlternatives] = useState(false);
+  // Car animation component (reuse from RideAlternativesPage)
+  function CarLoadingAnimation() {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="relative w-32 h-16">
+          <div className="absolute left-0 top-1/2 animate-car-move">
+            <Car className="w-16 h-16 text-emerald-500" />
+          </div>
+          <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-neutral-700 to-neutral-900 rounded-full" />
+        </div>
+        <div className="mt-4 text-neutral-400 text-sm">Calculating possible routes...</div>
+        <style>{`
+          @keyframes car-move {
+            0% { left: 0; }
+            100% { left: 8rem; }
+          }
+          .animate-car-move {
+            animation: car-move 2s linear infinite alternate;
+          }
+        `}</style>
+      </div>
+    );
+  }
+  const navigate = useNavigate();
   const [stations, setStations] = useState<Station[]>([]);
   const [pickup, setPickup] = useState<Station | null>(null);
   const [dropoff, setDropoff] = useState<Station | null>(null);
@@ -280,6 +307,7 @@ export default function CreateRide() {
 
     try {
       setIsSubmitting(true);
+      setIsCalculatingAlternatives(false);
 
       const requestBody = {
         pickupPointId: pickup.pointId,
@@ -300,11 +328,28 @@ export default function CreateRide() {
       const data = await res.json();
 
       if (data.success) {
-  toast.success("Ride requested!");
-  // Reset minimal state so user can create another ride
-  setPickup(null);
-  setDropoff(null);
-  setPickupTimeMinutes(5); // reset to default interval
+        toast.success("Ride requested!");
+        // Reset minimal state so user can create another ride
+        setPickup(null);
+        setDropoff(null);
+        setPickupTimeMinutes(5); // reset to default interval
+
+        // Step 2: Calculate alternatives before redirect
+        setIsCalculatingAlternatives(true);
+        try {
+          const altRes = await fetch(`/api/passenger/ride-requests/${data.requestId}/alternatives`, {
+            credentials: "include",
+          });
+          const altData = await altRes.json();
+          console.debug("[CreateRide] Alternatives API response:", altData);
+          // Optionally, you can pass alternatives to the next page via state, but for now just redirect
+          navigate(`/ride-alternatives/${data.requestId}`);
+        } catch (altErr) {
+          console.error("[CreateRide] Alternatives fetch error:", altErr);
+          toast.error("Failed to calculate alternative routes.");
+        } finally {
+          setIsCalculatingAlternatives(false);
+        }
       } else {
         toast.error(data.error || "Failed to request ride");
       }
@@ -321,6 +366,12 @@ export default function CreateRide() {
   // ─────────────────────────────────────────────
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
+      {/* Car animation overlay for alternatives calculation */}
+      {isCalculatingAlternatives && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <CarLoadingAnimation />
+        </div>
+      )}
       {/* Top bar – simple Uber-like */}
       <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
         <div className="flex items-center gap-2">
