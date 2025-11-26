@@ -166,3 +166,224 @@ def review_service_enrollment():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@operator_bp.route("/service-types", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_service_types():
+    """
+    Returns all service types so the operator can view them in the dashboard.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_GetServiceTypes")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /service-types:", e)
+        return jsonify({"error": str(e)}), 500
+    
+@operator_bp.route("/service-types", methods=["POST"])
+@require_auth
+@require_role("O", "I")
+def create_service_type():
+    data = request.get_json(force=True) or {}
+    name = data.get("name")
+    description = data.get("description")
+    base_fare = data.get("baseFare")
+    per_km = data.get("perKm")
+    per_min = data.get("perMin")
+    valid_from = data.get("validFrom")  # optional, ISO string ή None
+    valid_to = data.get("validTo")      # optional
+    active = data.get("active", True)
+
+    # basic validation
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    if not description:
+        return jsonify({"error": "Description is required"}), 400
+    if base_fare is None or per_km is None or per_min is None:
+        return jsonify({"error": "BaseFare, PerKm and PerMin are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Operator_CreateServiceType
+                        @Name=?,
+                        @Description=?,
+                        @BaseFare=?,
+                        @PerKm=?,
+                        @PerMin=?,
+                        @ValidFrom=?,
+                        @ValidTo=?,
+                        @Active=?;
+                    """,
+                    (
+                        name,
+                        description,
+                        base_fare,
+                        per_km,
+                        per_min,
+                        valid_from,
+                        valid_to,
+                        1 if active else 0,
+                    ),
+                )
+                cols = [c[0] for c in cur.description]
+                row = dict(zip(cols, cur.fetchone()))
+        return jsonify(row), 201
+    except Exception as e:
+        print("Error in create_service_type:", e)
+        return jsonify({"error": "Failed to create service type"}), 500
+
+    
+@operator_bp.route("/service-types/<int:service_type_id>", methods=["PUT"])
+@require_auth
+@require_role("O", "I")
+def update_service_type(service_type_id):
+    data = request.get_json(force=True) or {}
+    name = data.get("name")
+    description = data.get("description")
+    active = data.get("active", True)
+
+    base_fare = data.get("baseFare")
+    per_km = data.get("perKm")
+    per_min = data.get("perMin")
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    if not description:
+        return jsonify({"error": "Description is required"}), 400
+    if base_fare is None or per_km is None or per_min is None:
+        return jsonify({"error": "BaseFare, PerKm and PerMin are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Operator_UpdateServiceType
+                        @ServiceTypeId=?,
+                        @Name=?,
+                        @Description=?,
+                        @BaseFare=?,
+                        @PerKm=?,
+                        @PerMin=?,
+                        @Active=?;
+                    """,
+                    (
+                        service_type_id,
+                        name,
+                        description,
+                        base_fare,
+                        per_km,
+                        per_min,
+                        1 if active else 0,
+                    ),
+                )
+                cols = [c[0] for c in cur.description]
+                row = dict(zip(cols, cur.fetchone()))
+        return jsonify(row), 200
+    except Exception as e:
+        print("Error in update_service_type:", e)
+        return jsonify({"error": "Failed to update service type"}), 500
+
+
+@operator_bp.route("/allowed-ride-profiles", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_allowed_ride_profiles():
+    """
+    Returns all allowed ride profiles (ServiceType x RideType x VehicleType).
+    Adjust column names if your table uses different ones.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_Operator_GetAllowedRideProfiles")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /allowed-ride-profiles:", e)
+        return jsonify({"error": str(e)}), 500
+    
+@operator_bp.route("/allowed-ride-profiles", methods=["POST"])
+@require_auth
+@require_role("O", "I")
+def create_allowed_ride_profile():
+    data = request.get_json(force=True) or {}
+
+    service_type_id = data.get("serviceTypeId")
+    ride_type_id = data.get("rideTypeId")
+    vehicle_type_id = data.get("vehicleTypeId")
+    profile_name = data.get("profileName")
+
+    if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
+        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Operator_CreateAllowedRideProfile
+                        @ServiceTypeId=?,
+                        @RideTypeId=?,
+                        @VehicleTypeId=?,
+                        @ProfileName=?;
+                    """,
+                    (service_type_id, ride_type_id, vehicle_type_id, profile_name),
+                )
+                cols = [c[0] for c in cur.description]
+                row = dict(zip(cols, cur.fetchone()))
+        return jsonify(row), 201
+    except Exception as e:
+        print("Error in create_allowed_ride_profile:", e)
+        return jsonify({"error": "Failed to create allowed ride profile"}), 500
+
+
+
+@operator_bp.route("/allowed-ride-profiles/<ride_profile_id>", methods=["PUT"])
+@require_auth
+@require_role("O", "I")
+def update_allowed_ride_profile(ride_profile_id):
+    data = request.get_json(force=True) or {}
+
+    service_type_id = data.get("serviceTypeId")
+    ride_type_id = data.get("rideTypeId")
+    vehicle_type_id = data.get("vehicleTypeId")
+    profile_name = data.get("profileName")
+
+    if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
+        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Operator_UpdateAllowedRideProfile
+                        @RideProfileId=?,
+                        @ServiceTypeId=?,
+                        @RideTypeId=?,
+                        @VehicleTypeId=?,
+                        @ProfileName=?;
+                    """,
+                    (
+                        ride_profile_id,  # string GUID, SQL Server will cast to UNIQUEIDENTIFIER
+                        service_type_id,
+                        ride_type_id,
+                        vehicle_type_id,
+                        profile_name,
+                    ),
+                )
+                cols = [c[0] for c in cur.description]
+                row = dict(zip(cols, cur.fetchone()))
+        return jsonify(row), 200
+    except Exception as e:
+        print("Error in update_allowed_ride_profile:", e)
+        return jsonify({"error": "Failed to update allowed ride profile"}), 500
