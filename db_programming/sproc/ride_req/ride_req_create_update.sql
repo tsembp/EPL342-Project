@@ -31,25 +31,6 @@ BEGIN
             RETURN;
         END
 
-        -- Validate service type and points - if NOT bridged route -> ensure pickup & dropoff at same zone
-        DECLARE @ServiceType NVARCHAR(100);
-        SELECT @ServiceType = ST.Name
-        FROM [dbo].[AllowedRideProfile] ARP
-        JOIN [dbo].[Servicetype] ST ON ARP.ServiceTypeId = ST.ServiceTypeId
-        WHERE ARP.RideProfileId = @RideProfileId;
-
-        IF @ServiceType <> 'bridged_route'
-        BEGIN
-            DECLARE @PickupZone INT, @DropoffZone INT;
-            SELECT @PickupZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @PickUpPointId;
-            SELECT @DropoffZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @DropOffPointId;
-            IF @PickupZone <> @DropoffZone
-            BEGIN
-                ;THROW 50005, 'Pickup and dropoff must be in the same zone for this service type.', 1;
-                RETURN;
-            END
-        END
-
         -- Validate Pickup and DropOff points
         IF NOT EXISTS (
             SELECT 1
@@ -74,6 +55,25 @@ BEGIN
         BEGIN
             ;THROW 50007, 'Invalid RideProfileId: Ride profile does not exist for the given Passenger.', 1;
             RETURN;
+        END
+
+        -- Validate service type and points - if NOT bridged route -> ensure pickup & dropoff at same zone
+        DECLARE @ServiceType NVARCHAR(100);
+        SELECT @ServiceType = ST.Name
+        FROM [dbo].[AllowedRideProfile] ARP
+        JOIN [dbo].[Servicetype] ST ON ARP.ServiceTypeId = ST.ServiceTypeId
+        WHERE ARP.RideProfileId = @RideProfileId;
+
+        IF @ServiceType <> 'bridged_route'
+        BEGIN
+            DECLARE @PickupZone INT, @DropoffZone INT;
+            SELECT @PickupZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @PickUpPointId;
+            SELECT @DropoffZone = ZoneId FROM [dbo].[ZonePoint] WHERE PointId = @DropOffPointId;
+            IF @PickupZone <> @DropoffZone
+            BEGIN
+                ;THROW 50005, 'Pickup and dropoff must be in the same zone for this service type.', 1;
+                RETURN;
+            END
         END
 
         -- Validate that NumOfPeople is within allowed limits
@@ -190,22 +190,26 @@ GO
 -- Cancel Ride Request
 -- =============================================
 CREATE OR ALTER PROCEDURE [dbo].[usp_RideRequest_Cancel]
-    @RequestId INT,
+    @RequestId   INT,
     @PassengerId UNIQUEIDENTIFIER
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+    SET XACT_ABORT ON;
+
     BEGIN TRY
+        BEGIN TRANSACTION;
+
         -- Check if request exists and belongs to passenger
         IF NOT EXISTS (
-            SELECT 1 FROM [dbo].[RideRequest] 
+            SELECT 1 
+            FROM [dbo].[RideRequest] 
             WHERE [RequestId] = @RequestId 
-            AND [PassengerId] = @PassengerId
+              AND [PassengerId] = @PassengerId
         )
         BEGIN
             ;THROW 50002, 'Ride request not found or unauthorized', 1;
-        END
+        END;
         
         -- Check if request can be cancelled
         DECLARE @CurrentStatus NVARCHAR(100);
@@ -213,35 +217,51 @@ BEGIN
         FROM [dbo].[RideRequest] 
         WHERE [RequestId] = @RequestId;
         
-        IF @CurrentStatus IN ('Cancelled', 'Completed')
+        IF @CurrentStatus IN ('Accepted', 'Cancelled', 'Completed')
         BEGIN
-            ;THROW 50003, 'Cannot cancel a completed or already cancelled request', 1;
-        END
+            ;THROW 50003, 'Cannot cancel request', 1;
+        END;
         
-        -- Update ride req status to Cancelled
+        -- Update ride request status to Cancelled
         UPDATE [dbo].[RideRequest]
         SET 
-            [Status] = 'Cancelled',
+            [Status]    = 'Cancelled',
             [UpdatedAt] = GETUTCDATE()
         WHERE [RequestId] = @RequestId;
 
+        ------------------------------------------------
         -- Expire all dispatch offers for this ride request
+        ------------------------------------------------
         UPDATE dof
-        SET dof.Status = 'Expired', dof.RespondedAt = GETUTCDATE()
-        FROM dbo.DispatchOffer dof
-        INNER JOIN dbo.ItineraryLeg il ON dof.LegId = il.LegId
+        SET 
+            dof.Status      = 'Expired',
+            dof.RespondedAt = COALESCE(dof.RespondedAt, GETUTCDATE())
+        FROM dbo.DispatchOffer AS dof
+        INNER JOIN dbo.ItineraryLeg AS il 
+            ON dof.LegId = il.LegId
         WHERE il.RideRequestId = @RequestId
-        AND dof.Status IN ('Sent', 'Accepted');
+          AND dof.Status IN ('Sent', 'Accepted');
 
-        -- Mark RideRequestProgress as Failed
+        ------------------------------------------------
+        -- Mark RideRequestProgress as Failed 
+        ------------------------------------------------
         UPDATE dbo.RideRequestProgress
-        SET Status = 'Failed', UpdatedAt = GETUTCDATE()
-        WHERE RequestId = @RequestId;
+        SET 
+            Status    = 'Failed',
+            UpdatedAt = GETUTCDATE()
+        WHERE RequestId = @RequestId
+          AND Status IN ('AwaitingDrivers', 'AllAccepted');
 
-        SELECT * FROM [dbo].[RideRequest] WHERE [RequestId] = @RequestId;
+        COMMIT TRANSACTION;
+
+        SELECT * 
+        FROM [dbo].[RideRequest] 
+        WHERE [RequestId] = @RequestId;
     END TRY
     BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
         THROW;
     END CATCH
-END
+END;
 GO
