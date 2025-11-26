@@ -54,16 +54,19 @@ BEGIN
         WHERE RideProfileId = @RideProfileId;
 
         -- Get leg time window
+        DECLARE @BufferMinutes INT = 10; -- +/- 10 mins
         DECLARE @LegStartTime DATETIME2(0), @LegEndTime DATETIME2(0);
-        SELECT @LegStartTime = ApproxStartTime, @LegEndTime = ApproxEndTime
+        SELECT @LegStartTime = DATEADD(MINUTE, -@BufferMinutes, ApproxStartTime), 
+               @LegEndTime = DATEADD(MINUTE, @BufferMinutes, ApproxEndTime) -- +/- 10 mins for plain conflict check
         FROM [dbo].[ItineraryLeg]
         WHERE LegId = @ItineraryLegId;
 
         -- Find eligible drivers WITHOUT time conflicts
-        INSERT INTO [dbo].[DispatchOffer] ([LegId], [RecipientUserId], [Status], [SentAt])
+        INSERT INTO [dbo].[DispatchOffer] ([LegId], [RecipientUserId], [EnrollId], [Status], [SentAt])
         SELECT DISTINCT
             @ItineraryLegId,
             enroll.UserId,
+            enroll.EnrollId,
             'Sent',
             GETUTCDATE()
         FROM [dbo].[UserServiceEnrollment] enroll
@@ -215,6 +218,20 @@ BEGIN
                         END,
             UpdatedAt = SYSUTCDATETIME()
         WHERE RequestId = @RequestId;
+
+        ------------------------------------------------
+        -- 6. If all legs accepted → create Rides
+        ------------------------------------------------
+        DECLARE @NewStatus NVARCHAR(50);
+
+        SELECT @NewStatus = Status
+        FROM dbo.RideRequestProgress
+        WHERE RequestId = @RequestId;
+
+        IF @NewStatus = 'AllAccepted'
+        BEGIN
+            EXEC dbo.usp_CreateRidesForCompletedRequest @RequestId;
+        END;
 
         COMMIT TRANSACTION;
     END TRY

@@ -449,6 +449,7 @@ CREATE TABLE [dbo].[DispatchOffer] (
     [OfferId] INT IDENTITY(1,1) NOT NULL,
     [LegId] INT NOT NULL,
     [RecipientUserId] UNIQUEIDENTIFIER NOT NULL,
+    [EnrollId] INT NOT NULL,
     [Status] NVARCHAR(100) NOT NULL DEFAULT 'Sent',
     [SentAt] UtcStamp DEFAULT GETUTCDATE(),
     [RespondedAt] UtcStamp,
@@ -653,7 +654,9 @@ ADD CONSTRAINT [FK_DispatchOffer_RecipientUserId]
     ON DELETE CASCADE,
     CONSTRAINT [FK_DispatchOffer_ItineraryLeg]
     FOREIGN KEY ([LegId]) REFERENCES [dbo].[ItineraryLeg]([LegId])
-    ON DELETE NO ACTION;
+    ON DELETE NO ACTION,
+    CONSTRAINT FK_DispatchOffer_EnrollId
+    FOREIGN KEY (EnrollId) REFERENCES [dbo].[UserServiceEnrollment](EnrollId);
 
 /* Payment → Sender, Receiver User */
 ALTER TABLE [dbo].[Payment]
