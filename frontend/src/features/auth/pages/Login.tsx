@@ -11,6 +11,8 @@ import { Car } from "lucide-react";
 export default function Login() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
+  const getRole = useAuthStore((state) => state.userRole);
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,8 +23,18 @@ export default function Login() {
 
     try {
       await login(email, password);
+      const role = getRole;
+
       toast.success("Logged in successfully");
-      navigate("/home");
+
+      // 🔥 Redirect based on role
+      if (role === "operator") {
+        navigate("/operator/overview");
+      } else if (role === "driver") {
+        navigate("/driver/dashboard"); 
+      } else {
+        navigate("/home");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
     } finally {

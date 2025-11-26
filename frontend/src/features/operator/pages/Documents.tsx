@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import DocumentsTable, { DocumentRow } from "./DocumentsTable";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 type DocTab = "person" | "vehicle";
 type StatusTab = "pending" | "approved" | "rejected";
@@ -32,7 +33,6 @@ function mapPersonDoc(doc: any): DocumentRow {
     status: doc.Status?.trim().toLowerCase() ?? "pending",
   };
 }
-
 
 function mapVehicleDoc(doc: any): DocumentRow {
   return {
@@ -112,34 +112,41 @@ export default function Documents() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filters row: document type + status side by side */}
-      <div className="flex flex-col gap-3">
+    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
+      <div className="w-full max-w-6xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">Documents</h1>
+          <p className="text-sm text-neutral-400">Review and manage pending document submissions</p>
+        </div>
+
         <div className="flex flex-wrap gap-4 items-center">
-          <Tabs
-            value={docTab}
-            onValueChange={(v) => setDocTab(v as DocTab)}
-          >
-            <TabsList>
-              <TabsTrigger value="person">Person Documents</TabsTrigger>
-              <TabsTrigger value="vehicle">Vehicle Documents</TabsTrigger>
+          <Tabs value={docTab} onValueChange={(v) => setDocTab(v as DocTab)}>
+            <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+              <TabsTrigger value="person" className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors">
+                Person Documents
+              </TabsTrigger>
+              <TabsTrigger value="vehicle" className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors">
+                Vehicle Documents
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <Tabs
-            value={statusTab}
-            onValueChange={(v) => setStatusTab(v as StatusTab)}
-          >
-            <TabsList>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="approved">Approved</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+          <Tabs value={statusTab} onValueChange={(v) => setStatusTab(v as StatusTab)}>
+            <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+              <TabsTrigger value="pending" className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors">
+                Pending
+              </TabsTrigger>
+              <TabsTrigger value="approved" className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors">
+                Approved
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors">
+                Rejected
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
-        {/* Table (depends on both filters) */}
-        <Card className="p-0">
+        <Card className="w-full rounded-2xl border border-neutral-800 bg-neutral-900/80 shadow-lg p-0">
           <DocumentsTable
             data={filtered}
             onReview={statusTab === "pending" ? handleReview : undefined}
@@ -147,36 +154,46 @@ export default function Documents() {
         </Card>
       </div>
 
-      {/* Review dialog */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Review Document</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">Review Document</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <div>
-              <b>User:</b> {selected?.user}
+          <div className="space-y-3">
+            <div className="text-sm">
+              <span className="text-neutral-400">User:</span> <span className="text-neutral-100 font-medium">{selected?.user}</span>
             </div>
-            <div>
-              <b>Type:</b> {selected?.type}
+            <div className="text-sm">
+              <span className="text-neutral-400">Type:</span> <span className="text-neutral-100 font-medium">{selected?.type}</span>
             </div>
-            <div>
-              <b>Submitted At:</b> {selected?.submittedAt}
+            <div className="text-sm">
+              <span className="text-neutral-400">Submitted At:</span> <span className="text-neutral-100 font-medium">{selected?.submittedAt}</span>
             </div>
-            <Textarea
-              placeholder="Add review comment (optional)"
-              value={reviewComment}
-              onChange={(e) => setReviewComment(e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="review-comment" className="text-neutral-200">Review Comment (optional)</Label>
+              <Textarea
+                id="review-comment"
+                placeholder="Add review comment..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40 min-h-24"
+              />
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex items-center justify-end gap-3 mt-4">
             <Button
-              variant="destructive"
+              variant="outline"
               onClick={() => handleAction("reject")}
+              className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 rounded-lg"
             >
               Reject
             </Button>
-            <Button onClick={() => handleAction("approve")}>Approve</Button>
+            <Button 
+              onClick={() => handleAction("approve")}
+              className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2"
+            >
+              Approve
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
