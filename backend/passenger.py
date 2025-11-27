@@ -301,4 +301,135 @@ def get_ride_request_details(request_id: int):
             200,
         )
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400    
+
+
+# Get ride history for passenger
+@passenger_bp.route("/ride-history", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_ride_history():
+    user_id = session["user_id"]
+
+    # Query params
+    try:
+        page = int(request.args.get("page", 1))
+    except ValueError:
+        page = 1
+    if page < 1:
+        page = 1
+
+    try:
+        page_size = int(request.args.get("page_size", 50))
+    except ValueError:
+        page_size = 50
+    page_size = max(1, min(page_size, 50))
+
+    status_filter = request.args.get("status")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                sql = """
+                WITH ReqAgg AS (
+                    SELECT
+                        rr.RequestId,
+                        rr.Status AS RequestStatus,
+                        rr.PickupAt,
+                        zp_from.Name AS FromName,
+                        zp_to.Name   AS ToName,
+                        -- trip-level aggregates
+                        CASE WHEN COUNT(r.RideId) > 0 THEN 1 ELSE 0 END AS HasRides,
+                        COUNT(DISTINCT r.RideId)          AS RideCount,
+                        MIN(r.StartedAt)                  AS FirstRideStart,
+                        MAX(r.EndedAt)                    AS LastRideEnd,
+                        SUM(ISNULL(r.PriceFinal, 0))      AS TotalPrice,
+                        -- a simple "latest" ride status (for list display)
+                        MAX(r.Status)                     AS LatestRideStatus
+                    FROM dbo.RideRequest rr
+                    LEFT JOIN dbo.ItineraryLeg il
+                        ON rr.RequestId = il.RideRequestId
+                    LEFT JOIN dbo.DispatchOffer dof
+                        ON dof.LegId = il.LegId
+                    LEFT JOIN dbo.Ride r
+                        ON r.OfferId = dof.OfferId
+                    LEFT JOIN dbo.ZonePoint zp_from
+                        ON rr.PickUpPoint = zp_from.PointId
+                    LEFT JOIN dbo.ZonePoint zp_to
+                        ON rr.DropOffPoint = zp_to.PointId
+                    WHERE rr.PassengerId = ?
+                      AND (
+                            ? IS NULL
+                            OR ? = ''
+                            OR rr.Status = ?
+                          )
+                    GROUP BY
+                        rr.RequestId,
+                        rr.Status,
+                        rr.PickupAt,
+                        zp_from.Name,
+                        zp_to.Name
+                )
+                SELECT
+                    RequestId,
+                    RequestStatus,
+                    PickupAt,
+                    FromName,
+                    ToName,
+                    HasRides,
+                    RideCount,
+                    FirstRideStart,
+                    LastRideEnd,
+                    TotalPrice,
+                    LatestRideStatus,
+                    COUNT(*) OVER() AS TotalCount
+                FROM ReqAgg
+                ORDER BY PickupAt DESC
+                OFFSET (? - 1) * ? ROWS
+                FETCH NEXT ? ROWS ONLY;
+                """
+
+                params = (
+                    user_id,
+                    status_filter,
+                    status_filter,
+                    status_filter,
+                    page,
+                    page_size,
+                    page_size,
+                )
+
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+
+                if not rows:
+                    return jsonify({
+                        "success": True,
+                        "history": [],
+                        "page": page,
+                        "page_size": page_size,
+                        "total_count": 0,
+                        "total_pages": 0,
+                    }), 200
+
+                columns = [col[0] for col in cur.description]
+                history = [dict(zip(columns, row)) for row in rows]
+
+                total_count = history[0].get("TotalCount", 0) or 0
+                total_pages = (total_count + page_size - 1) // page_size
+
+                # Strip TotalCount from each entry (we send it separately)
+                for item in history:
+                    item.pop("TotalCount", None)
+
+                return jsonify({
+                    "success": True,
+                    "history": history,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_count": total_count,
+                    "total_pages": total_pages,
+                }), 200
+
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

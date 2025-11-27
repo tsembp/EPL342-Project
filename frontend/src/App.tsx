@@ -21,6 +21,7 @@ import Profile from "@/features/passenger/pages/Profile";
 import TripDetail from "@/features/passenger/pages/TripDetail";
 import CreateRide from "@/features/passenger/pages/CreateRide";
 import Home from "@/features/passenger/pages/Home";
+import RideHistory from "@/features/passenger/pages/RideHistory";
 
 // OPERATOR
 import OperatorDashboard from "@/features/operator/pages/OperatorDashboard";
@@ -99,6 +100,7 @@ function App() {
               <Route path="ride" element={<CreateRide />} />
               <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
               <Route index element={<Services />} />
+              <Route path="history" element={<RideHistory />} />
             </Route>
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
