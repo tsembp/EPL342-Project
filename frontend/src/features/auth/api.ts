@@ -13,6 +13,7 @@ export interface LoginResponse {
   role: string;
   accountType: 'USER' | 'STAFF';
   email: string;
+  username: string; // New field
   verificationStatus?: string; // New field
   error?: string;
 }
@@ -38,6 +39,7 @@ export interface AuthCheckResponse {
   role?: string;
   accountType?: 'USER' | 'STAFF';
   email?: string;
+  username?: string; // New field
 }
 
 export const login = (data: LoginRequest) =>
