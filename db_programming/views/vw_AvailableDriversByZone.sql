@@ -52,7 +52,7 @@ SELECT
     
     -- Enrollment status
     use_enroll.Status AS EnrollmentStatus,
-    use_enroll.CheckedAt AS EnrollmentCheckedAt,
+    use_enroll.ReviewedAt AS EnrollmentCheckedAt,
     
     -- Vehicle location (if available)
     vll.Lat AS CurrentLat,

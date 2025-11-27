@@ -85,7 +85,7 @@ BEGIN
             AND avail.GeofencezoneId = @ZoneId
             AND avail.AvailabilityDate = CAST(@PickupTime AS DATE)
             AND CAST(@PickupTime AS TIME(0)) BETWEEN avail.StartsAt AND avail.EndsAt
-            AND vloc.Location.STDistance(@PickupLocation) <= @SearchRadiusMeters
+            -- AND vloc.Location.STDistance(@PickupLocation) <= @SearchRadiusMeters
             -- NEW: Check no overlapping rides
             AND NOT EXISTS (
                 SELECT 1 

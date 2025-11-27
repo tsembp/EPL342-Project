@@ -5,23 +5,28 @@ import { cn } from "@/lib/utils";
 
 export function BottomNav() {
   const userRole = useAuthStore((state) => state.userRole);
-  
+
   const tabs = [
-    { to: "/home", icon: House, label: userRole === "driver" ? "Earnings" : "Home" },
-    { to: "/credit", icon: CreditCard, label: userRole === "driver" ? "Earnings" : "Credit" },
-    { to: "/history", icon: History, label: "History" },
+    {
+      to: userRole === "driver" ? "/driver/ride" : "/passenger/ride",
+      icon: House,
+      label: userRole === "driver" ? "Earnings" : "Ride"
+    },
     { to: "/profile", icon: User, label: "Profile" },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
-      <div className="max-w-2xl mx-auto px-2 py-2 flex justify-around items-center">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
-            className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
-            activeClassName="text-primary bg-primary/10 font-medium"
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg transition-colors",
+              "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900"
+            )}
+            activeClassName="text-emerald-400 bg-neutral-900 border border-neutral-800 font-medium"
           >
             <tab.icon className="h-5 w-5" />
             <span className="text-[10px]">{tab.label}</span>
