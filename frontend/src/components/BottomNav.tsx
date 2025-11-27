@@ -7,7 +7,11 @@ export function BottomNav() {
   const userRole = useAuthStore((state) => state.userRole);
 
   const tabs = [
-    { to: "/ride", icon: House, label: userRole === "driver" ? "Earnings" : "Ride" },
+    {
+      to: userRole === "driver" ? "/driver/ride" : "/passenger/ride",
+      icon: House,
+      label: userRole === "driver" ? "Earnings" : "Ride"
+    },
     { to: "/profile", icon: User, label: "Profile" },
   ];
 

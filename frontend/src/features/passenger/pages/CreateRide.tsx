@@ -393,14 +393,6 @@ export default function CreateRide() {
         <div className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight">Ride</span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-neutral-300">
-          <button className="rounded-full border border-neutral-700 px-4 py-1 text-xs text-neutral-200 hover:bg-neutral-900">
-            Login
-          </button>
-          <button className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-medium text-neutral-950 hover:bg-emerald-400">
-            Sign up
-          </button>
-        </div>
       </header>
   <main className="flex flex-1 flex-col lg:flex-row h-full overflow-hidden">
   <section className="flex w-full justify-center border-b border-neutral-900 bg-neutral-950 px-4 py-6 pb-24 lg:w-[380px] lg:flex-shrink-0 lg:border-b-0 lg:border-r overflow-y-auto h-full max-h-full">

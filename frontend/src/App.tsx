@@ -27,7 +27,6 @@ import NotFound from "@/pages/NotFound";
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
 import CreateRide from "@/features/passenger/pages/CreateRide";
-import RideAlternativesPage from "@/features/passenger/pages/RideAlternativesPage";
 import Home from "@/features/passenger/pages/Home";
 
 const queryClient = new QueryClient();
@@ -58,7 +57,6 @@ function App() {
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/driver/documents" element={<DriverDocuments />} />
             <Route path="/pending-approval" element={<PendingApproval />} />
-            <Route path="/ride-alternatives/:requestId" element={<ProtectedRoute><RideAlternativesPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
             <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
