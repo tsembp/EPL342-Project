@@ -1,4 +1,3 @@
-// src/pages/GDPRExport.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -20,7 +19,7 @@ type GdprExportData = {
   Username?: string;
   Verified?: boolean | number;
   CreatedAt?: string;
-  [key: string]: any; // allow extra fields in case you extend the JSON later
+  [key: string]: any;
 };
 
 export default function GDPRExport() {
@@ -89,22 +88,22 @@ export default function GDPRExport() {
       : data?.Verified === 1;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50">
       <Header title="My GDPR Data Export" showBack />
 
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         {/* Status / Info card */}
-        <Card className="p-4 flex items-start gap-3">
+        <Card className="p-4 flex items-start gap-3 border border-neutral-800 bg-neutral-900/80 shadow-lg">
           <div className="mt-1">
-            <ShieldCheck className="h-6 w-6 text-primary" />
+            <ShieldCheck className="h-6 w-6 text-emerald-500" />
           </div>
           <div className="flex-1 space-y-1">
-            <h2 className="font-semibold text-base">
+            <h2 className="font-semibold text-base text-neutral-50">
               Your personal data snapshot
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-neutral-400">
               This page shows the main information our system currently stores
-              about your account. You can review it, or download it as a JSON
+              about your account. You can review it or download it as a JSON
               file for your records.
             </p>
           </div>
@@ -112,13 +111,13 @@ export default function GDPRExport() {
 
         {/* Error / loading */}
         {error && (
-          <Card className="p-4 border-destructive/50 bg-destructive/5 text-destructive text-sm">
+          <Card className="p-4 border border-red-500/50 bg-red-950/40 text-red-300 text-sm">
             {error}
           </Card>
         )}
 
         {loading && (
-          <Card className="p-4 text-sm text-muted-foreground flex items-center gap-2">
+          <Card className="p-4 text-sm text-neutral-400 flex items-center gap-2 border border-neutral-800 bg-neutral-900/80">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Fetching your latest data export...
           </Card>
@@ -128,15 +127,15 @@ export default function GDPRExport() {
         {data && !loading && (
           <div className="space-y-4">
             {/* Top summary */}
-            <Card className="p-4 flex flex-wrap items-center gap-4 justify-between">
+            <Card className="p-4 flex flex-wrap items-center gap-4 justify-between border border-neutral-800 bg-neutral-900/80">
               <div>
-                <div className="text-xs uppercase text-muted-foreground">
+                <div className="text-xs uppercase text-neutral-500">
                   Account
                 </div>
-                <div className="font-semibold text-lg">
+                <div className="font-semibold text-lg text-neutral-50">
                   {fullName || data.Username || "User"}
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-neutral-400">
                   {data.Email || "No email stored"}
                 </div>
               </div>
@@ -144,7 +143,10 @@ export default function GDPRExport() {
               <div className="flex flex-col items-end gap-2">
                 <div className="flex gap-2">
                   {data.Role && (
-                    <Badge variant="secondary">
+                    <Badge
+                      variant="outline"
+                      className="border-neutral-700 bg-neutral-900 text-neutral-200"
+                    >
                       {data.Role === "D"
                         ? "Driver"
                         : data.Role === "P"
@@ -154,19 +156,28 @@ export default function GDPRExport() {
                         : data.Role}
                     </Badge>
                   )}
-                  <Badge variant={verified ? "default" : "outline"}>
+                  <Badge
+                    variant={verified ? "default" : "outline"}
+                    className={
+                      verified
+                        ? "bg-emerald-500 text-neutral-950"
+                        : "border-neutral-700 bg-neutral-900 text-neutral-200"
+                    }
+                  >
                     {verified ? "Verified" : "Not verified"}
                   </Badge>
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-neutral-500">
                   Created at: {formatDateTime(data.CreatedAt)}
                 </div>
               </div>
             </Card>
 
             {/* Personal details */}
-            <Card className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Personal details</h3>
+            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
+              <h3 className="font-semibold text-sm text-neutral-50">
+                Personal details
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 <Field label="First name" value={data.FirstName} />
                 <Field label="Last name" value={data.LastName} />
@@ -176,8 +187,10 @@ export default function GDPRExport() {
             </Card>
 
             {/* Contact info */}
-            <Card className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Contact information</h3>
+            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
+              <h3 className="font-semibold text-sm text-neutral-50">
+                Contact information
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 <Field label="Email" value={data.Email} />
                 <Field label="Phone" value={data.Phone} />
@@ -188,8 +201,10 @@ export default function GDPRExport() {
             </Card>
 
             {/* Account metadata */}
-            <Card className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Account details</h3>
+            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
+              <h3 className="font-semibold text-sm text-neutral-50">
+                Account details
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
                 <Field label="Username" value={data.Username} />
                 <Field label="User ID" value={data.UserId} />
@@ -198,7 +213,10 @@ export default function GDPRExport() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handleDownloadJson}>
+              <Button
+                onClick={handleDownloadJson}
+                className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Download JSON
               </Button>
@@ -206,6 +224,7 @@ export default function GDPRExport() {
                 variant="outline"
                 onClick={fetchExport}
                 disabled={loading}
+                className="border-neutral-700 bg-neutral-900 text-neutral-100 hover:bg-neutral-800 hover:text-neutral-50"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh export
@@ -214,6 +233,7 @@ export default function GDPRExport() {
                 variant="ghost"
                 type="button"
                 onClick={() => setShowRaw((s) => !s)}
+                className="text-neutral-300 hover:bg-neutral-900"
               >
                 {showRaw ? "Hide raw data" : "Show raw JSON"}
               </Button>
@@ -221,11 +241,11 @@ export default function GDPRExport() {
 
             {/* Raw JSON (optional) */}
             {showRaw && (
-              <Card className="p-4">
-                <div className="text-xs mb-2 text-muted-foreground">
+              <Card className="p-4 border border-neutral-800 bg-neutral-900/80">
+                <div className="text-xs mb-2 text-neutral-500">
                   Raw export (JSON)
                 </div>
-                <pre className="text-xs bg-muted/70 p-3 rounded-md overflow-x-auto">
+                <pre className="text-xs bg-neutral-950/70 p-3 rounded-md overflow-x-auto text-neutral-100">
                   {JSON.stringify(data, null, 2)}
                 </pre>
               </Card>
@@ -234,7 +254,7 @@ export default function GDPRExport() {
         )}
 
         {!loading && !data && !error && (
-          <Card className="p-4 text-sm text-muted-foreground">
+          <Card className="p-4 text-sm text-neutral-400 border border-neutral-800 bg-neutral-900/80">
             No export data available for your account.
           </Card>
         )}
@@ -255,10 +275,10 @@ function Field({
 }) {
   return (
     <div className={fullWidth ? "col-span-1 md:col-span-2" : ""}>
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">
+      <div className="text-[11px] uppercase tracking-wide text-neutral-500 mb-0.5">
         {label}
       </div>
-      <div className="text-sm">
+      <div className="text-sm text-neutral-100">
         {value === undefined || value === null || value === ""
           ? "-"
           : String(value)}
