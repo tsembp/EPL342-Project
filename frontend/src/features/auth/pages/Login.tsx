@@ -21,18 +21,28 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      const role = useAuthStore.getState().userRole;
+      const response = await login(email, password); // Capture the full response
 
-      toast.success("Logged in successfully");
+      if (response.success) {
+        toast.success("Logged in successfully");
 
-      // Redirect based on role
-      if (role === "operator") {
-        navigate("/operator/overview");
-      } else if (role === "driver") {
-        navigate("/driver/dashboard");
+        // Redirect based on verificationStatus first, then role
+        if (response.verificationStatus === "DOCS_PENDING") {
+          navigate("/driver/documents");
+        } else if (response.verificationStatus === "PENDING_APPROVAL") {
+          navigate("/pending-approval");
+        } else { // VERIFIED or any other status that implies full access
+          const role = useAuthStore.getState().userRole; // Get role from store for final redirection
+          if (role === "operator") {
+            navigate("/operator/overview");
+          } else if (role === "driver") {
+            navigate("/driver/dashboard"); 
+          } else { // Default for passenger or fully verified company representative
+            navigate("/passenger/ride");;
+          }
+        }
       } else {
-        navigate("/passenger/ride");
+        throw new Error(response.error || "Login failed");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");

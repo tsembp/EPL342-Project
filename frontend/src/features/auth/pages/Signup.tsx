@@ -40,10 +40,9 @@ export default function Signup() {
     try {
       // Map UI role to SQL role codes
       const roleMap: { [key: string]: string } = {
-        Passenger: "P",
-        Driver: "D",
-        Operator: "O",
-        Inspector: "I",
+        'Passenger': 'P',
+        'Driver': 'D',
+        'Company Representative': 'C'
       };
 
       // Map gender to single character
@@ -54,13 +53,10 @@ export default function Signup() {
         "Prefer not to say": "M",
       };
 
-      const accountType =
-        formData.role === "Operator" || formData.role === "Inspector"
-          ? "staff"
-          : "user";
+      const accountType = (formData.role === 'Company Representative') ? 'staff' : 'user';
       const sqlRole = roleMap[formData.role];
 
-      await signup({
+      const response = await signup({
         accountType: accountType,
         role: sqlRole,
         email: formData.email,
@@ -74,18 +70,22 @@ export default function Signup() {
         address: formData.address,
       });
 
-      toast.success("Account created successfully!");
-
-      // Redirect based on role
-      if (formData.role === "Driver") {
-        toast.info("Please upload your driver documents for verification");
-        navigate("/driver/documents");
-      } else if (formData.role === "Operator" || formData.role === "Inspector") {
-        toast.info("Your account needs admin approval");
-        navigate("/pending-approval");
+      if (response.success) {
+        toast.success("Account created successfully!");
+        
+        // Redirect based on role
+        if (formData.role === "Driver") {
+          toast.info("Please upload your driver documents for verification");
+          navigate("/driver/documents", { state: { role: "driver", userId: response.userId } });
+        } else if (formData.role === "Company Representative") {
+          toast.info("Please upload your company documents for verification");
+          navigate("/driver/documents", { state: { role: "company_representative", userId: response.userId } });
+        } else {
+          toast.success("You can now log in!");
+          navigate("/login");
+        }
       } else {
-        toast.success("You can now log in!");
-        navigate("/login");
+        throw new Error(response.message || "Signup failed");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Signup failed");
@@ -176,8 +176,7 @@ export default function Signup() {
                 <SelectContent className="border border-neutral-800 bg-neutral-900 text-neutral-50">
                   <SelectItem value="Passenger">Passenger</SelectItem>
                   <SelectItem value="Driver">Driver</SelectItem>
-                  <SelectItem value="Operator">Operator</SelectItem>
-                  <SelectItem value="Inspector">Inspector</SelectItem>
+                  <SelectItem value="Company Representative">Company Representative</SelectItem>
                 </SelectContent>
               </Select>
             </div>
