@@ -5,14 +5,24 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/store";
+
 import Login from "@/features/auth/pages/Login";
 import Signup from "@/features/auth/pages/Signup";
+
+// DRIVER
 import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
+import DriverDashboard from "@/features/driver/pages/Dashboard"; // ⬅️ NEW
+
+// PASSENGER
 import Map from "@/features/passenger/pages/Map";
 import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";  
 import TripDetail from "@/features/passenger/pages/TripDetail";
+import CreateRide from "@/features/passenger/pages/CreateRide";
+import Home from "@/features/passenger/pages/Home";
+
+// OPERATOR
 import OperatorDashboard from "@/features/operator/pages/OperatorDashboard";
 import Overview from "@/features/operator/pages/Overview";
 import UsersDrivers from "@/features/operator/pages/UsersDrivers";
@@ -23,11 +33,13 @@ import Documents from "@/features/operator/pages/Documents";
 import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
-import NotFound from "@/pages/NotFound";
+
+// GDPR
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
-import CreateRide from "@/features/passenger/pages/CreateRide";
-import Home from "@/features/passenger/pages/Home";
+
+// OTHER
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +51,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
-  // Check authentication status on app load
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -54,11 +65,24 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+
+            {/* PASSENGER */}
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/driver/documents" element={<DriverDocuments />} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
+
+            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
+              <Route path="ride" element={<CreateRide />} />
+              <Route path="rides/:requestId" element={<TripDetail />} />
+              <Route index element={<Services />} />
+            </Route>
+
+            {/* DRIVER */}
+            <Route path="/driver/dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+            <Route path="/driver/documents" element={<DriverDocuments />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
+
+            {/* OPERATOR */}
             <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
               <Route path="overview" element={<Overview />} />
               <Route path="users" element={<UsersDrivers />} />
@@ -72,14 +96,10 @@ function App() {
               <Route index element={<Overview />} />
             </Route>
 
-            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
-              <Route path="ride" element={<CreateRide />} />
-              <Route path="rides/:requestId" element={<TripDetail />} />
-              <Route index element={<Services />} />
-            </Route>
-
+            {/* GDPR */}
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
