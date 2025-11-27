@@ -108,3 +108,66 @@ def create_service_enroll():
     except Exception as e:
         print("Error in /service-enroll/create:", e)
         return jsonify({"error": str(e)}), 500
+
+# NOTE: This endpoint is unauthenticated on purpose to allow newly
+# registered users to upload their documents before their account is verified or active.
+@driver_bp.route("/documents", methods=["POST"])
+def upload_document():
+    """
+    Handles document uploads for drivers and company reps (post-signup).
+    Calls the dbo.usp_AddPersonDocument stored procedure.
+    The uploaded file is noted but not stored by this endpoint, as the SP
+    creates a dummy URL.
+    """
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        # Extract data from the form
+        user_id = request.form.get("userId")
+        doc_type = request.form.get("docType")
+        doc_number = request.form.get("docNumber")
+        issue_date = request.form.get("issueDate")
+        expiry_date = request.form.get("expiryDate") # This can be None
+
+        # Basic validation
+        if not all([user_id, doc_type, doc_number, issue_date]):
+            return jsonify({"error": "Missing required form fields"}), 400
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_AddPersonDocument
+                        @UserId = ?,
+                        @DocType = ?,
+                        @DocNumber = ?,
+                        @IssueDate = ?,
+                        @ExpiryDate = ?
+                    """,
+                    user_id,
+                    doc_type,
+                    doc_number,
+                    issue_date,
+                    expiry_date,
+                )
+                
+                # Check if the stored procedure returned a result
+                row = cur.fetchone()
+                if row and row[0]:
+                    return jsonify({"success": True, "docId": row[0]}), 201
+                else:
+                    # This case might happen if the SP has a logic path with no output
+                    # but doesn't raise an error. We'll assume success if no error.
+                    return jsonify({"success": True, "message": "Document processed."}), 200
+
+
+    except Exception as e:
+        # Log the full error for debugging
+        print(f"Error in /documents endpoint: {e}")
+        # Return a generic error to the client
+        return jsonify({"error": "An internal error occurred.", "details": str(e)}), 500

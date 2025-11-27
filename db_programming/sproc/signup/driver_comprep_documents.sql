@@ -88,16 +88,6 @@ BEGIN
         RETURN;
     END;
 
-    IF EXISTS (
-        SELECT 1
-        FROM [dbo].[PersonDocument] PD
-        WHERE PD.DocNo = @DocNumber
-    )
-    BEGIN
-        RAISERROR('Document with the same number already exists.', 16, 1);
-        RETURN;
-    END;
-
     IF EXISTS(
         SELECT 1
         FROM [dbo].[PersonDocument] PD

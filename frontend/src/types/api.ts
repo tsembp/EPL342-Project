@@ -142,7 +142,15 @@ export type DriverEarnings = {
   }>;
 };
 
-export type UserRole = "passenger" | "driver" | "operator";
+export type UserRole = "passenger" | "driver" | "operator" | "company_representative";
+
+export type SignupResponse = {
+  success: boolean;
+  userId: string;
+  role: string;
+  email: string;
+  message: string;
+};
 
 export type Location = {
   lat: number;
