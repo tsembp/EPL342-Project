@@ -6,14 +6,22 @@ import { cn } from "@/lib/utils";
 export function BottomNav() {
   const userRole = useAuthStore((state) => state.userRole);
 
-  const tabs = [
-    {
-      to: userRole === "driver" ? "/driver/ride" : "/passenger/ride",
-      icon: House,
-      label: userRole === "driver" ? "Earnings" : "Ride"
-    },
-    { to: "/profile", icon: User, label: "Profile" },
-  ];
+  let tabs = [];
+
+  if (userRole === "passenger") {
+    tabs = [
+      { to: "/passenger/ride", icon: House, label: "Ride" },
+      { to: "/passenger/history", icon: History, label: "History" },
+      { to: "/profile", icon: User, label: "Profile" },
+    ];
+  } else if (userRole === "driver") {
+    tabs = [
+      { to: "/driver/ride", icon: House, label: "Ride" },
+      { to: "/driver/enrollment", icon: CreditCard, label: "Enrollment" },
+      { to: "/driver/history", icon: History, label: "History" },
+      { to: "/profile", icon: User, label: "Profile" },
+    ];
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur-md">
