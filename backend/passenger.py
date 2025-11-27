@@ -65,6 +65,39 @@ def request_ride():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+# Cancel ride request
+@passenger_bp.route("/ride-requests/<int:request_id>/cancel", methods=["POST"])
+@require_auth
+@require_role("P")
+def cancel_ride_request(request_id: int):
+    user_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if the ride request belongs to the user and is cancellable
+                cur.execute("""
+                    SELECT Status
+                    FROM dbo.RideRequest
+                    WHERE RequestId = ? AND PassengerId = ?
+                """, request_id, user_id)
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"success": False, "error": "RideRequest not found"}), 404
+                if row[0] not in ("Pending", "Edited"):
+                    return jsonify({"success": False, "error": "RideRequest cannot be cancelled"}), 400
+
+                # Run the cancel sproc
+                cur.execute("""
+                    EXEC dbo.usp_RideRequest_Cancel
+                        @RequestId=?
+                """, request_id)
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 # Generate alternative routes for ride request
 @passenger_bp.route("/ride-requests/<int:request_id>/alternatives", methods=["GET"])
 @require_auth
@@ -175,5 +208,76 @@ def select_alternative(request_id: int):
             "createdLegIds": leg_ids
         }), 200
 
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# Get ride request details
+@passenger_bp.route("/ride-requests/<int:request_id>", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_ride_request_details(request_id: int):
+    """Return basic ride request details for the logged-in passenger."""
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Basic request info + pickup/dropoff station names/zones
+                cur.execute(
+                    """
+                    SELECT 
+                        RR.RequestId,
+                        RR.Status,
+                        RR.NumOfPeople,
+                        RR.PickupAt,
+                        sp_from.PointId AS FromPointId,
+                        sp_from.ZoneId  AS FromZoneId,
+                        sp_from.Name    AS FromName,
+                        sp_to.PointId   AS ToPointId,
+                        sp_to.ZoneId    AS ToZoneId,
+                        sp_to.Name      AS ToName
+                    FROM dbo.RideRequest RR
+                    JOIN dbo.StationPoint sp_from ON sp_from.PointId = RR.PickUpPointId
+                    JOIN dbo.StationPoint sp_to   ON sp_to.PointId   = RR.DropOffPointId
+                    WHERE RR.RequestId = ? AND RR.PassengerId = ?
+                    """,
+                    request_id,
+                    user_id,
+                )
+                row = cur.fetchone()
+
+                if not row:
+                    return (
+                        jsonify(
+                            {"success": False, "error": "RideRequest not found"}
+                        ),
+                        404,
+                    )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "request": {
+                        "requestId": row.RequestId,
+                        "status": row.Status,
+                        "numOfPeople": row.NumOfPeople,
+                        "pickupAt": row.PickupAt,
+                        "pickup": {
+                            "pointId": row.FromPointId,
+                            "zoneId": row.FromZoneId,
+                            "name": row.FromName,
+                        },
+                        "dropoff": {
+                            "pointId": row.ToPointId,
+                            "zoneId": row.ToZoneId,
+                            "name": row.ToName,
+                        },
+                    }
+                }
+            ),
+            200,
+        )
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

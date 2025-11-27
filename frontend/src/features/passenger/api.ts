@@ -5,7 +5,46 @@ import type {
   TripRow,
   TripDetail,
   Location,
-} from " @/types/api";
+} from "@/types/api";
+
+// == Types ==
+export interface RideRequestPayload {
+  numOfPeople: number;
+  pickupAt: string;
+  pickupPointId: number;
+  dropOffPointId: number;
+  rideProfileId: string;
+}
+
+export interface RideRequestAlternativeLeg {
+  seqNo: number;
+  fromZoneId: number;
+  toZoneId: number;
+}
+
+export interface RideRequestAlternative {
+  alternativeNo: number;
+  legs: RideRequestAlternativeLeg[];
+}
+
+export type RideRequestDetails = {
+  requestId: number;
+  status: string;
+  numOfPeople: number;
+  pickupAt: string;
+  pickup: {
+    pointId: number;
+    zoneId: number;
+    name: string;
+  };
+  dropoff: {
+    pointId: number;
+    zoneId: number;
+    name: string;
+  };
+};
+
+// == API Functions ==
 
 export const getFareEstimate = (params: {
   pickup: Location;
@@ -25,42 +64,58 @@ export const getFareEstimate = (params: {
 };
 
 export const requestRide = (data: {
-  pickup: Location;
-  dropoff: Location;
-  service_type_id: string;
-  vehicle_type_id: string;
+  pickupPointId: number;
+  dropoffPointId: number;
+  rideProfileId: string; // GUID
+  numOfPeople: number;
+  pickupAt: string;      // ISO string
   notes?: string;
-}) =>
-  fetchAPI<{ trip_id: string }>("/passenger/request-ride", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-export const getNearbyVehicles = (params: {
-  lat: number;
-  lon: number;
-  radius_m: number;
 }) => {
-  const query = new URLSearchParams({
-    lat: params.lat.toString(),
-    lon: params.lon.toString(),
-    radius_m: params.radius_m.toString(),
-  });
-  return fetchAPI<VehiclePin[]>(`/passenger/nearby-vehicles?${query}`);
+  return fetchAPI<{ success: boolean; requestId?: number; error?: string }>(
+    "/passenger/request-ride",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
 };
 
-export const getPassengerTrips = (params: { page: number; size: number }) => {
-  const query = new URLSearchParams({
-    page: params.page.toString(),
-    size: params.size.toString(),
-  });
-  return fetchAPI<TripRow[]>(`/passenger/trips?${query}`);
+export const getRideRequestAlternatives = async (requestId: number) => {
+  const response = await fetchAPI<{
+    success: boolean;
+    requestId?: number;
+    alternatives?: RideRequestAlternative[];
+    error?: string;
+  }>(`/passenger/ride-requests/${requestId}/alternatives`);
+
+  return response; // { success, requestId, alternatives, error }
 };
 
-export const getTripDetail = (id: string) =>
-  fetchAPI<TripDetail>(`/passenger/trip/${id}`);
+export const selectRideRequestAlternative = (
+  requestId: number,
+  data: {
+    alternativeNo: number;
+    legs: any[];
+  }
+) => {
+  return fetchAPI<{ success: boolean; requestId?: number; createdLegIds?: number[]; error?: string }>(
+    `/passenger/ride-requests/${requestId}/select-alternative`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+};
 
-export const payTrip = (id: string) =>
-  fetchAPI<{ receipt_id: string }>(`/passenger/pay/${id}`, {
-    method: "POST",
-  });
+export const getRideRequestDetails = (requestId: number) =>
+  fetchAPI<{ success: boolean; request?: RideRequestDetails; error?: string }>(
+    `/passenger/ride-requests/${requestId}`
+  );
+
+export const cancelRideRequest = (requestId: number) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/passenger/ride-requests/${requestId}/cancel`,
+    {
+      method: "POST",
+    }
+  );
