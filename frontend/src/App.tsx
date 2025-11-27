@@ -58,7 +58,6 @@ function App() {
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/driver/documents" element={<DriverDocuments />} />
             <Route path="/pending-approval" element={<PendingApproval />} />
-            <Route path="/ride" element={<ProtectedRoute><CreateRide /></ProtectedRoute>} />
             <Route path="/ride-alternatives/:requestId" element={<ProtectedRoute><RideAlternativesPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
@@ -74,6 +73,13 @@ function App() {
               <Route path="logs" element={<SystemAuditLogs />} />
               <Route index element={<Overview />} />
             </Route>
+
+            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
+              <Route path="ride" element={<CreateRide />} />
+              <Route path="rides/:requestId" element={<TripDetail />} />
+              <Route index element={<Services />} />
+            </Route>
+
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
