@@ -1,0 +1,328 @@
+import { useEffect, useState, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { BottomNav } from "@/components/BottomNav";
+import { MapView } from "@/components/MapView";
+import { DEFAULT_MAP_CENTER } from "@/lib/constants";
+import { toast } from "sonner";
+import { Clock, MapPin, Navigation2, Loader2, Car } from "lucide-react";
+import { getRideRequestDetails, type RideRequestDetails } from "@/features/passenger/api";
+
+export default function RideRequestDetailsPage() {
+  const { requestId } = useParams<{ requestId: string }>();
+  const navigate = useNavigate();
+
+  const [data, setData] = useState<RideRequestDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadDetails(isRefresh = false) {
+    if (!requestId) return;
+    if (!isRefresh) setLoading(true);
+    else setRefreshing(true);
+
+    try {
+      const idNum = Number(requestId);
+      if (!Number.isFinite(idNum)) {
+        throw new Error("Invalid request id");
+      }
+
+      const res = await getRideRequestDetails(idNum);
+      if (!res.success || !res.request) {
+        throw new Error(res.error || "Failed to load ride request.");
+      }
+      setData(res.request);
+      setError(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to load ride request.");
+      toast.error(err.message || "Failed to load ride request.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDetails(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "SearchingDrivers":
+      case "Pending":
+        return "bg-amber-500/10 text-amber-400 border-amber-500/60";
+      case "FullyMatched":
+      case "Matched":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/60";
+      case "Cancelled":
+        return "bg-red-500/10 text-red-400 border-red-500/60";
+      default:
+        return "bg-neutral-700/30 text-neutral-300 border-neutral-600";
+    }
+  };
+
+  const formattedPickupTime =
+    data?.pickupAt ? new Date(data.pickupAt).toLocaleString() : "—";
+
+  // === MAP STUFF ===
+  // We assume backend now returns:
+  // data.pickup.latitude, data.pickup.longitude
+  // data.dropoff.latitude, data.dropoff.longitude
+  const hasPickupCoords =
+    data &&
+    typeof (data as any).pickup?.latitude === "number" &&
+    typeof (data as any).pickup?.longitude === "number";
+
+  const hasDropoffCoords =
+    data &&
+    typeof (data as any).dropoff?.latitude === "number" &&
+    typeof (data as any).dropoff?.longitude === "number";
+
+  const mapCenter: [number, number] = useMemo(() => {
+    if (hasPickupCoords) {
+      return [
+        (data as any).pickup.latitude as number,
+        (data as any).pickup.longitude as number,
+      ];
+    }
+    return DEFAULT_MAP_CENTER as [number, number];
+  }, [hasPickupCoords, data]);
+
+  const markers = useMemo(() => {
+    const m: {
+      position: [number, number];
+      icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle";
+      popup?: string;
+      onClick?: () => void;
+    }[] = [];
+
+    if (hasPickupCoords && data) {
+      const { pickup } = data as any;
+      m.push({
+        position: [pickup.latitude as number, pickup.longitude as number],
+        icon: "pickup",
+        popup: `Pickup: ${pickup.name} (Zone ${pickup.zoneId})`,
+      });
+    }
+
+    if (hasDropoffCoords && data) {
+      const { dropoff } = data as any;
+      m.push({
+        position: [dropoff.latitude as number, dropoff.longitude as number],
+        icon: "dropoff",
+        popup: `Dropoff: ${dropoff.name} (Zone ${dropoff.zoneId})`,
+      });
+    }
+
+    return m;
+  }, [hasPickupCoords, hasDropoffCoords, data]);
+
+  const polyline: [number, number][] = useMemo(() => {
+    if (hasPickupCoords && hasDropoffCoords && data) {
+      const { pickup, dropoff } = data as any;
+      return [
+        [pickup.latitude as number, pickup.longitude as number],
+        [dropoff.latitude as number, dropoff.longitude as number],
+      ];
+    }
+    return [];
+  }, [hasPickupCoords, hasDropoffCoords, data]);
+
+  return (
+    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
+      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 mr-2"
+            onClick={() => navigate("/passenger/ride")}
+          >
+            &larr; Back
+          </Button>
+          <span className="text-xl font-semibold tracking-tight">Ride</span>
+        </div>
+      </header>
+      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-semibold tracking-tight">Ride</span>
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col lg:flex-row">
+        {/* Left: Details card */}
+        <section className="flex w-full justify-center border-b border-neutral-900 bg-neutral-950 px-4 py-6 lg:w-[420px] lg:flex-shrink-0 lg:border-b-0 lg:border-r">
+          <Card className="w-full max-w-md border border-neutral-800 bg-neutral-900/80 p-6 shadow-lg space-y-4">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                Loading ride request…
+              </div>
+            ) : error || !data ? (
+              <div className="space-y-3 text-sm">
+                <p className="text-red-400 text-sm">{error || "Not found."}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadDetails(false)}
+                  className="border-neutral-700 text-neutral-100"
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h1 className="text-lg font-semibold text-neutral-50">
+                      Ride request #{data.requestId}
+                    </h1>
+                    <p className="mt-1 text-xs text-neutral-400">
+                      {data.numOfPeople}{" "}
+                      {data.numOfPeople === 1 ? "person" : "people"}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs border px-2 py-1 ${statusColor(
+                      data.status
+                    )}`}
+                  >
+                    {data.status}
+                  </Badge>
+                </div>
+
+                <div className="mt-2 space-y-3 text-sm">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                      From
+                    </div>
+                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                      <MapPin className="h-4 w-4 text-emerald-500" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-neutral-50">
+                          {data.pickup.name}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          Zone {data.pickup.zoneId}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                      To
+                    </div>
+                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                      <Navigation2 className="h-4 w-4 text-emerald-500" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-neutral-50">
+                          {data.dropoff.name}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          Zone {data.dropoff.zoneId}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                      Pickup time
+                    </div>
+                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                      <Clock className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-neutral-50">
+                        {formattedPickupTime}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Waiting-for-drivers block */}
+                <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
+                  {data.progressStatus === "AllAccepted" || data.progressStatus === "RidesCreated" ? (
+                    <div className="flex items-center gap-3">
+                      <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+                        <Car className="h-5 w-5 text-emerald-400" />
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-emerald-400">
+                          All rides have been accepted!
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-400">
+                          Drivers have accepted your ride. Your trip will begin soon.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      {/* animation */}
+                      <div className="relative h-10 w-10">
+                        <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+                          <Car className="h-5 w-5 text-emerald-400" />
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-neutral-50">
+                          Waiting for drivers…
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-400">
+                          We’ve sent out offers to nearby drivers. You’ll see your
+                          ride here as soon as someone accepts.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadDetails(true)}
+                      disabled={refreshing}
+                      className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                    >
+                      {refreshing && (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      )}
+                      Refresh status
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+            {/* Back button below status container */}
+            <div className="mt-4 flex items-center justify-start">
+              <Button
+              variant="outline"
+              size="sm"
+              className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+              onClick={() => navigate("/passenger/ride")}
+              >
+              &larr; Back
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        {/* Right: Map */}
+        <section className="relative flex-1 border-t border-neutral-900 bg-neutral-900 lg:border-t-0 lg:border-l">
+          <MapView
+            center={mapCenter}
+            markers={markers}
+            polyline={polyline}
+          />
+        </section>
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}

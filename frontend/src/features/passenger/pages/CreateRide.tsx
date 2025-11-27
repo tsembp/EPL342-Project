@@ -74,16 +74,14 @@ export default function CreateRide() {
   const [pickup, setPickup] = useState<Station | null>(null);
   const [dropoff, setDropoff] = useState<Station | null>(null);
 
-  const pickupOptions = [
-    { label: "In 5 minutes", value: 5 },
-    { label: "In 15 minutes", value: 15 },
-    { label: "In 30 minutes", value: 30 },
-    { label: "In 1 hour", value: 60 },
-    { label: "In 2 hours", value: 120 },
-    { label: "In 3 hours", value: 180 },
-  ];
-
-  const [pickupTimeMinutes, setPickupTimeMinutes] = useState<number>(5);
+  // Date/time picker state
+  const [pickupDateTime, setPickupDateTime] = useState<string>(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 5);
+    // Format to yyyy-MM-ddTHH:mm
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
   const [isLoadingStations, setIsLoadingStations] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -243,9 +241,14 @@ export default function CreateRide() {
       : 4;
 
   function computePickupAtISO(): string {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + pickupTimeMinutes);
-    return now.toISOString().slice(0, 19);
+    // Use pickupDateTime from input
+    if (!pickupDateTime) {
+      // fallback to now
+      return new Date().toISOString().slice(0, 19);
+    }
+    // Convert to ISO string (yyyy-MM-ddTHH:mm:ss)
+    const d = new Date(pickupDateTime);
+    return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,"0")}-${d.getDate().toString().padStart(2,"0")}T${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}:00`;
   }
 
   async function handleSearch() {
@@ -356,7 +359,7 @@ export default function CreateRide() {
       }
 
       toast.success("Route confirmed. Looking for drivers…");
-      navigate(`/passenger/rides/${requestId}`);
+      navigate(`/passenger/rides/${requestId}/details`);
     } catch (err: any) {
       console.error(err);
       toast.error(
@@ -627,7 +630,7 @@ export default function CreateRide() {
                       <MapPin className="h-4 w-4 text-emerald-500" />
                       <span className="flex-1 text-sm text-neutral-50">
                         {pickup
-                          ? `${pickup.name} (${pickup.zoneName})`
+                          ? `ZonePointId: ${pickup.pointId}`
                           : "Choose pickup point"}
                       </span>
                     </div>
@@ -640,48 +643,30 @@ export default function CreateRide() {
                       <Navigation2 className="h-4 w-4 text-emerald-500" />
                       <span className="flex-1 text-sm text-neutral-50">
                         {dropoff
-                          ? `${dropoff.name} (${dropoff.zoneName})`
+                          ? `ZonePointId: ${dropoff.pointId}`
                           : "Choose dropoff point"}
                       </span>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                      Pickup time
+                      Pickup date & time
                     </label>
-                    <div className="relative mt-2">
+                    <div className="relative mt-2 flex items-center gap-2">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         <Clock className="h-5 w-5 text-emerald-500" />
                       </span>
-                      <select
-                        className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-10 py-2 text-neutral-50 appearance-none outline-none"
-                        value={pickupTimeMinutes}
-                        onChange={(e) =>
-                          setPickupTimeMinutes(Number(e.target.value))
-                        }
-                      >
-                        {pickupOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg
-                          width="20"
-                          height="20"
-                          fill="none"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            d="M6 8l4 4 4-4"
-                            stroke="#10B981"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
+                      <input
+                        type="datetime-local"
+                        className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-10 pr-3 py-2 text-neutral-50 appearance-none outline-none"
+                        value={pickupDateTime}
+                        min={(() => {
+                          const now = new Date();
+                          const pad = (n: number) => n.toString().padStart(2, "0");
+                          return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                        })()}
+                        onChange={e => setPickupDateTime(e.target.value)}
+                      />
                     </div>
                   </div>
                   {pickup && dropoff && (
