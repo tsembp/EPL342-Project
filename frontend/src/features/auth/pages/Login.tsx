@@ -11,8 +11,7 @@ import { Car } from "lucide-react";
 export default function Login() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const getRole = useAuthStore((state) => state.userRole);
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,11 +26,11 @@ export default function Login() {
 
       toast.success("Logged in successfully");
 
-      // 🔥 Redirect based on role
+      // Redirect based on role
       if (role === "operator") {
         navigate("/operator/overview");
       } else if (role === "driver") {
-        navigate("/driver/dashboard"); 
+        navigate("/driver/dashboard");
       } else {
         navigate("/passenger/ride");
       }
@@ -43,20 +42,32 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8">
+        {/* Logo / Title */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4">
-            <Car className="h-8 w-8 text-primary-foreground" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-neutral-800 bg-neutral-900 mb-4 shadow-lg">
+            <Car className="h-8 w-8 text-emerald-500" />
           </div>
-          <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground mt-2">Sign in to continue</p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-sm text-neutral-400 mt-2">
+            Sign in to continue your ride
+          </p>
         </div>
 
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Card */}
+        <Card className="border border-neutral-800 bg-neutral-900/80 p-6 shadow-xl backdrop-blur">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label
+                htmlFor="email"
+                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+              >
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -64,12 +75,18 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12"
+                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
               />
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label
+                htmlFor="password"
+                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+              >
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -77,18 +94,28 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-12"
+                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
               />
             </div>
 
-            <Button type="submit" className="w-full h-12" disabled={loading}>
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="mt-2 w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 text-sm font-medium hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
+              disabled={loading}
+            >
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
 
+          {/* Footer */}
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/signup")}>
+            <span className="text-neutral-500">Don&apos;t have an account? </span>
+            <Button
+              variant="link"
+              className="p-0 h-auto text-emerald-400 hover:text-emerald-300"
+              onClick={() => navigate("/signup")}
+            >
               Sign up
             </Button>
           </div>

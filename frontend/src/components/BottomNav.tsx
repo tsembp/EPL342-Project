@@ -8,8 +8,6 @@ export function BottomNav() {
 
   const tabs = [
     { to: "/ride", icon: House, label: userRole === "driver" ? "Earnings" : "Ride" },
-    { to: "/credit", icon: CreditCard, label: userRole === "driver" ? "Earnings" : "Credit" },
-    { to: "/history", icon: History, label: "History" },
     { to: "/profile", icon: User, label: "Profile" },
   ];
 

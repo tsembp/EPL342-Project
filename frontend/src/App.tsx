@@ -11,8 +11,6 @@ import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
 import Map from "@/features/passenger/pages/Map";
 import Services from "@/features/passenger/pages/Services";
-import History from "@/features/passenger/pages/History";
-import Credit from "@/features/passenger/pages/Credit";
 import Profile from "@/features/passenger/pages/Profile";  
 import TripDetail from "@/features/passenger/pages/TripDetail";
 import OperatorDashboard from "@/features/operator/pages/OperatorDashboard";
@@ -61,8 +59,6 @@ function App() {
             <Route path="/driver/documents" element={<DriverDocuments />} />
             <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/ride-alternatives/:requestId" element={<ProtectedRoute><RideAlternativesPage /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-            <Route path="/credit" element={<ProtectedRoute><Credit /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
             <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
