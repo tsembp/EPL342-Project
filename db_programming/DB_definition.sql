@@ -269,7 +269,7 @@ CREATE TABLE [dbo].[RideRequestProgress] (
         FOREIGN KEY ([RequestId]) REFERENCES [dbo].[RideRequest]([RequestId])
         ON DELETE CASCADE,
     CONSTRAINT [CK_RideRequestProgress_Status] 
-        CHECK ([Status] IN ('AwaitingDrivers', 'AllAccepted', 'RidesCreated', 'Failed'))
+        CHECK ([Status] IN ('AwaitingDrivers', 'AllAccepted', 'RidesCreated', 'Completed', 'Failed'))
 );
 
 CREATE TABLE [dbo].[RideRequestLog] (

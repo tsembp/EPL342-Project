@@ -177,6 +177,14 @@ BEGIN
             FETCH NEXT FROM cur INTO @SeqNo, @FromZoneId, @ToZoneId;
         END;
 
+        -- Insert Request Progress record 
+        IF NOT EXISTS(SELECT 1 FROM dbo.RideRequestProgress WHERE RequestId = @RequestId)
+        BEGIN
+            DECLARE @TotalLegs INT = (SELECT COUNT(*) FROM dbo.ItineraryLeg WHERE RideRequestId = @RequestId);
+            INSERT INTO dbo.RideRequestProgress (RequestId, TotalLegs, AcceptedLegs, Status)
+            VALUES (@RequestId, @TotalLegs, 0, 'AwaitingDrivers');
+        END
+
         CLOSE cur;
         DEALLOCATE cur;
 
