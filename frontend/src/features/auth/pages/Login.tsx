@@ -33,7 +33,7 @@ export default function Login() {
       } else if (role === "driver") {
         navigate("/driver/dashboard"); 
       } else {
-        navigate("/ride");
+        navigate("/passenger/ride");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
