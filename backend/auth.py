@@ -19,13 +19,26 @@ def signup():
             with conn.cursor() as cur:
                 # Call appropriate signup procedure based on account type
                 if data.get("accountType") == "staff":
-                    cur.execute("""
-                        EXEC dbo.usp_SignUpStaff 
-                            @Role=?, @Email=?, @Username=?, @PasswordPlain=?
-                    """,
-                    data.get("role"), data.get("email"),
-                    data.get("username"), data.get("password"))
-                else:
+                    # Company Representatives are 'staff' but are created in the User table
+                    if data.get("role") == "C":
+                        cur.execute("""
+                            EXEC dbo.usp_SignUpUser
+                                @Role=?, @FirstName=?, @LastName=?, @Dob=?, @Gender=?,
+                                @Email=?, @Phone=?, @Address=?, @Username=?, 
+                                @PasswordPlain=?, @Company=?
+                        """,
+                        data.get("role"), data.get("firstName"), data.get("lastName"),
+                        data.get("dob"), data.get("gender"), data.get("email"), data.get("phone"),
+                        data.get("address"), data.get("username"), data.get("password"),
+                        data.get("company"))
+                    else: # Other staff like Operator or Inspector
+                        cur.execute("""
+                            EXEC dbo.usp_SignUpStaff 
+                                @Role=?, @Email=?, @Username=?, @PasswordPlain=?
+                        """,
+                        data.get("role"), data.get("email"),
+                        data.get("username"), data.get("password"))
+                else: # User roles like Passenger and Driver
                     cur.execute("""
                         EXEC dbo.usp_SignUpUser
                             @Role=?, @FirstName=?, @LastName=?, @Dob=?, @Gender=?,
@@ -80,11 +93,12 @@ def login():
                 row = cur.fetchone()
 
                 if row:
-                    print(f"[LOGIN] Success! UserId: {row[0]}, Role: {row[1]}")
+                    print(f"[LOGIN] Success! UserId: {row[0]}, Role: {row[1]}, Status: {row[4]}")
                     session["user_id"] = str(row[0])
                     session["role"] = row[1]
                     session["account_type"] = row[2]
                     session["email"] = row[3]
+                    session["verification_status"] = row[4] # Store new status in session
                     session.permanent = True
 
                     return jsonify({
@@ -93,6 +107,7 @@ def login():
                         "role": row[1],
                         "accountType": row[2],
                         "email": row[3],
+                        "verificationStatus": row[4], # Include new status in response
                     }), 200
 
                 print("[LOGIN] No row returned from stored procedure")

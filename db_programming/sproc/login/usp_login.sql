@@ -45,20 +45,50 @@ BEGIN
         RETURN;
     END;
 
-    -- 3. Check verification / activation
-    -- For USERS (P/D/C) and OPERATORS (O), Verified must be 1.
-    -- For INSPECTORS (I), Verified is NULL in the view and we allow login.
-    IF @Role <> 'I' AND ISNULL(@Verified, 0) = 0
+    -- 3. Determine Verification Status
+    DECLARE @VerificationStatus NVARCHAR(50);
+
+    IF @Verified = 1
     BEGIN
-        RAISERROR('Account is not verified.', 16, 1);
-        RETURN;
+        SET @VerificationStatus = 'VERIFIED';
+    END
+    ELSE IF @Role = 'I' -- Inspectors are always considered verified for login purposes
+    BEGIN
+        SET @VerificationStatus = 'VERIFIED';
+    END
+    ELSE IF @Role IN ('O', 'P') AND @Verified = 0
+    BEGIN
+        SET @VerificationStatus = 'PENDING_APPROVAL';
+    END
+    ELSE IF @Role IN ('D', 'C') AND @Verified = 0
+    BEGIN
+        DECLARE @DocumentCount INT;
+        SELECT @DocumentCount = COUNT(DISTINCT PD.DocType)
+        FROM dbo.PersonDocument AS PD
+        WHERE PD.UserId = @UserId AND PD.Status IN ('Pending', 'Accepted');
+
+        IF @DocumentCount < 8
+        BEGIN
+            SET @VerificationStatus = 'DOCS_PENDING';
+        END
+        ELSE
+        BEGIN
+            SET @VerificationStatus = 'PENDING_APPROVAL';
+        END;
+    END
+    ELSE
+    BEGIN
+        -- Fallback for any other unverified role not explicitly handled,
+        -- though this case should ideally not be reached with the current role definitions.
+        SET @VerificationStatus = 'PENDING_APPROVAL'; 
     END;
 
-    -- 4. Success: return minimal info for the PHP app
+    -- 4. Success: return minimal info and verification status
     SELECT
         @UserId     AS UserId,
         @Role       AS Role,
         @AccountType AS AccountType,
-        @Email      AS Email;
+        @Email      AS Email,
+        @VerificationStatus AS VerificationStatus;
 END;
 GO

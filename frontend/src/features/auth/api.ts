@@ -1,4 +1,5 @@
 import { fetchAPI } from "@/lib/apiClient";
+import type { SignupResponse } from "@/types/api"; // Import the global SignupResponse
 
 // Authentication endpoints
 export interface LoginRequest {
@@ -12,6 +13,7 @@ export interface LoginResponse {
   role: string;
   accountType: 'USER' | 'STAFF';
   email: string;
+  verificationStatus?: string; // New field
   error?: string;
 }
 
@@ -28,15 +30,6 @@ export interface SignupRequest {
   phone?: string;
   address?: string;
   company?: string;
-}
-
-export interface SignupResponse {
-  success: boolean;
-  userId?: string;
-  role?: string;
-  email?: string;
-  message?: string;
-  error?: string;
 }
 
 export interface AuthCheckResponse {

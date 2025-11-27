@@ -368,7 +368,6 @@ CREATE TABLE [dbo].[PersonDocument] (
         'MEDICAL_CERT',
         'PSYCHOLOGICAL_CERT'
     )),
-    CONSTRAINT [UQ_DocNo] UNIQUE ([DocNo]),
     CONSTRAINT [CK_PersonDocument_Status] CHECK ([Status] IN ('Pending', 'Accepted', 'Rejected')
 ));
     
