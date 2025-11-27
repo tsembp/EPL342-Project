@@ -67,7 +67,6 @@ export default function GDPRRequest() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Require a detailed reason for deletion / correction
     if (
       (type === "DataDeletion" || type === "DataCorrection") &&
       reason.trim().length < 10
@@ -83,12 +82,9 @@ export default function GDPRRequest() {
       await submitGDPRRequest({ reason, type });
       toast.success("Your GDPR request has been submitted.");
 
-      // Decide where to send the user based on request type
       if (type === "DataAccess" || type === "DataExport") {
-        // Show them their data/export page
         navigate("/gdpr/export");
       } else {
-        // For deletion / correction we just go back to profile
         navigate("/profile");
       }
     } catch (err: any) {
@@ -99,19 +95,27 @@ export default function GDPRRequest() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50">
       <Header title="GDPR Request" showBack />
+
       <div className="max-w-2xl mx-auto p-4">
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <Card className="p-6 border border-neutral-800 bg-neutral-900/80 shadow-xl backdrop-blur">
+          <form onSubmit={handleSubmit} className="space-y-5 text-sm">
+
             {/* Type selector */}
             <div className="space-y-2">
-              <Label htmlFor="type">Request type</Label>
+              <Label
+                htmlFor="type"
+                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+              >
+                Request type
+              </Label>
+
               <select
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-12 border rounded px-3 bg-background"
+                className="w-full h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 px-3 outline-none focus:ring-emerald-500 focus:ring-offset-0"
                 required
               >
                 {REQUEST_TYPES.map((t) => (
@@ -120,26 +124,37 @@ export default function GDPRRequest() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
+
+              <p className="text-xs text-neutral-400">
                 {getHelperText(type)}
               </p>
             </div>
 
-            {/* Reason / description */}
+            {/* Reason */}
             <div className="space-y-2">
-              <Label htmlFor="reason">{getReasonLabel(type)}</Label>
+              <Label
+                htmlFor="reason"
+                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+              >
+                {getReasonLabel(type)}
+              </Label>
+
               <Textarea
                 id="reason"
                 placeholder={getReasonPlaceholder(type)}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="min-h-32"
-                // required only for deletion/correction
+                className="min-h-32 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
                 required={type === "DataDeletion" || type === "DataCorrection"}
               />
             </div>
 
-            <Button type="submit" className="w-full h-12" disabled={loading}>
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 font-medium hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
+              disabled={loading}
+            >
               {loading ? "Submitting..." : "Submit request"}
             </Button>
           </form>
