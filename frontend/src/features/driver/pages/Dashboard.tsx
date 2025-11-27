@@ -21,6 +21,9 @@ import {
   Settings,
 } from "lucide-react";
 
+// 🔹 Our split-out Offers tab
+import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
+
 type TabKey =
   | "home"
   | "offers"
@@ -30,12 +33,11 @@ type TabKey =
   | "history"
   | "profile";
 
-export default function DriverDashboard() {
+export default function Dashboard() {
   const [tab, setTab] = useState<TabKey>("home");
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
 
-  // NOTE: In a later step we will hook this to the backend
   async function handleToggleOnline(next: boolean) {
     setIsTogglingOnline(true);
     try {
@@ -162,13 +164,9 @@ export default function DriverDashboard() {
             />
           </TabsContent>
 
-          {/* OFFERS TAB */}
+          {/* OFFERS TAB – now split */}
           <TabsContent value="offers">
-            <PlaceholderSection
-              icon={<MapPin className="h-5 w-5 text-emerald-400" />}
-              title="Offers & active rides"
-              description="Here you’ll see incoming dispatch offers and manage your active ride. We’ll wire this up to the backend next."
-            />
+            <DriverOffersSection />
           </TabsContent>
 
           {/* SERVICES TAB */}
