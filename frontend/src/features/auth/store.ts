@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserRole } from '@/types/api';
+import type { UserRole, SignupResponse, LoginResponse } from '@/types/api';
 import { login as apiLogin, signup as apiSignup, logout as apiLogout, checkAuth as apiCheckAuth, LoginRequest, SignupRequest } from '@/features/auth/api';
 
 interface AuthState {
@@ -9,8 +9,8 @@ interface AuthState {
   userId: string | null;
   email: string | null;
   accountType: 'USER' | 'STAFF' | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (data: SignupRequest) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
+  signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   switchRole: (role: UserRole) => void;
@@ -22,7 +22,7 @@ function mapRoleToUserRole(role: string): UserRole {
   if (role === 'P') return 'passenger';
   if (role === 'O') return 'operator';
   if (role === 'I') return 'operator'; // Inspector mapped to operator
-  if (role === 'C') return 'passenger'; // Company rep mapped to passenger for now
+  if (role === 'C') return 'company_representative';
   return 'passenger';
 }
 
@@ -46,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
               accountType: data.accountType,
               userRole: mapRoleToUserRole(data.role),
             });
+            return data; // Return the full response
           } else {
             throw new Error(data.error || 'Login failed');
           }
@@ -57,7 +58,8 @@ export const useAuthStore = create<AuthState>()(
       
       signup: async (signupData: SignupRequest) => {
         try {
-            await apiSignup(signupData);
+          // Make sure the apiSignup returns the awaited fetchAPI call
+          return await apiSignup(signupData);
         } catch (error) {
             console.error('Signup error:', error);
             throw error;

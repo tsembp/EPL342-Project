@@ -10,10 +10,13 @@ export async function fetchAPI<T>(
   const res = await fetch(`http://localhost:8080/api${path}`, {
     credentials: "include",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers:
+      options.body instanceof FormData
+        ? options.headers // Let browser set Content-Type for FormData
+        : {
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
   });
 
   if (!res.ok) {

@@ -1,45 +1,56 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Upload, FileText, CheckCircle2 } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { uploadDriverDocument } from "@/features/driver/api";
 
 type DocumentType = {
   id: string;
   label: string;
   hasExpiry: boolean;
+  backendType: string;
 };
 
 const REQUIRED_DOCUMENTS: DocumentType[] = [
-  { id: "identity", label: "Ταυτότητα ή διαβατήριο (Identity or Passport)", hasExpiry: true },
-  { id: "residence", label: "Άδεια παραμονής (Residence Permit)", hasExpiry: true },
-  { id: "driving_license", label: "Άδεια οδήγησης (Driving License)", hasExpiry: true },
-  { id: "vehicle_license", label: "Άδεια κυκλοφορίας οχήματος (Vehicle License)", hasExpiry: true },
-  { id: "mot", label: "Πιστοποιητικό ΜΟΤ (MOT Certificate)", hasExpiry: true },
-  { id: "criminal_record", label: "Πιστοποιητικό λευκού ποινικού μητρώου (Criminal Record)", hasExpiry: false },
-  { id: "medical", label: "Ιατρικό πιστοποιητικό (Medical Certificate)", hasExpiry: true },
-  { id: "psychological", label: "Ψυχολογικό πιστοποιητικό (Psychological Certificate)", hasExpiry: true },
+  { id: "identity", label: "Ταυτότητα ή διαβατήριο (Identity or Passport)", hasExpiry: true, backendType: "ID_OR_PASSPORT" },
+  { id: "residence", label: "Άδεια παραμονής (Residence Permit)", hasExpiry: true, backendType: "RESIDENCE_PERMIT" },
+  { id: "driving_license", label: "Άδεια οδήγησης (Driving License)", hasExpiry: true, backendType: "DRIVING_LICENSE" },
+  { id: "vehicle_license", label: "Άδεια κυκλοφορίας οχήματος (Vehicle License)", hasExpiry: true, backendType: "VEHICLE_REG" },
+  { id: "mot", label: "Πιστοποιητικό ΜΟΤ (MOT Certificate)", hasExpiry: true, backendType: "MOT_CERT" },
+  { id: "criminal_record", label: "Πιστοποιητικό λευκού ποινικού μητρώου (Criminal Record)", hasExpiry: false, backendType: "CRIMINAL_RECORD" },
+  { id: "medical", label: "Ιατρικό πιστοποιητικό (Medical Certificate)", hasExpiry: true, backendType: "MEDICAL_CERT" },
+  { id: "psychological", label: "Ψυχολογικό πιστοποιητικό (Psychological Certificate)", hasExpiry: true, backendType: "PSYCHOLOGICAL_CERT" },
 ];
+
+type SubmissionStatus = 'pending' | 'uploading' | 'success' | 'error';
 
 type DocumentData = {
   docNumber: string;
   issueDate: string;
   expiryDate: string;
   file: File | null;
+  status: SubmissionStatus;
+  error?: string;
+};
+
+// Initialize state from REQUIRED_DOCUMENTS
+const getInitialState = () => {
+  return REQUIRED_DOCUMENTS.reduce((acc, doc) => {
+    acc[doc.id] = { docNumber: "", issueDate: "", expiryDate: "", file: null, status: 'pending', error: undefined };
+    return acc;
+  }, {} as Record<string, DocumentData>);
 };
 
 export default function DriverDocuments() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState<Record<string, DocumentData>>(
-    REQUIRED_DOCUMENTS.reduce((acc, doc) => ({
-      ...acc,
-      [doc.id]: { docNumber: "", issueDate: "", expiryDate: "", file: null }
-    }), {})
-  );
-  const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const userId = location.state?.userId;
+
+  const [documents, setDocuments] = useState<Record<string, DocumentData>>(getInitialState());
 
   const handleFileChange = (docId: string, file: File | null) => {
     setDocuments(prev => ({
@@ -55,130 +66,180 @@ export default function DriverDocuments() {
     }));
   };
 
-  const isDocumentComplete = (docId: string, doc: DocumentType) => {
+  const isDocumentSubmittable = (docId: string) => {
+    const docInfo = REQUIRED_DOCUMENTS.find(d => d.id === docId);
+    if (!docInfo) return false;
     const data = documents[docId];
     const hasBasicInfo = data.docNumber && data.issueDate && data.file;
-    const hasExpiry = !doc.hasExpiry || data.expiryDate;
+    const hasExpiry = !docInfo.hasExpiry || data.expiryDate;
     return hasBasicInfo && hasExpiry;
   };
-
-  const allDocumentsComplete = REQUIRED_DOCUMENTS.every(doc => 
-    isDocumentComplete(doc.id, doc)
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!allDocumentsComplete) {
-      toast.error("Please complete all documents");
+  
+  const handleIndividualSubmit = async (docId: string) => {
+    if (!userId) {
+      toast.error("User ID not found. Please sign up again.");
+      navigate("/signup");
       return;
     }
 
-    setLoading(true);
+    const doc = REQUIRED_DOCUMENTS.find(d => d.id === docId);
+    const data = documents[docId];
 
-    // Simulate API call
-    setTimeout(() => {
-      toast.success("Documents submitted for review");
-      navigate("/pending-approval");
-      setLoading(false);
-    }, 1000);
+    if (!doc || !data || !isDocumentSubmittable(docId)) {
+        toast.error("Please fill in all fields for this document before submitting.");
+        return;
+    }
+
+    setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'uploading' } }));
+
+    try {
+        await uploadDriverDocument({
+            userId: userId,
+            docType: doc.backendType,
+            docNumber: data.docNumber,
+            issueDate: data.issueDate,
+            expiryDate: doc.hasExpiry ? data.expiryDate : undefined,
+            file: data.file!,
+        });
+        toast.success(`${doc.label} submitted successfully!`);
+        setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'success' } }));
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        console.error(`Error submitting ${doc.label}:`, err);
+        toast.error(`Failed to submit ${doc.label}: ${errorMessage}`);
+        setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'error', error: errorMessage } }));
+    }
   };
+
+  const handleSubmitAll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const remainingDocs = REQUIRED_DOCUMENTS.filter(doc => documents[doc.id].status === 'pending' || documents[doc.id].status === 'error');
+    
+    if (remainingDocs.some(doc => !isDocumentSubmittable(doc.id))) {
+      toast.error("Please fill in all fields for all remaining documents before submitting.");
+      return;
+    }
+
+    toast.info(`Submitting ${remainingDocs.length} remaining document(s)...`);
+    for (const doc of remainingDocs) {
+        await handleIndividualSubmit(doc.id);
+    }
+  };
+
+  const remainingDocuments = useMemo(() => {
+    return REQUIRED_DOCUMENTS.filter(doc => documents[doc.id]?.status !== 'success');
+  }, [documents]);
+
+  const allSubmitted = remainingDocuments.length === 0;
+
+  if (allSubmitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col items-center justify-center p-4 text-center">
+        <Card className="w-full max-w-lg p-8">
+            <CheckCircle2 className="h-16 w-16 text-success mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">All Documents Submitted</h1>
+            <p className="text-muted-foreground mb-6">
+                Your documents have been submitted for review. You will be notified once the review process is complete.
+            </p>
+            <Button onClick={() => navigate("/login")}>Go to Login</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col items-center justify-start p-4 py-8">
       <div className="w-full max-w-3xl space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Driver Documents</h1>
+          <h1 className="text-3xl font-bold">Driver & Company Documents</h1>
           <p className="text-muted-foreground mt-2">
             Upload all required documents to complete registration
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {REQUIRED_DOCUMENTS.map((doc) => {
-            const isComplete = isDocumentComplete(doc.id, doc);
+        <form onSubmit={handleSubmitAll} className="space-y-4">
+          {remainingDocuments.map((doc) => {
+            const data = documents[doc.id];
+            const isSubmittable = isDocumentSubmittable(doc.id);
+            const isLoading = data.status === 'uploading';
+
             return (
-              <Card key={doc.id} className={isComplete ? "border-success" : ""}>
+              <Card key={doc.id} className={data.status === 'error' ? 'border-destructive' : ''}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       {doc.label}
-                      {isComplete && <CheckCircle2 className="h-5 w-5 text-success" />}
                     </CardTitle>
                   </div>
+                   {data.status === 'error' && (
+                        <div className="flex items-center gap-2 text-sm text-destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <p>Error: {data.error}</p>
+                        </div>
+                    )}
                   <CardDescription className="text-xs">
                     {doc.hasExpiry ? "Include issue and expiry dates" : "No expiry date required"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Input fields... */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor={`${doc.id}-number`} className="text-sm">
-                        Document ID/Number
-                      </Label>
+                      <Label htmlFor={`${doc.id}-number`}>ID/Number</Label>
                       <Input
                         id={`${doc.id}-number`}
-                        placeholder="ABC123456"
-                        value={documents[doc.id].docNumber}
+                        value={data.docNumber}
                         onChange={(e) => handleFieldChange(doc.id, "docNumber", e.target.value)}
-                        required
-                        className="h-10"
                       />
                     </div>
-
                     <div className="space-y-1.5">
-                      <Label htmlFor={`${doc.id}-issue`} className="text-sm">
-                        Issue Date
-                      </Label>
+                      <Label htmlFor={`${doc.id}-issue`}>Issue Date</Label>
                       <Input
                         id={`${doc.id}-issue`}
                         type="date"
-                        value={documents[doc.id].issueDate}
+                        value={data.issueDate}
                         onChange={(e) => handleFieldChange(doc.id, "issueDate", e.target.value)}
-                        required
-                        className="h-10"
                       />
                     </div>
-
                     {doc.hasExpiry && (
                       <div className="space-y-1.5">
-                        <Label htmlFor={`${doc.id}-expiry`} className="text-sm">
-                          Expiry Date
-                        </Label>
+                        <Label htmlFor={`${doc.id}-expiry`}>Expiry Date</Label>
                         <Input
                           id={`${doc.id}-expiry`}
                           type="date"
-                          value={documents[doc.id].expiryDate}
+                          value={data.expiryDate}
                           onChange={(e) => handleFieldChange(doc.id, "expiryDate", e.target.value)}
-                          required
-                          className="h-10"
                         />
                       </div>
                     )}
                   </div>
-
                   <div className="space-y-1.5">
-                    <Label htmlFor={`${doc.id}-file`} className="text-sm">
-                      Upload Document (Photo or PDF)
-                    </Label>
+                    <Label htmlFor={`${doc.id}-file`}>Upload Document</Label>
                     <div className="flex items-center gap-2">
-                      <Input
-                        id={`${doc.id}-file`}
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => handleFileChange(doc.id, e.target.files?.[0] || null)}
-                        required
-                        className="h-10"
-                      />
-                      {documents[doc.id].file && (
-                        <div className="flex items-center gap-1 text-sm text-success">
-                          <FileText className="h-4 w-4" />
-                          <span className="truncate max-w-[150px]">
-                            {documents[doc.id].file?.name}
-                          </span>
-                        </div>
-                      )}
+                        <Input
+                            id={`${doc.id}-file`}
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleFileChange(doc.id, e.target.files?.[0] || null)}
+                        />
+                        {data.file && !isLoading && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <FileText className="h-4 w-4" />
+                                <span className="truncate max-w-[150px]">{data.file.name}</span>
+                            </div>
+                        )}
                     </div>
+                  </div>
+                  <div className="pt-2">
+                    <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleIndividualSubmit(doc.id)}
+                        disabled={!isSubmittable || isLoading}
+                    >
+                        {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Document'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -189,15 +250,10 @@ export default function DriverDocuments() {
             <Button 
               type="submit" 
               className="w-full h-12" 
-              disabled={loading || !allDocumentsComplete}
+              disabled={remainingDocuments.some(doc => !isDocumentSubmittable(doc.id))}
             >
-              {loading ? "Submitting..." : "Submit All Documents"}
+              Submit All Remaining Documents
             </Button>
-            {!allDocumentsComplete && (
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                Complete all documents to continue
-              </p>
-            )}
           </div>
         </form>
       </div>
