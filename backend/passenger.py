@@ -223,7 +223,7 @@ def get_ride_request_details(request_id: int):
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                # Basic request info + pickup/dropoff station names/zones
+                # Basic request info + pickup/dropoff station names/zones + coords
                 cur.execute(
                     """
                     SELECT 
@@ -231,15 +231,19 @@ def get_ride_request_details(request_id: int):
                         RR.Status,
                         RR.NumOfPeople,
                         RR.PickupAt,
-                        sp_from.PointId AS FromPointId,
-                        sp_from.ZoneId  AS FromZoneId,
-                        sp_from.Name    AS FromName,
-                        sp_to.PointId   AS ToPointId,
-                        sp_to.ZoneId    AS ToZoneId,
-                        sp_to.Name      AS ToName
+                        zp_from.PointId   AS FromPointId,
+                        zp_from.ZoneId    AS FromZoneId,
+                        zp_from.Name      AS FromName,
+                        zp_from.Latitude  AS FromLatitude,
+                        zp_from.Longitude AS FromLongitude,
+                        zp_to.PointId     AS ToPointId,
+                        zp_to.ZoneId      AS ToZoneId,
+                        zp_to.Name        AS ToName,
+                        zp_to.Latitude    AS ToLatitude,
+                        zp_to.Longitude   AS ToLongitude
                     FROM dbo.RideRequest RR
-                    JOIN dbo.StationPoint sp_from ON sp_from.PointId = RR.PickUpPointId
-                    JOIN dbo.StationPoint sp_to   ON sp_to.PointId   = RR.DropOffPointId
+                    JOIN dbo.ZonePoint zp_from ON zp_from.PointId = RR.PickUpPoint
+                    JOIN dbo.ZonePoint zp_to   ON zp_to.PointId   = RR.DropOffPoint
                     WHERE RR.RequestId = ? AND RR.PassengerId = ?
                     """,
                     request_id,
@@ -254,6 +258,18 @@ def get_ride_request_details(request_id: int):
                         ),
                         404,
                     )
+                
+                # NEW: Query RideRequestProgress
+                cur.execute(
+                    """
+                    SELECT Status
+                    FROM dbo.RideRequestProgress
+                    WHERE RequestId = ?
+                    """,
+                    request_id,
+                )
+                progress_row = cur.fetchone()
+                progress_status = progress_row[0] if progress_row else None
 
         return (
             jsonify(
@@ -268,13 +284,18 @@ def get_ride_request_details(request_id: int):
                             "pointId": row.FromPointId,
                             "zoneId": row.FromZoneId,
                             "name": row.FromName,
+                            "latitude": float(row.FromLatitude),
+                            "longitude": float(row.FromLongitude),
                         },
                         "dropoff": {
                             "pointId": row.ToPointId,
                             "zoneId": row.ToZoneId,
                             "name": row.ToName,
+                            "latitude": float(row.ToLatitude),
+                            "longitude": float(row.ToLongitude),
                         },
-                    }
+                        "progressStatus": progress_status,  # <-- Add this
+                    },
                 }
             ),
             200,

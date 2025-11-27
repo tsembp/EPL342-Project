@@ -42,6 +42,7 @@ export type RideRequestDetails = {
     zoneId: number;
     name: string;
   };
+  progressStatus: string;
 };
 
 // == API Functions ==

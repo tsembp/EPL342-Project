@@ -37,9 +37,8 @@ import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
 // GDPR
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
-
-// OTHER
 import NotFound from "@/pages/NotFound";
+import RideRequestDetailsPage from "./features/passenger/pages/RideRequestDetails";
 
 const queryClient = new QueryClient();
 
@@ -96,7 +95,11 @@ function App() {
               <Route index element={<Overview />} />
             </Route>
 
-            {/* GDPR */}
+            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
+              <Route path="ride" element={<CreateRide />} />
+              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
+              <Route index element={<Services />} />
+            </Route>
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
 
