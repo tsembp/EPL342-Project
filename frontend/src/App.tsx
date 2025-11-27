@@ -12,7 +12,9 @@ import Signup from "@/features/auth/pages/Signup";
 // DRIVER
 import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
-import DriverDashboard from "@/features/driver/pages/Dashboard"; // ⬅️ NEW
+import DriverDashboard from "@/features/driver/pages/Dashboard";
+import VehicleDocuments from "@/features/driver/pages/VehicleDocuments";
+import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 
 // PASSENGER
 import Map from "@/features/passenger/pages/Map";
@@ -79,6 +81,8 @@ function App() {
             {/* DRIVER */}
             <Route path="/driver/dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
             <Route path="/driver/documents" element={<DriverDocuments />} />
+            <Route path="/driver/VehicleDocuments" element={<ProtectedRoute><VehicleDocuments /></ProtectedRoute>} />
+            <Route path="/driver/add-vehicle" element={<ProtectedRoute><AddVehiclePage /></ProtectedRoute>} />
             <Route path="/pending-approval" element={<PendingApproval />} />
 
             {/* OPERATOR */}

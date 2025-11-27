@@ -20,6 +20,8 @@ import {
   MapPin,
   Settings,
 } from "lucide-react";
+import { useAuthStore } from "@/features/auth/store";
+import { VehicleManagementSection } from "@/features/driver/components/VehicleManagementSection";
 
 type TabKey =
   | "home"
@@ -34,6 +36,7 @@ export default function DriverDashboard() {
   const [tab, setTab] = useState<TabKey>("home");
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
+  const userName = useAuthStore((state) => state.username);
 
   // NOTE: In a later step we will hook this to the backend
   async function handleToggleOnline(next: boolean) {
@@ -63,7 +66,7 @@ export default function DriverDashboard() {
                   Driver mode
                 </p>
                 <h1 className="text-xl font-semibold text-neutral-50 sm:text-2xl">
-                  Welcome back, Driver
+                  Welcome back, {userName || "Driver"}
                 </h1>
                 <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
                   <Badge
@@ -182,11 +185,7 @@ export default function DriverDashboard() {
 
           {/* VEHICLES TAB */}
           <TabsContent value="vehicles">
-            <PlaceholderSection
-              icon={<CarFront className="h-5 w-5 text-emerald-400" />}
-              title="My vehicles"
-              description="Here you’ll register vehicles, upload vehicle documents, and see verification status."
-            />
+            <VehicleManagementSection />
           </TabsContent>
 
           {/* EARNINGS TAB */}
