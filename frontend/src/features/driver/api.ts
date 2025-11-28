@@ -1,6 +1,45 @@
 import { fetchAPI } from "@/lib/apiClient";
 import type { TripRow, DriverEarnings } from "@/types/api";
 
+/**
+ * Shape returned by usp_GetDispatchOffersForDriver
+ */
+export type DispatchOfferRow = {
+  OfferId: number;
+  OfferStatus: string;
+  SentAt: string;
+  RespondedAt: string | null;
+
+  EnrollId: number;
+  VehicleId: string;
+  ServiceTypeId: number;
+  ServiceTypeName: string | null;
+  RideTypeId: number;
+  RideTypeName: string | null;
+
+  LegId: number;
+  SeqNo: number;
+  ZoneId: number;
+  FromPointId: number | null;
+  ToPointId: number | null;
+  ApproxStartTime: string | null;
+  ApproxEndTime: string | null;
+
+  FromPointName: string | null;
+  ToPointName: string | null;
+
+  RequestId: number;
+  NumOfPeople: number;
+  PickupAt: string;
+  RequestStatus: string;
+  PickUpPoint: number;
+  DropOffPoint: number;
+};
+
+// ---------------------------------------------
+// Driver onboarding
+// ---------------------------------------------
+
 export const submitDriverOnboarding = (data: {
   name: string;
   licence_no: string;
@@ -22,19 +61,45 @@ export const submitDriverVehicle = (data: {
     body: JSON.stringify(data),
   });
 
+// ---------------------------------------------
+// Driver availability
+// ---------------------------------------------
+
 export const setDriverAvailability = (is_online: boolean) =>
   fetchAPI("/driver/availability", {
     method: "POST",
     body: JSON.stringify({ is_online }),
   });
 
-export const getDriverOffers = () =>
-  fetchAPI<TripRow[]>("/driver/offers");
+// ---------------------------------------------
+// Dispatch offers
+// ---------------------------------------------
 
-export const acceptOffer = (requestId: string) =>
-  fetchAPI(`/driver/accept/${requestId}`, {
+export const getDriverOffers = () =>
+  fetchAPI<{ success: boolean; offers: DispatchOfferRow[] }>(
+    "/driver/offers"
+  );
+
+export const acceptOffer = (offerId: string) =>
+  fetchAPI(`/driver/accept/${offerId}`, {
     method: "POST",
   });
+
+export const respondToOffer = (
+  offerId: number,
+  action: "accept" | "reject"
+) =>
+  fetchAPI<{ success: boolean; offer: DispatchOfferRow | null }>(
+    `/driver/offers/${offerId}/respond`,
+    {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }
+  );
+
+// ---------------------------------------------
+// Earnings
+// ---------------------------------------------
 
 export const getDriverEarnings = (params: { month: number; year: number }) => {
   const query = new URLSearchParams({
@@ -43,6 +108,10 @@ export const getDriverEarnings = (params: { month: number; year: number }) => {
   });
   return fetchAPI<DriverEarnings>(`/driver/earnings?${query}`);
 };
+
+// ---------------------------------------------
+// Service enrollment
+// ---------------------------------------------
 
 export const checkServiceEnrollment = (params: {
   userId: string;
@@ -64,16 +133,19 @@ export const createServiceEnrollment = (params: {
     body: JSON.stringify(params),
   });
 
+// ---------------------------------------------
+// Document upload
+// ---------------------------------------------
+
 /**
  * Upload a single driver document for a given user.
- * This is used in the post-signup flow and is unauthenticated.
  */
 export const uploadDriverDocument = (params: {
   userId: string;
-  docType: string;      // e.g. 'ID_OR_PASSPORT'
+  docType: string; // 'ID_OR_PASSPORT', etc.
   docNumber: string;
-  issueDate: string;    // ISO date string
-  expiryDate?: string;  // ISO date string, optional when not needed
+  issueDate: string;
+  expiryDate?: string;
   file: File;
 }) => {
   const formData = new FormData();
@@ -81,10 +153,12 @@ export const uploadDriverDocument = (params: {
   formData.append("docType", params.docType);
   formData.append("docNumber", params.docNumber);
   formData.append("issueDate", params.issueDate);
+
   if (params.expiryDate) {
     formData.append("expiryDate", params.expiryDate);
   }
-  formData.append("file", params.file); // The file itself
+
+  formData.append("file", params.file);
 
   return fetchAPI("/driver/documents", {
     method: "POST",

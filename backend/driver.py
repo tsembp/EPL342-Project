@@ -171,3 +171,79 @@ def upload_document():
         print(f"Error in /documents endpoint: {e}")
         # Return a generic error to the client
         return jsonify({"error": "An internal error occurred.", "details": str(e)}), 500
+    
+@driver_bp.route("/offers", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_dispatch_offers_for_driver():
+    """
+    Return dispatch offers for the logged-in driver.
+    Wraps dbo.usp_GetDispatchOffersForDriver.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetDispatchOffersForDriver
+                        @DriverUserId = ?
+                    """,
+                    user_id,
+                )
+
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+
+        return jsonify({"success": True, "offers": rows}), 200
+    except Exception as e:
+        print("Error in /api/driver/offers:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@driver_bp.route("/offers/<int:offer_id>/respond", methods=["POST"])
+@require_auth
+@require_role("D")
+def respond_to_dispatch_offer(offer_id: int):
+    """
+    Driver accepts or rejects a dispatch offer.
+    Calls dbo.usp_RespondToDispatchOffer.
+    Body: { "action": "accept" | "reject" }
+    """
+    user_id = session["user_id"]
+    data = request.get_json() or {}
+    action = (data.get("action") or "").lower()
+
+    if action not in ("accept", "reject"):
+        return jsonify({"error": "action must be 'accept' or 'reject'"}), 400
+
+    # Map to DB casing
+    db_action = "Accept" if action == "accept" else "Reject"
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_RespondToDispatchOffer
+                        @OfferId = ?,
+                        @DriverUserId = ?,
+                        @Action = ?
+                    """,
+                    offer_id,
+                    user_id,
+                    db_action,
+                )
+
+                updated = []
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    updated = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify({"success": True, "offer": updated[0] if updated else None}), 200
+    except Exception as e:
+        print("Error in /driver/offers/<offer_id>/respond:", e)
+        return jsonify({"success": False, "error": str(e)}), 500

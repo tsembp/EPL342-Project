@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
+import { useSearchParams } from "react-router-dom";
 import {
   Tabs,
   TabsList,
@@ -21,6 +22,10 @@ import {
   Settings,
 } from "lucide-react";
 
+// 🔹 Our split-out Offers tab
+import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
+import DriverProfile from "@/features/driver/pages/DriverProfile";
+
 type TabKey =
   | "home"
   | "offers"
@@ -30,12 +35,15 @@ type TabKey =
   | "history"
   | "profile";
 
-export default function DriverDashboard() {
-  const [tab, setTab] = useState<TabKey>("home");
+export default function Dashboard() {
+  // ⬇️ hooks MUST be inside the component
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as TabKey) || "home";
+
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
 
-  // NOTE: In a later step we will hook this to the backend
   async function handleToggleOnline(next: boolean) {
     setIsTogglingOnline(true);
     try {
@@ -45,6 +53,12 @@ export default function DriverDashboard() {
       setIsTogglingOnline(false);
     }
   }
+
+  const handleTabChange = (v: string) => {
+    const newTab = v as TabKey;
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
@@ -105,7 +119,7 @@ export default function DriverDashboard() {
         {/* Tabs */}
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as TabKey)}
+          onValueChange={handleTabChange}
           className="space-y-4"
         >
           <TabsList className="grid w-full grid-cols-7 rounded-xl bg-neutral-900/70 p-1">
@@ -157,18 +171,14 @@ export default function DriverDashboard() {
           <TabsContent value="home">
             <DriverHomeSection
               isOnline={isOnline}
-              onRegisterServiceClick={() => setTab("services")}
-              onRegisterVehicleClick={() => setTab("vehicles")}
+              onRegisterServiceClick={() => handleTabChange("services")}
+              onRegisterVehicleClick={() => handleTabChange("vehicles")}
             />
           </TabsContent>
 
-          {/* OFFERS TAB */}
+          {/* OFFERS TAB – now split */}
           <TabsContent value="offers">
-            <PlaceholderSection
-              icon={<MapPin className="h-5 w-5 text-emerald-400" />}
-              title="Offers & active rides"
-              description="Here you’ll see incoming dispatch offers and manage your active ride. We’ll wire this up to the backend next."
-            />
+            <DriverOffersSection />
           </TabsContent>
 
           {/* SERVICES TAB */}
@@ -209,11 +219,7 @@ export default function DriverDashboard() {
 
           {/* PROFILE TAB */}
           <TabsContent value="profile">
-            <PlaceholderSection
-              icon={<Settings className="h-5 w-5 text-emerald-400" />}
-              title="Profile & GDPR"
-              description="Profile settings, notification preferences, and GDPR tools (export data, right-to-be-forgotten) will be here."
-            />
+            <DriverProfile />
           </TabsContent>
         </Tabs>
       </main>
