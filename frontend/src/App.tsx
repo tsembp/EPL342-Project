@@ -35,11 +35,16 @@ import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
 
+// ADMIN
+import AdminPendingOperatorsPage from "@/features/admin/pages/AdminPendingOperators";
+
 // GDPR
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
 import NotFound from "@/pages/NotFound";
 import RideRequestDetailsPage from "./features/passenger/pages/RideRequestDetails";
+
+import AdminLogin from "@/features/auth/pages/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +70,7 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* PASSENGER */}
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -95,6 +101,7 @@ function App() {
               <Route index element={<Overview />} />
             </Route>
 
+            {/* PASSENGER */}
             <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
               <Route path="ride" element={<CreateRide />} />
               <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
@@ -103,6 +110,11 @@ function App() {
             </Route>
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
             <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
+
+            {/* ADMIN */}
+            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>}>
+              <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
