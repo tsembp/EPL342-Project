@@ -12,7 +12,7 @@ import Signup from "@/features/auth/pages/Signup";
 // DRIVER
 import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
-import DriverDashboard from "@/features/driver/pages/Dashboard"; // ⬅️ NEW
+import DriverDashboard from "@/features/driver/pages/Dashboard";
 
 // PASSENGER
 import Map from "@/features/passenger/pages/Map";
@@ -66,7 +66,6 @@ function App() {
             <Route path="/signup" element={<Signup />} />
 
             {/* PASSENGER */}
-            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
 

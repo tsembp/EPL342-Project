@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,14 @@ function getHelperText(type: string) {
 
 export default function GDPRRequest() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Where to go back after non-access/export requests
+  // Passenger will set this to "/profile"
+  // Driver will set this to something like "/driver-dashboard?tab=profile"
+  const backTo =
+    (location.state as any)?.backTo || "/profile";
+
   const [type, setType] = useState<string>("DataAccess");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -83,9 +91,11 @@ export default function GDPRRequest() {
       toast.success("Your GDPR request has been submitted.");
 
       if (type === "DataAccess" || type === "DataExport") {
+        // This goes to a common export screen
         navigate("/gdpr/export");
       } else {
-        navigate("/profile");
+        // Go back to where we came from (driver profile tab or passenger profile)
+        navigate(backTo);
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to submit GDPR request.");
@@ -96,12 +106,12 @@ export default function GDPRRequest() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
+      {/* If your Header supports onBack, pass it: */}
       <Header title="GDPR Request" showBack />
 
-      <div className="max-w-2xl mx-auto p-4">
-        <Card className="p-6 border border-neutral-800 bg-neutral-900/80 shadow-xl backdrop-blur">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-8 pt-4">
+        <Card className="w-full border border-neutral-800 bg-neutral-900/80 p-6 shadow-xl backdrop-blur">
           <form onSubmit={handleSubmit} className="space-y-5 text-sm">
-
             {/* Type selector */}
             <div className="space-y-2">
               <Label
@@ -159,7 +169,7 @@ export default function GDPRRequest() {
             </Button>
           </form>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }

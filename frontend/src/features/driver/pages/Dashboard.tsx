@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
+import { useSearchParams } from "react-router-dom";
 import {
   Tabs,
   TabsList,
@@ -23,6 +24,7 @@ import {
 
 // 🔹 Our split-out Offers tab
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
+import DriverProfile from "@/features/driver/pages/DriverProfile";
 
 type TabKey =
   | "home"
@@ -34,7 +36,11 @@ type TabKey =
   | "profile";
 
 export default function Dashboard() {
-  const [tab, setTab] = useState<TabKey>("home");
+  // ⬇️ hooks MUST be inside the component
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as TabKey) || "home";
+
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
 
@@ -47,6 +53,12 @@ export default function Dashboard() {
       setIsTogglingOnline(false);
     }
   }
+
+  const handleTabChange = (v: string) => {
+    const newTab = v as TabKey;
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
@@ -107,7 +119,7 @@ export default function Dashboard() {
         {/* Tabs */}
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as TabKey)}
+          onValueChange={handleTabChange}
           className="space-y-4"
         >
           <TabsList className="grid w-full grid-cols-7 rounded-xl bg-neutral-900/70 p-1">
@@ -159,8 +171,8 @@ export default function Dashboard() {
           <TabsContent value="home">
             <DriverHomeSection
               isOnline={isOnline}
-              onRegisterServiceClick={() => setTab("services")}
-              onRegisterVehicleClick={() => setTab("vehicles")}
+              onRegisterServiceClick={() => handleTabChange("services")}
+              onRegisterVehicleClick={() => handleTabChange("vehicles")}
             />
           </TabsContent>
 
@@ -207,11 +219,7 @@ export default function Dashboard() {
 
           {/* PROFILE TAB */}
           <TabsContent value="profile">
-            <PlaceholderSection
-              icon={<Settings className="h-5 w-5 text-emerald-400" />}
-              title="Profile & GDPR"
-              description="Profile settings, notification preferences, and GDPR tools (export data, right-to-be-forgotten) will be here."
-            />
+            <DriverProfile />
           </TabsContent>
         </Tabs>
       </main>
