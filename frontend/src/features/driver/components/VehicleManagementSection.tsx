@@ -17,11 +17,16 @@ export function VehicleManagementSection() {
     queryFn: getDriverVehicles,
   });
 
-  const approvedVehicles = vehicles?.filter(
-    (vehicle) => vehicle.IsApproved
+  const acceptedVehicles = vehicles?.filter(
+    (vehicle) => vehicle.IsApproved && vehicle.VehicleStatus === 'Active'
   );
-  const unapprovedVehicles = vehicles?.filter(
-    (vehicle) => !vehicle.IsApproved
+
+  const vehiclesAwaitingApproval = vehicles?.filter(
+    (vehicle) => !vehicle.IsApproved && vehicle.HasAllRequiredDocsSubmitted
+  );
+
+  const vehiclesMissingDocuments = vehicles?.filter(
+    (vehicle) => !vehicle.HasAllRequiredDocsSubmitted
   );
 
   return (
@@ -52,11 +57,11 @@ export function VehicleManagementSection() {
         {!isLoading && !error && (
           <>
             <h3 className="text-sm font-semibold text-neutral-50 mb-2">
-              Approved Vehicles ({approvedVehicles?.length || 0})
+              Accepted Vehicles ({acceptedVehicles?.length || 0})
             </h3>
-            {approvedVehicles && approvedVehicles.length > 0 ? (
+            {acceptedVehicles && acceptedVehicles.length > 0 ? (
               <ul className="space-y-2">
-                {approvedVehicles.map((vehicle) => (
+                {acceptedVehicles.map((vehicle) => (
                   <li key={vehicle.VehicleId} className="flex items-center gap-2 text-sm text-neutral-300">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     {vehicle.Brand} {vehicle.Model} ({vehicle.PlateNumber}) -{" "}
@@ -65,24 +70,51 @@ export function VehicleManagementSection() {
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-neutral-400">No approved vehicles to display.</p>
+              <p className="text-xs text-neutral-400">No accepted vehicles to display.</p>
             )}
 
             <h3 className="text-sm font-semibold text-neutral-50 mt-4 mb-2">
-              Unapproved Vehicles ({unapprovedVehicles?.length || 0})
+              Vehicles Awaiting Approval ({vehiclesAwaitingApproval?.length || 0})
             </h3>
-            {unapprovedVehicles && unapprovedVehicles.length > 0 ? (
+            {vehiclesAwaitingApproval && vehiclesAwaitingApproval.length > 0 ? (
               <ul className="space-y-2">
-                {unapprovedVehicles.map((vehicle) => (
+                {vehiclesAwaitingApproval.map((vehicle) => (
                   <li key={vehicle.VehicleId} className="flex items-center gap-2 text-sm text-neutral-300">
-                    <XCircle className="h-4 w-4 text-red-500" />
+                    <XCircle className="h-4 w-4 text-yellow-500" />
                     {vehicle.Brand} {vehicle.Model} ({vehicle.PlateNumber}) -{" "}
-                    {vehicle.VehicleType} (Status: {vehicle.VehicleStatus})
+                    {vehicle.VehicleType} (Status: Submitted, Awaiting Review)
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-neutral-400">No unapproved vehicles to display.</p>
+              <p className="text-xs text-neutral-400">No vehicles awaiting approval.</p>
+            )}
+
+            <h3 className="text-sm font-semibold text-neutral-50 mt-4 mb-2">
+              More Documents Left to Submit ({vehiclesMissingDocuments?.length || 0})
+            </h3>
+            {vehiclesMissingDocuments && vehiclesMissingDocuments.length > 0 ? (
+              <ul className="space-y-2">
+                {vehiclesMissingDocuments.map((vehicle) => (
+                  <li key={vehicle.VehicleId} className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-neutral-300">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      {vehicle.Brand} {vehicle.Model} ({vehicle.PlateNumber}) -{" "}
+                      {vehicle.VehicleType} (Status: Missing Documents)
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-0 sm:ml-auto border-neutral-700 bg-neutral-900 text-orange-400 hover:bg-neutral-800 hover:text-orange-300 h-8 px-3"
+                      onClick={() => navigate("/driver/VehicleDocuments", { state: { vehicleId: vehicle.VehicleId } })}
+                    >
+                      Submit Missing Documents
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-neutral-400">All required documents have been submitted for your registered vehicles.</p>
             )}
           </>
         )}

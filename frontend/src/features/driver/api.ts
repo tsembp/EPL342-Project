@@ -166,3 +166,20 @@ export interface Vehicle {
  */
 export const getDriverVehicles = () =>
   fetchAPI<Vehicle[]>("/driver/vehicles");
+
+export interface VehicleDocumentStatus {
+  VehDocId: number;
+  DocType: string;
+  IssueDate?: string;
+  ExpiryDate?: string;
+  Status: string; // e.g., 'Pending', 'Accepted', 'Rejected'
+  Accepted: boolean;
+  ReviewComments?: string;
+  FileUrl?: string;
+}
+
+/**
+ * Get the status of all documents for a given vehicle.
+ */
+export const getVehicleDocumentStatus = (vehicleId: string) =>
+  fetchAPI<VehicleDocumentStatus[]>(`/driver/vehicle-documents-status?vehicleId=${vehicleId}`);

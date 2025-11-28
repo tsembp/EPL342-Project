@@ -269,7 +269,7 @@ def upload_vehicle_document():
         # Extract data from the form
         vehicle_id = request.form.get("vehicleId")
         doc_type = request.form.get("docType")
-        doc_number = request.form.get("docNumber") # Optional
+        doc_number = request.form.get("docNumber") # This is now passed to SP
         issue_date = request.form.get("issueDate")
         expiry_date = request.form.get("expiryDate") # Optional
 
@@ -291,11 +291,13 @@ def upload_vehicle_document():
                     EXEC dbo.usp_AddVehicleDocument
                         @VehicleId = ?,
                         @DocType = ?,
+                        @DocNo = ?,
                         @IssueDate = ?,
                         @ExpiryDate = ?
                     """,
                     vehicle_id,
                     doc_type,
+                    doc_number,
                     issue_date,
                     expiry_date,
                 )
@@ -336,4 +338,42 @@ def get_driver_vehicles():
                 return jsonify([]), 200 # Return empty array if no vehicles found
     except Exception as e:
         print(f"Error in /vehicles endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@driver_bp.route("/vehicle-documents-status", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_vehicle_documents_status():
+    """
+    Retrieve the status of all documents for a given vehicle.
+    Calls dbo.usp_GetVehicleDocumentStatus.
+    """
+    vehicle_id = request.args.get("vehicleId")
+    if not vehicle_id:
+        return jsonify({"error": "Vehicle ID is required"}), 400
+
+    user_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # First, verify the vehicle belongs to the authenticated driver
+                cur.execute("SELECT OwnerUserId FROM dbo.Vehicle WHERE VehicleId = ?", vehicle_id)
+                owner_id_row = cur.fetchone()
+                if not owner_id_row or str(owner_id_row[0]) != user_id:
+                    return jsonify({"error": "Vehicle not found or does not belong to the current driver"}), 403
+
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetVehicleDocumentStatus @VehicleId = ?
+                    """,
+                    vehicle_id,
+                )
+                rows = cur.fetchall()
+                if rows:
+                    columns = [column[0] for column in cur.description]
+                    documents = [dict(zip(columns, row)) for row in rows]
+                    return jsonify(documents), 200
+                return jsonify([]), 200 # Return empty array if no documents found
+    except Exception as e:
+        print(f"Error in /vehicle-documents-status endpoint: {e}")
         return jsonify({"error": str(e)}), 500
