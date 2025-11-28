@@ -60,7 +60,7 @@ export default function Profile() {
             {/* GDPR Request */}
             <Card
               className="p-4 cursor-pointer border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-900 transition-colors"
-              onClick={() => navigate("/gdpr")}
+              onClick={() => navigate("/gdpr", { state: { backTo: "/profile" } })}
             >
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-emerald-500" />
