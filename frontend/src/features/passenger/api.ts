@@ -63,6 +63,11 @@ export type RideRequestDetails = {
 
 // == API Functions ==
 
+export const getRideRequests = (status: string) =>
+  fetchAPI<{ success: boolean; requests?: RideRequestDetails[]; error?: string }>(
+    `/passenger/ride-requests/?status=${encodeURIComponent(status)}`
+  );
+
 export const getFareEstimate = (params: {
   pickup: Location;
   dropoff: Location;

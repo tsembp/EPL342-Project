@@ -192,13 +192,8 @@ export default function RideHistory() {
           {!loading && !error && totalItems === 0 && (
             <EmptyState
               icon={Car}
-              title={<span className="text-white">No rides yet</span>}
-              description={
-                <span className="text-neutral-300">
-                  Your previous ride requests and trips will appear here once
-                  you start riding.
-                </span>
-              }
+              title="No rides yet"
+              description="Your previous ride requests and trips will appear here once you start riding."
               action={
                 <img
                   src="https://cdn-icons-png.flaticon.com/512/744/744465.png"
