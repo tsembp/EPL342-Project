@@ -7,8 +7,21 @@ import { BottomNav } from "@/components/BottomNav";
 import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
-import { Clock, MapPin, Navigation2, Loader2, Car } from "lucide-react";
+import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
 import { getRideRequestDetails, type RideRequestDetails } from "@/features/passenger/api";
+import { 
+  Clock,
+  MapPin,
+  Navigation2,
+  Loader2,
+  Car,
+  User2,
+  MessageCircle,
+  X,
+  RefreshCw,
+  Send,
+} from "lucide-react";
+
 
 export default function RideRequestDetailsPage() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -18,6 +31,12 @@ export default function RideRequestDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [activeChat, setActiveChat] = useState<{
+    rideId: number;
+    driverName: string;
+  } | null>(null);
+
 
   async function loadDetails(isRefresh = false) {
     if (!requestId) return;
@@ -137,192 +156,270 @@ export default function RideRequestDetailsPage() {
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
       <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 mr-2"
-            onClick={() => navigate("/passenger/ride")}
-          >
-            &larr; Back
-          </Button>
-          <span className="text-xl font-semibold tracking-tight">Ride</span>
-        </div>
-      </header>
-      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
-        <div className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight">Ride</span>
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col lg:flex-row">
-        {/* Left: Details card */}
-        <section className="flex w-full justify-center border-b border-neutral-900 bg-neutral-950 px-4 py-6 lg:w-[420px] lg:flex-shrink-0 lg:border-b-0 lg:border-r">
-          <Card className="w-full max-w-md border border-neutral-800 bg-neutral-900/80 p-6 shadow-lg space-y-4">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
-                <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                Loading ride request…
-              </div>
-            ) : error || !data ? (
-              <div className="space-y-3 text-sm">
-                <p className="text-red-400 text-sm">{error || "Not found."}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadDetails(false)}
-                  className="border-neutral-700 text-neutral-100"
-                >
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h1 className="text-lg font-semibold text-neutral-50">
-                      Ride request #{data.requestId}
-                    </h1>
-                    <p className="mt-1 text-xs text-neutral-400">
-                      {data.numOfPeople}{" "}
-                      {data.numOfPeople === 1 ? "person" : "people"}
-                    </p>
+      <main className="flex flex-col flex-1">
+        {/* One big card that contains BOTH details + map */}
+        <section className="w-full bg-neutral-950 px-4 py-6">
+          <Card className="w-full border border-neutral-800 bg-neutral-900/80 shadow-lg overflow-hidden">
+            <div className="flex flex-col lg:flex-row w-full">
+              {/* LEFT: details (everything that was inside your Card before) */}
+              <div className="w-full lg:w-[420px] border-b lg:border-b-0 lg:border-r border-neutral-800 p-6 space-y-4">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                    <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                    Loading ride request…
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs border px-2 py-1 ${statusColor(
-                      data.status
-                    )}`}
-                  >
-                    {data.status}
-                  </Badge>
-                </div>
-
-                <div className="mt-2 space-y-3 text-sm">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
-                      From
-                    </div>
-                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                      <MapPin className="h-4 w-4 text-emerald-500" />
-                      <div className="flex flex-col">
-                        <span className="text-sm text-neutral-50">
-                          {data.pickup.name}
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          Zone {data.pickup.zoneId}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
-                      To
-                    </div>
-                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                      <Navigation2 className="h-4 w-4 text-emerald-500" />
-                      <div className="flex flex-col">
-                        <span className="text-sm text-neutral-50">
-                          {data.dropoff.name}
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          Zone {data.dropoff.zoneId}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
-                      Pickup time
-                    </div>
-                    <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                      <Clock className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-neutral-50">
-                        {formattedPickupTime}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Waiting-for-drivers block */}
-                <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
-                  {data.progressStatus === "AllAccepted" || data.progressStatus === "RidesCreated" ? (
-                    <div className="flex items-center gap-3">
-                      <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
-                        <Car className="h-5 w-5 text-emerald-400" />
-                      </span>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-emerald-400">
-                          All rides have been accepted!
-                        </p>
-                        <p className="mt-1 text-xs text-neutral-400">
-                          Drivers have accepted your ride. Your trip will begin soon.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      {/* animation */}
-                      <div className="relative h-10 w-10">
-                        <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
-                        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
-                          <Car className="h-5 w-5 text-emerald-400" />
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-neutral-50">
-                          Waiting for drivers…
-                        </p>
-                        <p className="mt-1 text-xs text-neutral-400">
-                          We’ve sent out offers to nearby drivers. You’ll see your
-                          ride here as soon as someone accepts.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="mt-4 flex items-center justify-between gap-2">
+                ) : error || !data ? (
+                  <div className="space-y-3 text-sm">
+                    <p className="text-red-400 text-sm">{error || "Not found."}</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => loadDetails(true)}
-                      disabled={refreshing}
-                      className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                      onClick={() => loadDetails(false)}
+                      className="border-neutral-700 text-neutral-100"
                     >
-                      {refreshing && (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      )}
-                      Refresh status
+                      Try again
                     </Button>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h1 className="text-lg font-semibold text-neutral-50">
+                          Ride request #{data.requestId}
+                        </h1>
+                        <p className="mt-1 text-xs text-neutral-400">
+                          {data.numOfPeople}{" "}
+                          {data.numOfPeople === 1 ? "person" : "people"}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs border px-2 py-1 ${statusColor(
+                          data.status
+                        )}`}
+                      >
+                        {data.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-2 space-y-3 text-sm">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                          From
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                          <MapPin className="h-4 w-4 text-emerald-500" />
+                          <div className="flex flex-col">
+                            <span className="text-sm text-neutral-50">
+                              {data.pickup.name}
+                            </span>
+                            <span className="text-xs text-neutral-500">
+                              Zone {data.pickup.zoneId}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                          To
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                          <Navigation2 className="h-4 w-4 text-emerald-500" />
+                          <div className="flex flex-col">
+                            <span className="text-sm text-neutral-50">
+                              {data.dropoff.name}
+                            </span>
+                            <span className="text-xs text-neutral-500">
+                              Zone {data.dropoff.zoneId}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                          Pickup time
+                        </div>
+                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                          <Clock className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-50">
+                            {formattedPickupTime}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Waiting-for-drivers block */}
+                    <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
+                      {data.progressStatus === "AllAccepted" ||
+                      data.progressStatus === "RidesCreated" ? (
+                        <div className="flex items-center gap-3">
+                          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+                            <Car className="h-5 w-5 text-emerald-400" />
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-emerald-400">
+                              All rides have been accepted!
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              Drivers have accepted your ride. Your trip will begin soon.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-10 w-10">
+                            <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                            <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+                              <Car className="h-5 w-5 text-emerald-400" />
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-neutral-50">
+                              Waiting for drivers…
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              We’ve sent out offers to nearby drivers. You’ll see your
+                              ride here as soon as someone accepts.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="mt-4 flex items-center justify-between gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadDetails(true)}
+                          disabled={refreshing}
+                          className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                        >
+                          {refreshing && (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          )}
+                          Refresh status
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Back button */}
+                <div className="mt-4 flex items-center justify-start">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                    onClick={() => navigate("/passenger/ride")}
+                  >
+                    &larr; Back
+                  </Button>
                 </div>
-              </>
-            )}
-            {/* Back button below status container */}
-            <div className="mt-4 flex items-center justify-start">
-              <Button
-              variant="outline"
-              size="sm"
-              className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
-              onClick={() => navigate("/passenger/ride")}
-              >
-              &larr; Back
-              </Button>
+              </div>
+
+                {/* RIGHT: map INSIDE the same Card, full remaining width */}
+                <div className="flex-1">
+                  <div className="relative h-full min-h-[320px] rounded-none">
+                    <MapView
+                    center={mapCenter}
+                    markers={markers}
+                    polyline={polyline}
+                    className="rounded-none"
+                    />
+                  </div>
+                </div>
             </div>
           </Card>
-        </section>
+          {/* BOTTOM: Rides */}
+            <div className="w-full px-4 py-4">
+            {/* If accepted → show rides */}
+            {(data?.progressStatus === "AllAccepted" || data?.progressStatus === "RidesCreated") &&
+              data?.rides && data.rides.length > 0 ? (
+              <>
+                <h2 className="text-sm font-semibold text-neutral-200 mb-2">
+                Your rides
+                </h2>
 
-        {/* Right: Map */}
-        <section className="relative flex-1 border-t border-neutral-900 bg-neutral-900 lg:border-t-0 lg:border-l">
-          <MapView
-            center={mapCenter}
-            markers={markers}
-            polyline={polyline}
-          />
+                <div className="flex gap-4 overflow-x-auto pb-4 items-center">
+                  {data.rides.map((ride, idx) => (
+                    <div key={ride.rideId} className="flex items-center">
+                      <div
+                        className="min-w-[240px] rounded-xl border border-neutral-800 bg-neutral-900 p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs uppercase text-neutral-400">
+                            Leg {ride.legIndex}
+                          </span>
+                          <Badge className="text-[10px] px-2 py-0.5">
+                            {ride.status}
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-emerald-500" />
+                            <span>{ride.fromName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Navigation2 className="h-4 w-4 text-emerald-500" />
+                            <span>{ride.toName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <User2 className="h-4 w-4 text-emerald-500" />
+                            <span className="text-neutral-300">
+                              {ride.driverName}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-3 w-full border-neutral-700 bg-neutral-800 text-neutral-50 hover:bg-neutral-700 hover:text-emerald-400"
+                          onClick={() =>
+                            setActiveChat({
+                              rideId: ride.rideId,
+                              driverName: ride.driverName,
+                            })
+                          }
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2 text-neutral-50" />
+                          <span className="text-neutral-50 font-semibold">Chat</span>
+                        </Button>
+                      </div>
+                      {/* Arrow between legs, except after last leg */}
+                      {idx < data.rides.length - 1 && (
+                        <div className="flex items-center mx-2">
+                          <span className="text-emerald-500 text-2xl select-none">{'→'}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+              {/* WAITING PLACEHOLDER */}
+              <div className="flex flex-col items-center justify-center py-10 text-neutral-500">
+                <Car className="h-10 w-10 text-neutral-700 mb-2" />
+                <p className="text-sm">Waiting for drivers to accept your ride...</p>
+              </div>
+            </>
+            )}
+          </div>
+
         </section>
       </main>
-
-      <BottomNav />
+      {activeChat && (
+        <RideChatWindow
+          rideId={activeChat.rideId}
+          driverName={activeChat.driverName}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </div>
   );
 }
