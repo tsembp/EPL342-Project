@@ -13,20 +13,23 @@ def get_operator_dashboard():
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT COUNT(*) as PendingDocs 
                     FROM dbo.UserDocumentVerification 
                     WHERE VerificationStatusId = 1
-                """)
+                    """
+                )
                 row = cur.fetchone()
-                return jsonify({
-                    "pendingDocuments": row[0] if row else 0,
-                    "operatorId": session["user_id"],
-                }), 200
+                return jsonify(
+                    {
+                        "pendingDocuments": row[0] if row else 0,
+                        "operatorId": session["user_id"],
+                    }
+                ), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
+    
 @operator_bp.route("/pending-person-documents", methods=["GET"])
 @require_auth
 @require_role("O", "I")
@@ -36,7 +39,7 @@ def get_pending_person_documents():
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    EXEC dbo.usp_GetPendingPersonDocumentsForReview @OperatorId=?
+                    EXEC dbo.usp_GetPendingPersonDocuments @OperatorId=?
                 """, operator_id)
                 columns = [column[0] for column in cur.description]
                 rows = [dict(zip(columns, row)) for row in cur.fetchall()]
@@ -46,17 +49,65 @@ def get_pending_person_documents():
         return jsonify({"error": str(e)}), 500
 
 
-@operator_bp.route("/pending-vehicle-documents", methods=["GET"])
+@operator_bp.route("/accepted-person-documents", methods=["GET"])
 @require_auth
 @require_role("O", "I")
-def get_pending_vehicle_documents():
+def get_accepted_person_documents():
     operator_id = session["user_id"]
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    EXEC dbo.usp_GetPendingVehicleDocumentsForReview @OperatorId=?
+                    EXEC dbo.usp_GetAcceptedPersonDocuments @OperatorId=?
                 """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in accepted-person-documents endpoint:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@operator_bp.route("/rejected-person-documents", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_rejected_person_documents():
+    operator_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    EXEC dbo.usp_GetRejectedPersonDocuments @OperatorId=?
+                """, operator_id)
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                return jsonify(rows), 200
+    except Exception as e:
+        print("Error in rejected-person-documents endpoint:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@operator_bp.route("/pending-vehicle-documents", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_pending_vehicle_documents():
+    """
+    Returns ALL vehicle documents (Pending, Accepted, Rejected).
+    Uses dbo.usp_GetVehicleDocumentsByStatus with @Status = NULL.
+    Frontend filters by status tab.
+    """
+    operator_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetVehicleDocumentsByStatus
+                        @OperatorId=?,
+                        @Status=?
+                    """,
+                    (operator_id, None),
+                )
                 columns = [column[0] for column in cur.description]
                 rows = [dict(zip(columns, row)) for row in cur.fetchall()]
                 return jsonify(rows), 200
@@ -77,10 +128,13 @@ def review_person_document():
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     EXEC dbo.usp_ReviewPersonDocument 
                         @OperatorId=?, @DocId=?, @NewStatus=?, @ReviewComment=?
-                """, operator_id, doc_id, status, comment)
+                    """,
+                    (operator_id, doc_id, status, comment),
+                )
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -98,13 +152,41 @@ def review_vehicle_document():
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     EXEC dbo.usp_ReviewVehicleDocument 
                         @OperatorId=?, @VehDocId=?, @NewStatus=?, @ReviewComments=?
-                """, operator_id, veh_doc_id, status, comment)
+                    """,
+                    (operator_id, veh_doc_id, status, comment),
+                )
         return jsonify({"success": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@operator_bp.route("/vehicles-overview", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_vehicles_overview():
+    """
+    Operator-side: fleet overview for all vehicles.
+    Uses dbo.usp_Operator_GetVehiclesOverview.
+    """
+    operator_id = session["user_id"]
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_Operator_GetVehiclesOverview @OperatorId=?",
+                    operator_id,
+                )
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /vehicles-overview:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 @operator_bp.route("/service-enrollments", methods=["GET"])
 @require_auth
@@ -130,6 +212,7 @@ def get_service_enrollments():
     except Exception as e:
         print("Error in /service-enrollments:", e)
         return jsonify({"error": str(e)}), 500
+
 
 @operator_bp.route("/service-enroll/review", methods=["POST"])
 @require_auth
@@ -157,7 +240,7 @@ def review_service_enrollment():
                         @NewStatus   = ?,
                         @ReviewComment = ?
                     """,
-                    (operator_id, enroll_id, status, comment)
+                    (operator_id, enroll_id, status, comment),
                 )
                 conn.commit()
 
@@ -165,6 +248,7 @@ def review_service_enrollment():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @operator_bp.route("/service-types", methods=["GET"])
 @require_auth
@@ -183,7 +267,8 @@ def get_service_types():
     except Exception as e:
         print("Error in /service-types:", e)
         return jsonify({"error": str(e)}), 500
-    
+
+
 @operator_bp.route("/service-types", methods=["POST"])
 @require_auth
 @require_role("O", "I")
@@ -204,7 +289,9 @@ def create_service_type():
     if not description:
         return jsonify({"error": "Description is required"}), 400
     if base_fare is None or per_km is None or per_min is None:
-        return jsonify({"error": "BaseFare, PerKm and PerMin are required"}), 400
+        return jsonify(
+            {"error": "BaseFare, PerKm and PerMin are required"}
+        ), 400
 
     try:
         with get_connection() as conn:
@@ -239,7 +326,7 @@ def create_service_type():
         print("Error in create_service_type:", e)
         return jsonify({"error": "Failed to create service type"}), 500
 
-    
+
 @operator_bp.route("/service-types/<int:service_type_id>", methods=["PUT"])
 @require_auth
 @require_role("O", "I")
@@ -258,7 +345,9 @@ def update_service_type(service_type_id):
     if not description:
         return jsonify({"error": "Description is required"}), 400
     if base_fare is None or per_km is None or per_min is None:
-        return jsonify({"error": "BaseFare, PerKm and PerMin are required"}), 400
+        return jsonify(
+            {"error": "BaseFare, PerKm and PerMin are required"}
+        ), 400
 
     try:
         with get_connection() as conn:
@@ -310,7 +399,8 @@ def get_allowed_ride_profiles():
     except Exception as e:
         print("Error in /allowed-ride-profiles:", e)
         return jsonify({"error": str(e)}), 500
-    
+
+
 @operator_bp.route("/allowed-ride-profiles", methods=["POST"])
 @require_auth
 @require_role("O", "I")
@@ -323,7 +413,9 @@ def create_allowed_ride_profile():
     profile_name = data.get("profileName")
 
     if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
-        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
+        return jsonify(
+            {"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}
+        ), 400
 
     try:
         with get_connection() as conn:
@@ -346,7 +438,6 @@ def create_allowed_ride_profile():
         return jsonify({"error": "Failed to create allowed ride profile"}), 500
 
 
-
 @operator_bp.route("/allowed-ride-profiles/<ride_profile_id>", methods=["PUT"])
 @require_auth
 @require_role("O", "I")
@@ -359,7 +450,9 @@ def update_allowed_ride_profile(ride_profile_id):
     profile_name = data.get("profileName")
 
     if service_type_id is None or ride_type_id is None or vehicle_type_id is None:
-        return jsonify({"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}), 400
+        return jsonify(
+            {"error": "serviceTypeId, rideTypeId and vehicleTypeId are required"}
+        ), 400
 
     try:
         with get_connection() as conn:
@@ -386,4 +479,6 @@ def update_allowed_ride_profile(ride_profile_id):
         return jsonify(row), 200
     except Exception as e:
         print("Error in update_allowed_ride_profile:", e)
-        return jsonify({"error": "Failed to update allowed ride profile"}), 500
+        return jsonify(
+            {"error": "Failed to update allowed ride profile"}
+        ), 500
