@@ -46,6 +46,12 @@ export const login = (data: LoginRequest) =>
     body: JSON.stringify(data),
   });
 
+export const adminLogin = (data: { email: string; password: string }) =>
+  fetchAPI("/admin/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
 export const signup = (data: SignupRequest) =>
   fetchAPI<SignupResponse>("/auth/signup", {
     method: "POST",

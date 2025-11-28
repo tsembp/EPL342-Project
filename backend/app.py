@@ -14,7 +14,7 @@ from operator_routes import operator_bp
 from gdpr import gdpr_bp
 from meta import meta_bp
 from console import console_bp
-
+from admin import admin_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -41,7 +41,7 @@ app.register_blueprint(operator_bp)
 app.register_blueprint(gdpr_bp)
 app.register_blueprint(meta_bp)
 app.register_blueprint(console_bp)
-
+app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
 if __name__ == "__main__":
     app.run(debug=True)
