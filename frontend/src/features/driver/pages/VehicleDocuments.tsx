@@ -1,12 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react"; // Added useEffect
 import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query"; // Import useQuery
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { uploadVehicleDocument } from "@/features/driver/api";
+import { uploadVehicleDocument, getVehicleDocumentStatus } from "@/features/driver/api"; // Added getVehicleDocumentStatus
 
 type DocumentType = {
   id: string;
@@ -15,15 +23,34 @@ type DocumentType = {
   backendType: string;
 };
 
-// Placeholder for vehicle-specific documents
 const REQUIRED_DOCUMENTS: DocumentType[] = [
-  { id: "vehicle_reg", label: "Άδεια κυκλοφορίας οχήματος (Vehicle Registration)", hasExpiry: true, backendType: "VEHICLE_REGISTRATION" },
-  { id: "mot_cert", label: "Πιστοποιητικό ΜΟΤ (MOT Certificate)", hasExpiry: true, backendType: "MOT_CERTIFICATE" },
-  { id: "vehicle_classification", label: "Πιστοποιητικό Ταξινόμησης Οχήματος (Vehicle Classification Certificate)", hasExpiry: true, backendType: "VEHICLE_CLASSIFICATION_CERTIFICATE" },
-  { id: "vehicle_image", label: "Φωτογραφία Οχήματος (Vehicle Image)", hasExpiry: false, backendType: "VEHICLE_IMAGE" },
+  {
+    id: "vehicle_reg",
+    label: "Άδεια κυκλοφορίας οχήματος (Vehicle Registration)",
+    hasExpiry: true,
+    backendType: "VEHICLE_REGISTRATION",
+  },
+  {
+    id: "mot_cert",
+    label: "Πιστοποιητικό ΜΟΤ (MOT Certificate)",
+    hasExpiry: true,
+    backendType: "MOT_CERTIFICATE",
+  },
+  {
+    id: "vehicle_classification",
+    label: "Πιστοποιητικό Ταξινόμησης Οχήματος (Vehicle Classification Certificate)",
+    hasExpiry: true,
+    backendType: "VEHICLE_CLASSIFICATION_CERTIFICATE",
+  },
+  {
+    id: "vehicle_image",
+    label: "Φωτογραφία Οχήματος (Vehicle Image)",
+    hasExpiry: false,
+    backendType: "VEHICLE_IMAGE",
+  },
 ];
 
-type SubmissionStatus = 'pending' | 'uploading' | 'success' | 'error';
+type SubmissionStatus = "pending" | "uploading" | "success" | "error";
 
 type DocumentData = {
   docNumber: string;
@@ -32,12 +59,20 @@ type DocumentData = {
   file: File | null;
   status: SubmissionStatus;
   error?: string;
+  isSubmitted: boolean; // New field to track if a document has been submitted (regardless of accepted/rejected)
 };
 
-// Initialize state from REQUIRED_DOCUMENTS
 const getInitialState = () => {
   return REQUIRED_DOCUMENTS.reduce((acc, doc) => {
-    acc[doc.id] = { docNumber: "", issueDate: "", expiryDate: "", file: null, status: 'pending', error: undefined };
+    acc[doc.id] = {
+      docNumber: "",
+      issueDate: "",
+      expiryDate: "",
+      file: null,
+      status: "pending",
+      error: undefined,
+      isSubmitted: false, // Default to not submitted
+    };
     return acc;
   }, {} as Record<string, DocumentData>);
 };
@@ -45,115 +80,241 @@ const getInitialState = () => {
 export default function VehicleDocuments() {
   const navigate = useNavigate();
   const location = useLocation();
-  const vehicleId = (location.state as { vehicleId: string })?.vehicleId; // Get vehicleId from state
+  const vehicleId = (location.state as { vehicleId: string })?.vehicleId;
 
-  const [documents, setDocuments] = useState<Record<string, DocumentData>>(getInitialState());
+  // Fetch existing document statuses for this vehicle
+  const { data: existingDocs, isLoading: isLoadingExistingDocs, error: existingDocsError } = useQuery({
+    queryKey: ["vehicleDocumentsStatus", vehicleId],
+    queryFn: () => getVehicleDocumentStatus(vehicleId!),
+    enabled: !!vehicleId, // Only run if vehicleId is available
+  });
+
+  const [documents, setDocuments] = useState<Record<string, DocumentData>>(() => {
+    // Initial state: all pending
+    const initialState = getInitialState();
+    return initialState;
+  });
+
+  // Effect to update state when existingDocs are loaded
+  useEffect(() => {
+    if (existingDocs && existingDocs.length > 0) {
+      setDocuments(prev => {
+        const newState = { ...prev };
+        existingDocs.forEach(doc => {
+          const requiredDoc = REQUIRED_DOCUMENTS.find(rd => rd.backendType === doc.DocType);
+          if (requiredDoc) {
+            let submissionStatus: SubmissionStatus = 'pending';
+            let isDocAlreadySubmitted = false;
+            let docError: string | undefined = undefined;
+
+            if (doc.Status?.toLowerCase() === 'accepted' || doc.Status?.toLowerCase() === 'pending') {
+              submissionStatus = 'success'; // Treat as submitted and no further action needed for this type
+              isDocAlreadySubmitted = true;
+            } else if (doc.Status?.toLowerCase() === 'rejected') {
+              submissionStatus = 'error';
+              isDocAlreadySubmitted = false; // Allow re-submission
+              docError = doc.ReviewComments || 'Rejected by operator';
+            }
+
+            newState[requiredDoc.id] = {
+              ...newState[requiredDoc.id],
+              // Note: DocNumber and file are not retrieved from existingDocs,
+              // so driver must re-enter if status is not 'success' and they need to resubmit
+              docNumber: requiredDoc.backendType !== 'VEHICLE_IMAGE' ? (doc.VehDocId?.toString() || "") : "", // Populate docNumber if not image
+              issueDate: doc.IssueDate ? new Date(doc.IssueDate).toISOString().split('T')[0] : "",
+              expiryDate: doc.ExpiryDate ? new Date(doc.ExpiryDate).toISOString().split('T')[0] : "",
+              status: submissionStatus,
+              error: docError,
+              isSubmitted: isDocAlreadySubmitted,
+              file: null, // File always needs to be re-uploaded for security and to capture new versions
+            };
+          }
+        });
+        return newState;
+      });
+    }
+  }, [existingDocs]);
 
   const handleFileChange = (docId: string, file: File | null) => {
-    setDocuments(prev => ({
+    setDocuments((prev) => ({
       ...prev,
-      [docId]: { ...prev[docId], file }
+      [docId]: { ...prev[docId], file },
     }));
   };
 
-  const handleFieldChange = (docId: string, field: keyof DocumentData, value: string) => {
-    setDocuments(prev => ({
+  const handleFieldChange = (
+    docId: string,
+    field: keyof DocumentData,
+    value: string
+  ) => {
+    setDocuments((prev) => ({
       ...prev,
-      [docId]: { ...prev[docId], [field]: value }
+      [docId]: { ...prev[docId], [field]: value },
     }));
   };
 
   const isDocumentSubmittable = (docId: string) => {
-    const docInfo = REQUIRED_DOCUMENTS.find(d => d.id === docId);
+    const docInfo = REQUIRED_DOCUMENTS.find((d) => d.id === docId);
     if (!docInfo) return false;
     const data = documents[docId];
-    // DocNumber is not required for VEHICLE_IMAGE
-    const hasDocNumber = docInfo.backendType === 'VEHICLE_IMAGE' || data.docNumber;
-    const hasBasicInfo = hasDocNumber && data.issueDate && data.file;
-    const hasExpiry = !docInfo.hasExpiry || data.expiryDate;
+    const hasDocNumber =
+      docInfo.backendType === "VEHICLE_IMAGE" || !!data.docNumber;
+    const hasBasicInfo = hasDocNumber && !!data.issueDate && !!data.file;
+    const hasExpiry = !docInfo.hasExpiry || !!data.expiryDate;
     return hasBasicInfo && hasExpiry;
   };
-  
+
   const handleIndividualSubmit = async (docId: string) => {
     if (!vehicleId) {
       toast.error("Vehicle ID not found. Please add a vehicle first.");
-      navigate("/driver/add-vehicle"); // Redirect if no vehicleId
+      navigate("/driver/add-vehicle");
       return;
     }
 
-    const doc = REQUIRED_DOCUMENTS.find(d => d.id === docId);
+    const doc = REQUIRED_DOCUMENTS.find((d) => d.id === docId);
     const data = documents[docId];
 
     if (!doc || !data || !isDocumentSubmittable(docId)) {
-        toast.error("Please fill in all fields for this document before submitting.");
-        return;
+      toast.error(
+        "Please fill in all fields for this document before submitting."
+      );
+      return;
     }
 
-    setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'uploading' } }));
+    setDocuments((prev) => ({
+      ...prev,
+      [docId]: { ...prev[docId], status: "uploading" },
+    }));
 
     try {
-        await uploadVehicleDocument({
-            vehicleId: vehicleId,
-            docType: doc.backendType,
-            docNumber: doc.backendType !== 'VEHICLE_IMAGE' ? data.docNumber : undefined,
-            issueDate: data.issueDate,
-            expiryDate: doc.hasExpiry ? data.expiryDate : undefined,
-            file: data.file!,
-        });
+      await uploadVehicleDocument({
+        vehicleId: vehicleId,
+        docType: doc.backendType,
+        docNumber:
+          doc.backendType !== "VEHICLE_IMAGE" ? data.docNumber : undefined,
+        issueDate: data.issueDate,
+        expiryDate: doc.hasExpiry ? data.expiryDate : undefined,
+        file: data.file!,
+      });
 
-        toast.success(`${doc.label} submitted successfully!`);
-        setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'success' } }));
+      toast.success(`${doc.label} submitted successfully!`);
+      setDocuments((prev) => ({
+        ...prev,
+        [docId]: { ...prev[docId], status: "success" },
+      }));
     } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-        console.error(`Error submitting ${doc.label}:`, err);
-        toast.error(`Failed to submit ${doc.label}: ${errorMessage}`);
-        setDocuments(prev => ({ ...prev, [docId]: { ...prev[docId], status: 'error', error: errorMessage } }));
+      const errorMessage =
+        err instanceof Error ? err.message : "An unknown error occurred.";
+      console.error(`Error submitting ${doc.label}:`, err);
+      toast.error(`Failed to submit ${doc.label}: ${errorMessage}`);
+      setDocuments((prev) => ({
+        ...prev,
+        [docId]: { ...prev[docId], status: "error", error: errorMessage },
+      }));
     }
   };
 
   const handleSubmitAll = async (e: React.FormEvent) => {
     e.preventDefault();
-    const remainingDocs = REQUIRED_DOCUMENTS.filter(doc => documents[doc.id].status === 'pending' || documents[doc.id].status === 'error');
-    
-    if (remainingDocs.some(doc => !isDocumentSubmittable(doc.id))) {
-      toast.error("Please fill in all fields for all remaining documents before submitting.");
+    const remainingDocs = REQUIRED_DOCUMENTS.filter(
+      (doc) =>
+        documents[doc.id].status === "pending" ||
+        documents[doc.id].status === "error"
+    );
+
+    if (remainingDocs.some((doc) => !isDocumentSubmittable(doc.id))) {
+      toast.error(
+        "Please fill in all fields for all remaining documents before submitting."
+      );
       return;
     }
 
-    toast.info(`Submitting ${remainingDocs.length} remaining vehicle document(s)...`);
+    toast.info(
+      `Submitting ${remainingDocs.length} remaining vehicle document(s)...`
+    );
     for (const doc of remainingDocs) {
-        await handleIndividualSubmit(doc.id);
+      await handleIndividualSubmit(doc.id);
     }
   };
 
   const remainingDocuments = useMemo(() => {
-    return REQUIRED_DOCUMENTS.filter(doc => documents[doc.id]?.status !== 'success');
+    return REQUIRED_DOCUMENTS.filter(
+      (doc) => !documents[doc.id]?.isSubmitted // Filter out if already submitted
+    );
   }, [documents]);
 
   const allSubmitted = remainingDocuments.length === 0;
 
+  if (isLoadingExistingDocs) {
+    return (
+      <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50 flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <p className="mt-4 text-neutral-400">Loading vehicle documents...</p>
+      </div>
+    );
+  }
+
+  if (existingDocsError) {
+    return (
+      <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50 flex flex-col items-center justify-center">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <p className="mt-4 text-red-400">Error loading vehicle documents: {existingDocsError.message}</p>
+      </div>
+    );
+  }
+
   if (allSubmitted) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col items-center justify-center p-4 text-center">
-        <Card className="w-full max-w-lg p-8">
-            <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">All Vehicle Documents Submitted</h1>
-            <p className="text-muted-foreground mb-6">
-                Your vehicle documents have been submitted for review.
-            </p>
-            <Button onClick={() => navigate("/driver/dashboard")}>Go to Dashboard</Button>
+      <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50">
+        <Card className="mx-auto w-full max-w-lg border border-neutral-800 bg-neutral-900/80 p-6 sm:p-8 text-center">
+          <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-emerald-500 sm:h-16 sm:w-16" />
+          <h1 className="text-xl font-semibold text-neutral-50 sm:text-2xl">
+            All vehicle documents submitted
+          </h1>
+          <p className="mt-2 text-sm text-neutral-400">
+            Your vehicle documents have been submitted for review. You&apos;ll
+            be notified once an operator completes the verification.
+          </p>
+          <Button
+            onClick={() => navigate("/driver/dashboard")}
+            className="mt-6 rounded-lg bg-emerald-500 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+          >
+            Go to dashboard
+          </Button>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col items-center justify-start p-4 py-8">
-      <div className="w-full max-w-3xl space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Driver Vehicle Documents</h1>
-          <p className="text-muted-foreground mt-2">
-            Upload all required vehicle documents
+    <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50">
+      <Card className="mx-auto w-full max-w-3xl border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+        {/* Header */}
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900">
+              <FileText className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold text-neutral-50 sm:text-lg">
+                Vehicle documents
+              </h1>
+              <p className="mt-1 text-xs text-neutral-400 sm:text-sm">
+                Upload and submit all required documents for your vehicle
+                verification.
+              </p>
+            </div>
+          </div>
+          <Badge className="hidden border border-neutral-700 bg-neutral-900/80 text-[11px] font-normal text-neutral-300 sm:inline-flex">
+            Driver onboarding · Documents
+          </Badge>
+        </div>
+
+        {/* Subheader info */}
+        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-[11px] text-neutral-400 sm:text-xs">
+          <p>
+            Please make sure all documents are clear and up to date. You can
+            submit each document individually or all remaining at once.
           </p>
         </div>
 
@@ -161,86 +322,167 @@ export default function VehicleDocuments() {
           {remainingDocuments.map((doc) => {
             const data = documents[doc.id];
             const isSubmittable = isDocumentSubmittable(doc.id);
-            const isLoading = data.status === 'uploading';
+            const isLoading = data.status === "uploading";
 
             return (
-              <Card key={doc.id} className={`${data.status === 'error' ? 'border-destructive' : ''} border border-neutral-800 bg-neutral-900/80`}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
+              <Card
+                key={doc.id}
+                className={`border bg-neutral-900/80 ${
+                  data.status === "error"
+                    ? "border-red-700/70"
+                    : "border-neutral-800"
+                }`}
+              >
+                <CardHeader className="border-b border-neutral-800 px-4 pb-3 pt-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold text-neutral-50 sm:text-base">
                       {doc.label}
                     </CardTitle>
-                  </div>
-                   {data.status === 'error' && (
-                        <div className="flex items-center gap-2 text-sm text-destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <p>Error: {data.error}</p>
-                        </div>
+                    {data.status === "success" && (
+                      <div className="flex items-center gap-1 text-xs text-emerald-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Submitted</span>
+                      </div>
                     )}
-                  <CardDescription className="text-xs">
-                    {doc.hasExpiry ? "Include issue and expiry dates" : "No expiry date required"}
+                    {data.status === "error" && (
+                      <div className="flex items-center gap-1 text-xs text-red-300">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Submission failed</span>
+                      </div>
+                    )}
+                  </div>
+                  <CardDescription className="mt-1 text-[11px] text-neutral-400">
+                    {doc.hasExpiry
+                      ? "Include issue and expiry dates along with a clear scan or photo."
+                      : "No expiry date required. Just upload a clear image or PDF."}
                   </CardDescription>
+                  {data.status === "error" && data.error && (
+                    <div className="mt-2 rounded-md border border-red-700/60 bg-red-950/40 px-3 py-1.5 text-[11px] text-red-200">
+                      Error: {data.error}
+                    </div>
+                  )}
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Input fields... */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {doc.backendType !== 'VEHICLE_IMAGE' && (
+
+                <CardContent className="space-y-3 px-4 py-4 text-sm">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {doc.backendType !== "VEHICLE_IMAGE" && (
                       <div className="space-y-1.5">
-                        <Label htmlFor={`${doc.id}-number`}>Document Number</Label>
-                        <Input
-                          id={`${doc.id}-number`}
-                          value={data.docNumber}
-                          onChange={(e) => handleFieldChange(doc.id, "docNumber", e.target.value)}
-                        />
-                      </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${doc.id}-issue`}>Issue Date</Label>
-                      <Input
-                        id={`${doc.id}-issue`}
-                        type="date"
-                        value={data.issueDate}
-                        onChange={(e) => handleFieldChange(doc.id, "issueDate", e.target.value)}
-                      />
-                    </div>
-                    {doc.hasExpiry && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`${doc.id}-expiry`}>Expiry Date</Label>
-                        <Input
-                          id={`${doc.id}-expiry`}
-                          type="date"
-                          value={data.expiryDate}
-                          onChange={(e) => handleFieldChange(doc.id, "expiryDate", e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${doc.id}-file`}>Upload Document</Label>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id={`${doc.id}-file`}
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={(e) => handleFileChange(doc.id, e.target.files?.[0] || null)}
-                        />
-                        {data.file && !isLoading && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <FileText className="h-4 w-4" />
-                                <span className="truncate max-w-[150px]">{data.file.name}</span>
-                            </div>
-                        )}
-                    </div>
-                  </div>
-                  <div className="pt-2">
-                    <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleIndividualSubmit(doc.id)}
-                        disabled={!isSubmittable || isLoading}
-                    >
-                        {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : 'Submit Document'}
+                        <Label
+                          htmlFor={`${doc.id}-number`}
+                          className="text-xs font-medium text-neutral-300"
+                        >
+                          Document number
+                        </Label>
+                                              <Input
+                                                id={`${doc.id}-number`}
+                                                value={data.docNumber}
+                                                onChange={(e) =>
+                                                  handleFieldChange(
+                                                    doc.id,
+                                                    "docNumber",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100 placeholder:text-neutral-500"
+                                                placeholder="Enter document number"
+                                                disabled={data.isSubmitted} // Disable if already submitted
+                                              />
+                                            </div>
+                                            )}
+                        
+                                            <div className="space-y-1.5">
+                                              <Label
+                                                htmlFor={`${doc.id}-issue`}
+                                                className="text-xs font-medium text-neutral-300"
+                                              >
+                                                Issue date
+                                              </Label>
+                                              <Input
+                                                id={`${doc.id}-issue`}
+                                                type="date"
+                                                value={data.issueDate}
+                                                onChange={(e) =>
+                                                  handleFieldChange(doc.id, "issueDate", e.target.value)
+                                                }
+                                                className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100"
+                                                disabled={data.isSubmitted} // Disable if already submitted
+                                              />
+                                            </div>
+                        
+                                            {doc.hasExpiry && (
+                                              <div className="space-y-1.5">
+                                                <Label
+                                                  htmlFor={`${doc.id}-expiry`}
+                                                  className="text-xs font-medium text-neutral-300"
+                                                >
+                                                  Expiry date
+                                                </Label>
+                                                <Input
+                                                  id={`${doc.id}-expiry`}
+                                                  type="date"
+                                                  value={data.expiryDate}
+                                                  onChange={(e) =>
+                                                    handleFieldChange(
+                                                      doc.id,
+                                                      "expiryDate",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100"
+                                                  disabled={data.isSubmitted} // Disable if already submitted
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                        
+                                          <div className="space-y-1.5">
+                                            <Label
+                                              htmlFor={`${doc.id}-file`}
+                                              className="text-xs font-medium text-neutral-300"
+                                            >
+                                              Upload document
+                                            </Label>
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                              <Input
+                                                id={`${doc.id}-file`}
+                                                type="file"
+                                                accept="image/*,.pdf"
+                                                onChange={(e) =>
+                                                  handleFileChange(
+                                                    doc.id,
+                                                    e.target.files?.[0] || null
+                                                  )
+                                                }
+                                                className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100 file:text-xs"
+                                                disabled={data.isSubmitted} // Disable if already submitted
+                                              />
+                                              {data.file && !isLoading && (
+                                                <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                                                  <FileText className="h-4 w-4" />
+                                                  <span className="max-w-[180px] truncate">
+                                                    {data.file.name}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                        
+                                          <div className="pt-1">
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => handleIndividualSubmit(doc.id)}
+                                              disabled={!isSubmittable || isLoading || data.isSubmitted} // Disable if already submitted
+                                              className="border-neutral-700 bg-neutral-900 text-xs font-medium text-neutral-200 hover:bg-neutral-800"
+                                            >
+                                              {isLoading ? (                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          Submitting…
+                        </>
+                      ) : (
+                        "Submit document"
+                      )}
                     </Button>
                   </div>
                 </CardContent>
@@ -248,17 +490,19 @@ export default function VehicleDocuments() {
             );
           })}
 
-          <div className="pt-4">
-            <Button 
-              type="submit" 
-              className="w-full h-12" 
-              disabled={remainingDocuments.some(doc => !isDocumentSubmittable(doc.id))}
+          <div className="pt-3">
+            <Button
+              type="submit"
+              className="flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={remainingDocuments.some(
+                (doc) => !isDocumentSubmittable(doc.id)
+              )}
             >
-              Submit All Remaining Vehicle Documents
+              Submit all remaining vehicle documents
             </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

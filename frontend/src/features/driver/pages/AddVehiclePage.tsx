@@ -17,6 +17,26 @@ interface VehicleType {
   description: string;
 }
 
+const VEHICLE_BRANDS = [
+  "Abarth","Acura","Aixam","Alfa Romeo","Ariel","Arrinera","Aspark","Aston Martin",
+  "Audi","BAIC","Baojun","Beijing Auto","Bentley","BMW","Borgward","Brilliance",
+  "Bugatti","Buick","BYD","Cadillac","Canoo","Changan","Chery","Chevrolet",
+  "Chrysler","Citroën","Cupra","Dacia","Daewoo","Daihatsu","Datsun","Denza",
+  "Dodge","Donkervoort","Eagle","FAW","Faraday Future","Ferrari","Fiat","Fisker",
+  "Foton","Ford","GAC","Genius","Genesis","Geely","GMC","Great Wall","Haval",
+  "Hindustan Motors","Hino","Holden","Honda","Hongqi","Hozon Neta","Hummer",
+  "Hyundai","Infiniti","Iran Khodro","Isuzu","Iveco","JAC","Jaguar","Jeep","JMC",
+  "Karma","Kia","Koenigsegg","KTM","Lada","Lamborghini","Lancia","Land Rover",
+  "Lexus","Lincoln","Lotus","Lucid","Luxgen","Mahindra","Maruti Suzuki",
+  "Maserati","Maybach","Mazda","McLaren","Mercedes-Benz","Mercury","MG","Mini",
+  "Mitsubishi","Morgan","NIO","Nissan","Opel","Pagani","Peugeot","Pininfarina",
+  "Polestar","Pontiac","Porsche","Proton","Ram","Range Rover","Renault","Rimac",
+  "Rivian","Rolls-Royce","Roewe","Rover","Saab","Saturn","Scion","Seat",
+  "Škoda","Smart","Sion","Spyker","SsangYong","Subaru","Suzuki","Tata","Tazzari",
+  "Tesla","Toyota","UAZ","Van","Vauxhall","VinFast","Volkswagen","Volvo",
+  "Wuling","Yugo","Zastava","Zhengzhou Nissan","Zotye"
+];
+
 // Hardcoded vehicle types as requested by the user
 const HARDCODED_VEHICLE_TYPES: VehicleType[] = [
   { vehicleTypeId: 1, type: "Convertible", description: "Convertible car" },
@@ -192,14 +212,20 @@ export default function AddVehiclePage() {
             >
               Brand
             </Label>
-            <Input
-              id="brand"
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
-              placeholder="e.g. Toyota, BMW"
-              required
-            />
+            <select
+            id="brand"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            required
+          >
+            <option value="">Select brand</option>
+
+            {VEHICLE_BRANDS.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+
           </div>
 
           {/* Model */}

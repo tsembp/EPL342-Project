@@ -2,6 +2,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_AddVehicleDocument
 (
     @VehicleId  UNIQUEIDENTIFIER,
     @DocType    NVARCHAR(100),
+    @DocNo      NVARCHAR(100) = NULL, -- User-provided DocNo
     @IssueDate  DATETIME2 = NULL,
     @ExpiryDate DATETIME2 = NULL
 )
@@ -39,7 +40,7 @@ BEGIN
         RETURN;
     END;
 
-    IF @ExpiryDate IS NOT NULL AND @IssueDate IS NOT NULL 
+    IF @ExpiryDate IS NOT NULL AND @IssueDate IS NOT NULL
        AND @ExpiryDate <= @IssueDate
     BEGIN
         RAISERROR('ExpiryDate must be NULL or later than IssueDate.', 16, 1);
@@ -60,11 +61,12 @@ BEGIN
         RETURN;
     END;
 
-    -- Insert document (dummy FileUrl for now, same style as PersonDocument)
+    -- Insert document
     BEGIN TRY
         INSERT INTO [dbo].[VehicleDocument]
         (
             VehicleId,
+            DocNo, -- Use provided DocNo
             DocType,
             IssueDate,
             ExpiryDate,
@@ -79,12 +81,13 @@ BEGIN
         VALUES
         (
             @VehicleId,
+            @DocNo, -- Use @DocNo parameter
             @DocType,
             @IssueDate,
             @ExpiryDate,
             SYSUTCDATETIME(),
-            'https://storage-bucket.com/vehicle-documents/' 
-                + CAST(@VehicleId AS NVARCHAR(36)) 
+            'https://storage-bucket.com/vehicle-documents/'
+                + CAST(@VehicleId AS NVARCHAR(36))
                 + '/' + @DocType + '.pdf',  -- dummy URL
             0,              -- Accepted
             'Pending',      -- Status
@@ -92,7 +95,6 @@ BEGIN
             NULL,           -- ReviewedAt
             NULL            -- ReviewComments
         );
-
         SELECT SCOPE_IDENTITY() AS VehDocId;
     END TRY
     BEGIN CATCH
