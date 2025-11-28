@@ -7,8 +7,21 @@ import { BottomNav } from "@/components/BottomNav";
 import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
-import { Clock, MapPin, Navigation2, Loader2, Car, User2, MessageCircle } from "lucide-react";
+import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
 import { getRideRequestDetails, type RideRequestDetails } from "@/features/passenger/api";
+import { 
+  Clock,
+  MapPin,
+  Navigation2,
+  Loader2,
+  Car,
+  User2,
+  MessageCircle,
+  X,
+  RefreshCw,
+  Send,
+} from "lucide-react";
+
 
 export default function RideRequestDetailsPage() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -18,6 +31,12 @@ export default function RideRequestDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [activeChat, setActiveChat] = useState<{
+    rideId: number;
+    driverName: string;
+  } | null>(null);
+
 
   async function loadDetails(isRefresh = false) {
     if (!requestId) return;
@@ -356,12 +375,16 @@ export default function RideRequestDetailsPage() {
                             </span>
                           </div>
                         </div>
-
                         <Button
                           size="sm"
                           variant="outline"
                           className="mt-3 w-full border-neutral-700 bg-neutral-800 text-neutral-50 hover:bg-neutral-700 hover:text-emerald-400"
-                          onClick={() => {}}
+                          onClick={() =>
+                            setActiveChat({
+                              rideId: ride.rideId,
+                              driverName: ride.driverName,
+                            })
+                          }
                         >
                           <MessageCircle className="h-4 w-4 mr-2 text-neutral-50" />
                           <span className="text-neutral-50 font-semibold">Chat</span>
@@ -379,17 +402,24 @@ export default function RideRequestDetailsPage() {
               </>
             ) : (
               <>
-                {/* WAITING PLACEHOLDER */}
-                <div className="flex flex-col items-center justify-center py-10 text-neutral-500">
-                  <Car className="h-10 w-10 text-neutral-700 mb-2" />
-                  <p className="text-sm">Waiting for drivers to accept your ride...</p>
-                </div>
-              </>
+              {/* WAITING PLACEHOLDER */}
+              <div className="flex flex-col items-center justify-center py-10 text-neutral-500">
+                <Car className="h-10 w-10 text-neutral-700 mb-2" />
+                <p className="text-sm">Waiting for drivers to accept your ride...</p>
+              </div>
+            </>
             )}
           </div>
 
         </section>
       </main>
+      {activeChat && (
+        <RideChatWindow
+          rideId={activeChat.rideId}
+          driverName={activeChat.driverName}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </div>
   );
 }

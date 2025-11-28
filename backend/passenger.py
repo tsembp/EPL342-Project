@@ -507,3 +507,111 @@ def get_ride_history():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+def get_ride_participants(cur, ride_id: int):
+  """
+  Returns (passenger_user_id, driver_user_id) for a ride, or (None, None) if not found.
+  """
+  cur.execute(
+      """
+      SELECT PassengerUserId, DriverUserId
+      FROM dbo.vw_RideParticipants
+        WHERE RideId = ?
+      """,
+      ride_id,
+  )
+  row = cur.fetchone()
+  if not row:
+      return None, None
+  return row.PassengerUserId, row.DriverUserId
+
+# Get messages for ride
+@passenger_bp.route("/rides/<int:ride_id>/messages", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_ride_messages(ride_id: int):
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Ensure ride exists and get participants
+                passenger_user_id, driver_user_id = get_ride_participants(cur, ride_id)
+                if not passenger_user_id or not driver_user_id:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                cur.execute(
+                    "EXEC dbo.usp_GetMessage ?, ?",
+                    ride_id,
+                    user_id,
+                )
+                rows = cur.fetchall()
+
+        messages = []
+        for r in rows:
+            messages.append(
+                {
+                    "msgId": r.MsgId,
+                    "body": r.Body,
+                    "sentAt": r.SentAt.isoformat() if r.SentAt else None,
+                    "isMine": str(r.SenderUserId) == str(user_id),
+                }
+            )
+
+        return jsonify({"success": True, "messages": messages}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+# Send new message passenger -> driver
+@passenger_bp.route("/rides/<int:ride_id>/messages", methods=["POST"])
+@require_auth
+@require_role("P")
+def send_ride_message(ride_id: int):
+    user_id = session["user_id"]
+    body = request.get_json(silent=True) or {}
+    text = (body.get("body") or "").strip()
+
+    if not text:
+        return jsonify({"success": False, "error": "Message body is required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                passenger_user_id, driver_user_id = get_ride_participants(cur, ride_id)
+                if not passenger_user_id or not driver_user_id:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                cur.execute(
+                    "EXEC dbo.usp_SendMessage ?, ?, ?, ?",
+                    user_id,
+                    driver_user_id,
+                    ride_id,
+                    text,
+                )
+
+                inserted = cur.fetchone()
+                conn.commit()
+
+        msg_id = inserted.MsgId
+        sent_at = inserted.SentAt.isoformat() if inserted.SentAt else None
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": {
+                        "msgId": msg_id,
+                        "body": text,
+                        "sentAt": sent_at,
+                        "isMine": True,
+                    }
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
