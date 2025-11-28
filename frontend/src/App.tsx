@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/store";
+import { RoleRedirect } from "@/components/RoleRedirect";
 
 import Login from "@/features/auth/pages/Login";
 import Signup from "@/features/auth/pages/Signup";
@@ -15,11 +16,12 @@ import PendingApproval from "@/features/driver/pages/PendingApproval";
 import DriverDashboard from "@/features/driver/pages/Dashboard";
 
 // PASSENGER
+import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
 import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";  
 import TripDetail from "@/features/passenger/pages/TripDetail";
-import CreateRide from "@/features/passenger/pages/CreateRide";
+import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
 
@@ -67,7 +69,7 @@ function App() {
           <Toaster />
           <Sonner />
           <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/" element={<RoleRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
@@ -75,20 +77,26 @@ function App() {
             {/* PASSENGER */}
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
-
-            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
-              <Route path="ride" element={<CreateRide />} />
-              <Route path="rides/:requestId" element={<TripDetail />} />
-              <Route index element={<Services />} />
+            
+            <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
+              <Route path="ride" element={<PassengerHome />} />
+              <Route path="history" element={<RideHistory />} />
+              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
             </Route>
 
+            <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
+            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
+
             {/* DRIVER */}
-            <Route path="/driver/dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
-            <Route path="/driver/documents" element={<DriverDocuments />} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
+            <Route path="/driver/*" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>}>
+              <Route index path="dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+              <Route path="documents" element={<DriverDocuments />} />
+              <Route path="pending-approval" element={<PendingApproval />} />
+            </Route>
 
             {/* OPERATOR */}
             <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
+              <Route index element={<Overview />} />
               <Route path="overview" element={<Overview />} />
               <Route path="users" element={<UsersDrivers />} />
               <Route path="vehicles" element={<Vehicles />} />
@@ -98,21 +106,12 @@ function App() {
               <Route path="rides" element={<RidesOperations />} />
               <Route path="reports" element={<ReportsAnalytics />} />
               <Route path="logs" element={<SystemAuditLogs />} />
-              <Route index element={<Overview />} />
             </Route>
 
-            {/* PASSENGER */}
-            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
-              <Route path="ride" element={<CreateRide />} />
-              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
-              <Route index element={<Services />} />
-              <Route path="history" element={<RideHistory />} />
-            </Route>
-            <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
-            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
 
             {/* ADMIN */}
             <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>}>
+              <Route index element={<AdminPendingOperatorsPage />} />
               <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
             </Route>
 

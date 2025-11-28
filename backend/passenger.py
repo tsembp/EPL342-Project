@@ -98,6 +98,48 @@ def cancel_ride_request(request_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+# Get all ride requests for passenger (optionally filter by status)
+@passenger_bp.route("/ride-requests/", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_ride_requests():
+    user_id = session["user_id"]
+    status = request.args.get("status")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                sql = """
+                    SELECT
+                        RequestId,
+                        NumOfPeople,
+                        PickupAt,
+                        PickUpPoint AS pickupPointId,
+                        DropOffPoint AS dropOffPointId,
+                        RideProfileId,
+                        Status
+                    FROM dbo.RideRequest
+                    WHERE PassengerId = ?
+                        AND (
+                            ? IS NULL
+                            OR ? = ''
+                            OR Status = ?
+                        )
+                    ORDER BY PickupAt DESC
+                """
+                params = (user_id, status, status, status)
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+
+                columns = [col[0] for col in cur.description]
+                requests = [dict(zip(columns, row)) for row in rows]
+
+        return jsonify({"success": True, "requests": requests}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 # Generate alternative routes for ride request
 @passenger_bp.route("/ride-requests/<int:request_id>/alternatives", methods=["GET"])
 @require_auth

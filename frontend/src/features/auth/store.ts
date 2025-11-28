@@ -21,8 +21,9 @@ function mapRoleToUserRole(role: string): UserRole {
   if (role === 'D') return 'driver';
   if (role === 'P') return 'passenger';
   if (role === 'O') return 'operator';
-  if (role === 'I') return 'operator'; // Inspector mapped to operator
+  if (role === 'I') return 'inspector';
   if (role === 'C') return 'company_representative';
+  if (role === 'A') return 'admin';
   return 'passenger';
 }
 
@@ -38,17 +39,22 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         try {
           const data = await apiLogin({ email, password });
-          if (data.success) {
+          // Ensure verificationStatus is present
+          const responseWithVerification: LoginResponse = {
+            ...data,
+            verificationStatus: data.verificationStatus ?? 'unknown',
+          };
+          if (responseWithVerification.success) {
             set({
               isAuthenticated: true,
-              userId: data.userId,
-              email: data.email,
-              accountType: data.accountType,
-              userRole: mapRoleToUserRole(data.role),
+              userId: responseWithVerification.userId,
+              email: responseWithVerification.email,
+              accountType: responseWithVerification.accountType === 'STAFF' ? 'STAFF' : 'USER',
+              userRole: mapRoleToUserRole(responseWithVerification.role),
             });
-            return data; // Return the full response
+            return responseWithVerification; // Return the full response
           } else {
-            throw new Error(data.error || 'Login failed');
+            throw new Error('Login failed');
           }
         } catch (error) {
           console.error('Login error:', error);
