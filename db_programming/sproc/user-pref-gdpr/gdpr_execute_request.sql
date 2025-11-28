@@ -1,69 +1,65 @@
-CREATE OR ALTER PROCEDURE dbo.usp_Gdpr_ExecuteRequest
+CREATE OR ALTER PROCEDURE dbo.usp_Gdpr_SubmitRequest
 (
-    @GdprId INT,
-    @Note   NVARCHAR(MAX) = NULL
+    @UserId      UNIQUEIDENTIFIER,
+    @RequestType NVARCHAR(500),
+    @Reason      NVARCHAR(MAX) = NULL
 )
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @UserId UNIQUEIDENTIFIER;
-    DECLARE @Type   NVARCHAR(100);
-
-    SELECT 
-        @UserId = GR.UserId,
-        @Type   = GR.[Type]
-    FROM dbo.GdprRequest AS GR
-    WHERE GR.GdprId = @GdprId;
-
-    IF @UserId IS NULL
+    -- 1. Validate user exists & verified
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dbo.[User] 
+        WHERE UserId = @UserId 
+          AND Verified = 1
+    )
     BEGIN
-        RAISERROR('GDPR request not found.', 16, 1);
+        RAISERROR('User not found or not verified.', 16, 1);
         RETURN;
     END;
 
-    ---------------------------------------------------
-    -- Dispatch by type (all actions are SYSTEM)
-    ---------------------------------------------------
-    IF @Type = 'DataAccess'
+    -- 2. Validate type
+    IF @RequestType NOT IN ('DataAccess','DataDeletion','DataExport','DataCorrection')
     BEGIN
-        EXEC dbo.usp_Gdpr_ExecuteDataAccess
-             @UserId = @UserId,
-             @GdprId = @GdprId;
-    END
-    ELSE IF @Type = 'DataDeletion'
+        RAISERROR('Invalid GDPR request type.', 16, 1);
+        RETURN;
+    END;
+
+    -- 3. Create request
+    DECLARE @GdprId INT;
+
+    INSERT INTO dbo.GdprRequest (UserId, [Type], [Status], RequestedAt, [Reason])
+    VALUES (@UserId, @RequestType, 'Pending', GETUTCDATE(), @Reason);
+
+    SET @GdprId = SCOPE_IDENTITY();
+
+    -- 4. If it's an auto-executable type, execute immediately
+    IF @RequestType IN ('DataAccess','DataDeletion','DataExport')
     BEGIN
-        EXEC dbo.usp_Gdpr_ExecuteDataDeletion
-             @UserId = @UserId,
-             @GdprId = @GdprId;
-    END
-    ELSE IF @Type = 'DataExport'
-    BEGIN
-        EXEC dbo.usp_Gdpr_ExecuteDataExport
-             @UserId = @UserId,
-             @GdprId = @GdprId;
-    END
-    ELSE IF @Type = 'DataCorrection'
-    BEGIN
-        EXEC dbo.usp_Gdpr_ExecuteDataCorrection
-             @UserId = @UserId,
-             @GdprId = @GdprId;
+        EXEC dbo.usp_Gdpr_ExecuteRequest
+             @GdprId = @GdprId,
+             @Note   = 'Auto-executed on submit';
     END
     ELSE
     BEGIN
-        RAISERROR('Unsupported GDPR request type.', 16, 1);
-        RETURN;
+        -- DataCorrection: leave for manual review
+        UPDATE dbo.GdprRequest
+        SET Status = 'Under-Review'
+        WHERE GdprId = @GdprId;
     END
 
-    ---------------------------------------------------
-    -- After executing action, mark as Completed
-    ---------------------------------------------------
-    DECLARE @ActorNoteValue NVARCHAR(MAX);
-    SET @ActorNoteValue = ISNULL(@Note, 'Auto-executed GDPR request');
+    -- 5. Log creation
+    INSERT INTO dbo.GdprLog (GdprId, ActorAdminId, LoggedAt, Note)
+    VALUES (
+        @GdprId,
+        NULL,
+        GETUTCDATE(),
+        'GDPR request submitted: ' + @RequestType
+    );
 
-    EXEC dbo.usp_Gdpr_UpdateStatus
-         @GdprId    = @GdprId,
-         @NewStatus = 'Completed',
-         @ActorNote = @ActorNoteValue;
+    -- 6. Return ID
+    SELECT @GdprId AS GdprRequestId;
 END;
 GO
