@@ -6,12 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/store";
 import { toast } from "sonner";
-import { Car } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { adminLogin } from "@/features/auth/api";
 
-export default function Login() {
+export default function AdminLogin() {
   const navigate = useNavigate();
-  const login = useAuthStore((state) => state.login);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,26 +20,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await login(email, password); // Capture the full response
+      const response = await adminLogin({ email, password });
 
       if (response.success) {
-        toast.success("Logged in successfully");
-
-        // Redirect based on verificationStatus first, then role
-        if (response.verificationStatus === "DOCS_PENDING") {
-          navigate("/driver/documents");
-        } else if (response.verificationStatus === "PENDING_APPROVAL") {
-          navigate("/pending-approval");
-        } else { // VERIFIED or any other status that implies full access
-          const role = useAuthStore.getState().userRole; // Get role from store for final redirection
-          if (role === "operator") {
-            navigate("/operator/overview");
-          } else if (role === "driver") {
-            navigate("/driver/dashboard"); 
-          } else { // Default for passenger or fully verified company representative
-            navigate("/passenger/ride");;
-          }
-        }
+        toast.success("Admin login successful");
+        const role = useAuthStore.getState().userRole;
+        navigate("/admin/dashboard");
       } else {
         throw new Error(response.error || "Login failed");
       }
@@ -57,13 +42,13 @@ export default function Login() {
         {/* Logo / Title */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-neutral-800 bg-neutral-900 mb-4 shadow-lg">
-            <Car className="h-8 w-8 text-emerald-500" />
+            <ShieldCheck className="h-8 w-8 text-emerald-500" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            Welcome back
+            Admin Login
           </h1>
           <p className="text-sm text-neutral-400 mt-2">
-            Sign in to continue your ride
+            Sign in as Admin, Operator or Inspector
           </p>
         </div>
 
@@ -81,7 +66,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="admin@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -120,27 +105,16 @@ export default function Login() {
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm">
-            <span className="text-neutral-500">Don&apos;t have an account? </span>
+            <span className="text-neutral-500">Not Admin? </span>
             <Button
               variant="link"
               className="p-0 h-auto text-emerald-400 hover:text-emerald-300"
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/login")}
             >
-              Sign up
+              Login as User
             </Button>
           </div>
         </Card>
-      </div>
-
-      {/* Bottom right: Login as Staff */}
-      <div className="absolute bottom-4 right-4 text-[0.7rem] text-neutral-500">
-        <Button
-          variant="link"
-          className="p-0 h-auto text-neutral-400 hover:text-emerald-400 text-[0.7rem]"
-          onClick={() => navigate("/admin/login")}
-        >
-          Login as Admin
-        </Button>
       </div>
     </div>
   );
