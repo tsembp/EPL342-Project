@@ -27,9 +27,25 @@ export interface RideRequestAlternative {
   legs: RideRequestAlternativeLeg[];
 }
 
+export interface RideSummary {
+  rideId: number;
+  legIndex: number;
+  legLabel: string;
+  fromName: string;
+  toName: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  status: string;
+  driverName: string;
+  driverPhoneMasked?: string;
+  vehiclePlate?: string;
+  vehicleType?: string;
+}
+
 export type RideRequestDetails = {
   requestId: number;
   status: string;
+  rides? : RideSummary[];
   numOfPeople: number;
   pickupAt: string;
   pickup: {

@@ -217,13 +217,13 @@ def select_alternative(request_id: int):
 @require_auth
 @require_role("P")
 def get_ride_request_details(request_id: int):
-    """Return basic ride request details for the logged-in passenger."""
+    """Return ride request details (incl. rides) for the logged-in passenger."""
     user_id = session["user_id"]
 
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                # Basic request info + pickup/dropoff station names/zones + coords
+                # 1) Basic request info + pickup/dropoff station names/zones + coords
                 cur.execute(
                     """
                     SELECT 
@@ -258,8 +258,8 @@ def get_ride_request_details(request_id: int):
                         ),
                         404,
                     )
-                
-                # NEW: Query RideRequestProgress
+
+                # 2) RideRequestProgress
                 cur.execute(
                     """
                     SELECT Status
@@ -271,6 +271,71 @@ def get_ride_request_details(request_id: int):
                 progress_row = cur.fetchone()
                 progress_status = progress_row[0] if progress_row else None
 
+                # 3) If rides have been created/accepted, load them
+                rides: list[dict] = []
+
+                if progress_status in ("AllAccepted", "RidesCreated"):
+                    cur.execute(
+                        """
+                        SELECT
+                            R.RideId,
+                            IL.SeqNo            AS LegIndex,
+                            zp_leg_from.Name    AS FromName,
+                            zp_leg_to.Name      AS ToName,
+                            R.Status            AS RideStatus,
+                            U.FirstName + ' ' + U.LastName AS DriverName,
+                            V.PlateNumber       AS VehiclePlate,
+                            VT.Name             AS VehicleType,
+                            IL.ApproxStartTime AS PlannedStart,
+                            IL.ApproxEndTime   AS PlannedEnd
+                        FROM dbo.Ride R
+                        JOIN dbo.DispatchOffer DO
+                            ON DO.OfferId = R.OfferId
+                        JOIN dbo.ItineraryLeg IL
+                            ON IL.LegId = DO.LegId
+                        JOIN dbo.ZonePoint zp_leg_from
+                            ON zp_leg_from.PointId = IL.FromPointId
+                        JOIN dbo.ZonePoint zp_leg_to
+                            ON zp_leg_to.PointId = IL.ToPointId
+                        LEFT JOIN dbo.[User] U
+                            ON U.UserId = R.DriverUserId
+                        LEFT JOIN dbo.Vehicle V
+                            ON V.VehicleId = R.VehicleId
+                        LEFT JOIN dbo.VehicleType VT
+                            ON VT.VehicleTypeId = V.VehicleTypeId
+
+                        WHERE DO.Status = 'Accepted' AND IL.RideRequestId = ?
+                        ORDER BY IL.SeqNo
+                        """,
+                        request_id,
+                    )
+                    ride_rows = cur.fetchall()
+
+                    for r in ride_rows:
+                        rides.append(
+                            {
+                                "rideId": r.RideId,
+                                "legIndex": r.LegIndex,
+                                "fromName": r.FromName,
+                                "toName": r.ToName,
+                                "status": r.RideStatus,
+                                "driverName": r.DriverName,
+                                "vehiclePlate": r.VehiclePlate,
+                                "vehicleType": r.VehicleType,
+                                "plannedStart": (
+                                    r.PlannedStart.isoformat()
+                                    if getattr(r, "PlannedStart", None)
+                                    else None
+                                ),
+                                "plannedEnd": (
+                                    r.PlannedEnd.isoformat()
+                                    if getattr(r, "PlannedEnd", None)
+                                    else None
+                                ),
+                            }
+                        )
+
+        # 4) Build response JSON
         return (
             jsonify(
                 {
@@ -284,24 +349,33 @@ def get_ride_request_details(request_id: int):
                             "pointId": row.FromPointId,
                             "zoneId": row.FromZoneId,
                             "name": row.FromName,
-                            "latitude": float(row.FromLatitude),
-                            "longitude": float(row.FromLongitude),
+                            "latitude": float(row.FromLatitude)
+                            if row.FromLatitude is not None
+                            else None,
+                            "longitude": float(row.FromLongitude)
+                            if row.FromLongitude is not None
+                            else None,
                         },
                         "dropoff": {
                             "pointId": row.ToPointId,
                             "zoneId": row.ToZoneId,
                             "name": row.ToName,
-                            "latitude": float(row.ToLatitude),
-                            "longitude": float(row.ToLongitude),
+                            "latitude": float(row.ToLatitude)
+                            if row.ToLatitude is not None
+                            else None,
+                            "longitude": float(row.ToLongitude)
+                            if row.ToLongitude is not None
+                            else None,
                         },
-                        "progressStatus": progress_status,  # <-- Add this
+                        "progressStatus": progress_status,
+                        "rides": rides,  # 👈 NEW
                     },
                 }
             ),
             200,
         )
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400    
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 # Get ride history for passenger
