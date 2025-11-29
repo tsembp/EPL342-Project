@@ -165,3 +165,69 @@ export const uploadDriverDocument = (params: {
     body: formData,
   });
 };
+
+export type DriverRideRow = {
+  RideId: number;
+  RequestId: number;
+  LegId: number;
+  NumOfPeople: number;
+  Status: "Scheduled" | "InProgress" | "Completed" | "Cancelled" | string;
+  FromName: string;
+  ToName: string;
+  ScheduledStart: string;
+  ScheduledEnd: string;
+};
+
+
+export const startDriverRide = (rideId: number) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/driver/rides/${rideId}/start`,
+    {
+      method: "POST",
+    }
+  );
+
+export const endDriverRide = (
+  rideId: number,
+  paymentMethod: "Cash" | "CreditCard" = "Cash"
+) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/driver/rides/${rideId}/end`,
+    {
+      method: "POST",
+      body: JSON.stringify({ payment_method: paymentMethod }),
+    }
+  );
+
+export const getDriverUpcomingRides = () =>
+  fetchAPI<{  
+    success: boolean;
+    rides?: DriverRideRow[];
+    error?: string;
+  }>("/driver/rides/upcoming");
+
+/**
+ * Past rides for the driver (history tab)
+ */
+export type DriverHistoryRow = {
+  RideId: number;
+  RequestId: number | null;
+  LegId: number | null;
+  NumOfPeople: number | null;
+  Status: "Completed" | "Cancelled" | string;
+  FromName: string;
+  ToName: string;
+  StartedAt: string | null;
+  EndedAt: string | null;
+  PriceFinal: number | null;
+  PaymentMethod: "Cash" | "CreditCard" | string | null;
+  PaymentStatus: string | null;
+  PaymentPaidAt: string | null;
+};
+
+export const getDriverRideHistory = () =>
+  fetchAPI<{
+    success: boolean;
+    rides?: DriverHistoryRow[];
+    error?: string;
+  }>("/driver/rides/history");
