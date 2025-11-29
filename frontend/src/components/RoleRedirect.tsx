@@ -17,6 +17,9 @@ export function RoleRedirect() {
         case "operator":
             navigate("/operator", { replace: true });
             break;
+        case "inspector":
+            navigate("/inspector", { replace: true });
+            break;
         case "driver":
         case "company_representative":
           navigate("/driver", { replace: true });

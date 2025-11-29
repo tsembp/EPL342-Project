@@ -7,3 +7,4 @@ export * from "@/features/gdpr/api";
 export * from "@/features/meta/api";
 export * from "@/features/geofence/api";
 export * from "@/features/stations/api";
+export * from "@/features/inspector/api";

@@ -36,6 +36,9 @@ import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
 
+// INSPECTOR
+import { InspectorDashboard } from "@/features/inspector/pages/InspectorDashboard";
+
 // ADMIN
 import AdminPendingOperatorsPage from "@/features/admin/pages/AdminPendingOperators";
 
@@ -108,6 +111,8 @@ function App() {
               <Route path="logs" element={<SystemAuditLogs />} />
             </Route>
 
+            {/* INSPECTOR */}
+            <Route path="/inspector/*" element={<ProtectedRoute><InspectorDashboard /></ProtectedRoute>} />
 
             {/* ADMIN */}
             <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>}>
