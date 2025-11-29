@@ -9,7 +9,7 @@ export function VehicleManagementSection() {
   const navigate = useNavigate();
 
   const handleAddVehicleClick = () => {
-    navigate("/driver/add-vehicle");
+    navigate("add-vehicle");
   };
 
   const { data: vehicles, isLoading, error } = useQuery({

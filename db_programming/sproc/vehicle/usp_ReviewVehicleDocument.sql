@@ -9,14 +9,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Validate @NewStatus
+    ------------------------------------------------
+    -- 1. Validate @NewStatus
+    ------------------------------------------------
     IF @NewStatus NOT IN ('Accepted', 'Rejected')
     BEGIN
         RAISERROR('@NewStatus must be ''Accepted'' or ''Rejected''.', 16, 1);
         RETURN;
     END;
 
-    -- Validate operator
+    ------------------------------------------------
+    -- 2. Validate operator (must exist & be verified)
+    ------------------------------------------------
     IF NOT EXISTS (
         SELECT 1
         FROM [dbo].[Operator] O
@@ -28,7 +32,9 @@ BEGIN
         RETURN;
     END;
 
-    -- Get vehicle & doc info
+    ------------------------------------------------
+    -- 3. Get vehicle & doc info
+    ------------------------------------------------
     DECLARE
         @VehicleId UNIQUEIDENTIFIER,
         @DocType   NVARCHAR(100);
@@ -45,7 +51,9 @@ BEGIN
         RETURN;
     END;
 
-    -- Update document review info
+    ------------------------------------------------
+    -- 4. Update the document review info
+    ------------------------------------------------
     UPDATE [dbo].[VehicleDocument]
     SET
         Status               = @NewStatus,
@@ -55,21 +63,24 @@ BEGIN
         ReviewComments       = @ReviewComments
     WHERE VehDocId = @VehDocId;
 
-    -- If rejected, nothing more to do
+    -- If rejected, stop here (no auto-approval)
     IF @NewStatus = 'Rejected'
     BEGIN
         RETURN;
     END;
 
-    -- If accepted, check if ALL required vehicle docs are approved
-    DECLARE @RequiredDocCount INT = 4; -- VEHICLE_REG, MOT, CLASSIFICATION, IMAGE
+    ------------------------------------------------
+    -- 5. Check if ALL required vehicle docs are accepted
+    --    (same idea as usp_ReviewPersonDocument: only status & doc types)
+    ------------------------------------------------
+    DECLARE @RequiredDocCount INT = 4; -- VEHICLE_REGISTRATION, MOT_CERTIFICATE,
+                                      -- VEHICLE_CLASSIFICATION_CERTIFICATE, VEHICLE_IMAGE
     DECLARE @ApprovedDocCount INT;
 
     SELECT @ApprovedDocCount = COUNT(DISTINCT DocType)
     FROM [dbo].[VehicleDocument]
     WHERE VehicleId = @VehicleId
       AND Status = 'Accepted'
-      AND (ExpiryDate IS NULL OR ExpiryDate > GETUTCDATE())
       AND DocType IN (
             'VEHICLE_REGISTRATION',
             'MOT_CERTIFICATE',
@@ -77,17 +88,16 @@ BEGIN
             'VEHICLE_IMAGE'
       );
 
-    IF @ApprovedDocCount < @RequiredDocCount
+    IF @ApprovedDocCount = @RequiredDocCount
     BEGIN
-        -- Not all required docs approved yet
-        RETURN;
-    END;
+        -- All required docs are accepted -> verify vehicle (same spirit as user verification)
+        UPDATE [dbo].[Vehicle]
+        SET
+            Verified = 1,
+            Status   = 'Active'
+        WHERE VehicleId = @VehicleId;
 
-    -- All required docs are approved -> mark vehicle as active
-    UPDATE [dbo].[Vehicle]
-    SET
-        Verified = 1,
-        Status   = 'Active'
-    WHERE VehicleId = @VehicleId;
+        PRINT('Vehicle verified successfully.');
+    END;
 END;
 GO
