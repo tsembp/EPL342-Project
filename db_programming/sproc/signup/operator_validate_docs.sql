@@ -1,4 +1,47 @@
 --  STEP 1: Get all person documents with pending status
+CREATE OR ALTER PROCEDURE [dbo].[usp_GetPersonDocumentsByStatus]
+(
+    @OperatorId UNIQUEIDENTIFIER,
+    @Status     NVARCHAR(20) = NULL  -- 'Pending' / 'Accepted' / 'Rejected' / NULL = all
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Validate operator (must exist and be verified)
+    IF NOT EXISTS (
+        SELECT 1
+        FROM [dbo].[Operator] O
+        WHERE O.OperatorId = @OperatorId
+          AND O.Verified = 1
+    )
+    BEGIN
+        RAISERROR('Invalid or unverified operator.', 16, 1);
+        RETURN;
+    END;
+
+    SELECT
+        PD.DocId,
+        PD.UserId,
+        U.Username,
+        U.Email,
+        PD.DocType,
+        PD.FileUrl,
+        PD.IssueDate,
+        PD.ExpiryDate,
+        PD.UploadedAt,
+        PD.Status
+    FROM [dbo].[PersonDocument] PD
+    INNER JOIN [dbo].[User] U
+        ON U.UserId = PD.UserId
+    WHERE
+        -- If @Status is NULL -> no filter, return all
+        (@Status IS NULL OR PD.Status = @Status)
+    ORDER BY PD.UploadedAt;
+END;
+GO
+
+
 CREATE OR ALTER PROCEDURE [dbo].[usp_GetPendingPersonDocumentsForReview]
 (
     @OperatorId UNIQUEIDENTIFIER
