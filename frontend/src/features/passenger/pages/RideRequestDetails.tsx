@@ -103,6 +103,13 @@ export default function RideRequestDetailsPage() {
     }
   };
 
+  const hasRides = !!(data?.rides && data.rides.length > 0);
+  const allRidesCompleted =
+    hasRides && data!.rides!.every((r) => r.status === "Completed");
+  const requestCompleted =
+    data?.status === "Completed" || data?.progressStatus === "Completed";
+  const canProceedToPayment = requestCompleted && allRidesCompleted;
+
   const formattedPickupTime =
     data?.pickupAt ? new Date(data.pickupAt).toLocaleString() : "—";
 
@@ -115,6 +122,11 @@ export default function RideRequestDetailsPage() {
     data &&
     typeof (data as any).dropoff?.latitude === "number" &&
     typeof (data as any).dropoff?.longitude === "number";
+
+  const handleGoToPayment = () => {
+    if (!data) return;
+    navigate(`/passenger/checkout?requestId=${data.requestId}`);
+  };
 
   const mapCenter: [number, number] = useMemo(() => {
     if (hasPickupCoords) {
@@ -167,7 +179,7 @@ export default function RideRequestDetailsPage() {
   }, [hasPickupCoords, hasDropoffCoords, data]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
+    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">
       <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
         <div className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight">Ride</span>
@@ -176,7 +188,8 @@ export default function RideRequestDetailsPage() {
 
       <main className="flex flex-col flex-1">
         {/* One big card that contains BOTH details + map */}
-        <section className="w-full bg-neutral-950 px-4 py-6">
+        {/* <section className="w-full bg-neutral-950 px-4 py-6"> */}
+        <section className="w-full bg-neutral-950 px-4 py-6 pb-24">
           <Card className="w-full border border-neutral-800 bg-neutral-900/80 shadow-lg overflow-hidden">
             <div className="flex flex-col lg:flex-row w-full">
               {/* LEFT: details (everything that was inside your Card before) */}
@@ -309,7 +322,7 @@ export default function RideRequestDetailsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => loadDetails(true)}
-                          disabled={refreshing}
+                          disabled={refreshing || requestCompleted}
                           className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
                         >
                           {refreshing && (
@@ -349,7 +362,7 @@ export default function RideRequestDetailsPage() {
             </div>
           </Card>
           {/* BOTTOM: Rides */}
-            <div className="w-full px-4 py-4">
+          <div className="w-full px-4 py-4">
             {/* If accepted → show rides */}
             {(data?.progressStatus === "AllAccepted" || data?.progressStatus === "RidesCreated" || data?.progressStatus === "Completed") &&
               data?.rides && data.rides.length > 0 ? (
@@ -444,6 +457,19 @@ export default function RideRequestDetailsPage() {
             </>
             )}
           </div>
+
+          {canProceedToPayment && (
+            <div className="mt-4 flex justify-end px-4 pb-4">
+                <Button
+                  size="lg"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 group"
+                  onClick={handleGoToPayment}
+                >
+                  Continue to payment
+                  <span className="transition-transform duration-200 group-hover:translate-x-1 text-xl">→</span>
+                </Button>
+            </div>
+          )}
 
         </section>
       </main>
