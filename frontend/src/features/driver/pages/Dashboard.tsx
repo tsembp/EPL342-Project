@@ -25,9 +25,10 @@ import {
 // 🔹 Our split-out Offers tab
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
 import DriverProfile from "@/features/driver/pages/DriverProfile";
+import { DriverScheduleSection } from "@/features/driver/pages/DriverScheduleSection";
 
 type TabKey =
-  | "home"
+  | "rides"
   | "offers"
   | "services"
   | "vehicles"
@@ -36,10 +37,10 @@ type TabKey =
   | "profile";
 
 export default function Dashboard() {
-  // ⬇️ hooks MUST be inside the component
+  
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get("tab") as TabKey) || "home";
-
+  const initialTab = (searchParams.get("tab") as TabKey) || "rides";
+  
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
@@ -124,10 +125,10 @@ export default function Dashboard() {
         >
           <TabsList className="grid w-full grid-cols-7 rounded-xl bg-neutral-900/70 p-1">
             <TabsTrigger
-              value="home"
+              value="rides"
               className="text-xs sm:text-sm text-neutral-400 data-[state=active]:bg-neutral-800 data-[state=active]:text-neutral-50"
             >
-              Home
+              Rides
             </TabsTrigger>
             <TabsTrigger
               value="offers"
@@ -167,14 +168,11 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* HOME TAB */}
-          <TabsContent value="home">
-            <DriverHomeSection
-              isOnline={isOnline}
-              onRegisterServiceClick={() => handleTabChange("services")}
-              onRegisterVehicleClick={() => handleTabChange("vehicles")}
-            />
+          {/* RIDES TAB */}
+          <TabsContent value="rides">
+            <DriverScheduleSection />
           </TabsContent>
+
 
           {/* OFFERS TAB – now split */}
           <TabsContent value="offers">
