@@ -857,3 +857,80 @@ def pay_for_ride_request(request_id: int):
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
+    
+
+# Get live vehicle location for ride
+@passenger_bp.route("/rides/<int:ride_id>/vehicle-location-live", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_ride_vehicle_location_live(ride_id: int):
+    """
+    Return the live vehicle location for a given ride,
+    only if the ride belongs to the logged-in passenger and
+    ride status is Scheduled or InProgress.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1) Verify ride belongs to passenger and get status + vehicle
+                cur.execute(
+                    """
+                    SELECT r.VehicleId, r.Status
+                    FROM dbo.Ride r
+                    WHERE r.RideId = ? AND r.PassengerUserId = ?
+                    """,
+                    (ride_id, user_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({
+                        "success": False,
+                        "error": "Ride not found for this passenger."
+                    }), 404
+
+                vehicle_id, status = row
+
+                if status not in ("Scheduled", "InProgress"):
+                    # We simply say no live location outside active phase
+                    return jsonify({
+                        "success": True,
+                        "hasLocation": False,
+                        "reason": f"Live tracking only available when ride is Scheduled or InProgress (current: {status}).",
+                    }), 200
+
+                # 2) Fetch latest location for that vehicle
+                cur.execute(
+                    """
+                    SELECT Lat, Lng, UpdatedAt
+                    FROM dbo.VehicleLocationLive
+                    WHERE VehicleId = ?
+                    """,
+                    (vehicle_id,),
+                )
+                loc = cur.fetchone()
+                if not loc:
+                    return jsonify({
+                        "success": True,
+                        "hasLocation": False,
+                        "reason": "No live location available for this vehicle yet."
+                    }), 200
+
+                lat, lng, updated_at = loc
+
+        return jsonify({
+            "success": True,
+            "hasLocation": True,
+            "rideId": ride_id,
+            "vehicleId": str(vehicle_id),
+            "lat": float(lat),
+            "lng": float(lng),
+            "updatedAt": updated_at.isoformat() if updated_at else None,
+        }), 200
+
+    except Exception as e:
+        print("Error in /passenger/rides/<ride_id>/vehicle-location-live:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
