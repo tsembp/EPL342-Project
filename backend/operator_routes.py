@@ -30,22 +30,44 @@ def get_operator_dashboard():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@operator_bp.route("/pending-person-documents", methods=["GET"])
+@operator_bp.route("/pending-vehicle-documents", methods=["GET"])
 @require_auth
 @require_role("O", "I")
-def get_pending_person_documents():
+def get_pending_vehicle_documents():
+
     operator_id = session["user_id"]
+    vehicle_id = request.args.get("vehicleId")  # optional query param
+
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    EXEC dbo.usp_GetPendingPersonDocuments @OperatorId=?
-                """, operator_id)
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetVehicleDocumentsByStatus
+                        @OperatorId = ?,
+                        @Status     = ?
+                    """,
+                    (operator_id, None),
+                )
                 columns = [column[0] for column in cur.description]
                 rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-                return jsonify(rows), 200
+
+        # Optional filter by VehicleId (done in Python, no sproc change needed)
+        if vehicle_id:
+            key_candidates = ["VehicleId", "VehId", "Id"]
+
+            def matches_vehicle(r: dict) -> bool:
+                for k in key_candidates:
+                    if k in r and str(r[k]) == str(vehicle_id):
+                        return True
+                return False
+
+            rows = [r for r in rows if matches_vehicle(r)]
+
+        return jsonify(rows), 200
+
     except Exception as e:
-        print("Error in pending-person-documents endpoint:", e)
+        print("Error in pending-vehicle-documents endpoint:", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -87,15 +109,11 @@ def get_rejected_person_documents():
         return jsonify({"error": str(e)}), 500
 
 
-@operator_bp.route("/pending-vehicle-documents", methods=["GET"])
+@operator_bp.route("/vehicle-documents", methods=["GET"])
 @require_auth
 @require_role("O", "I")
-def get_pending_vehicle_documents():
-    """
-    Returns ALL vehicle documents (Pending, Accepted, Rejected).
-    Uses dbo.usp_GetVehicleDocumentsByStatus with @Status = NULL.
-    Frontend filters by status tab.
-    """
+def get_vehicle_documents():
+
     operator_id = session["user_id"]
     try:
         with get_connection() as conn:
@@ -114,7 +132,6 @@ def get_pending_vehicle_documents():
     except Exception as e:
         print("Error in pending-vehicle-documents endpoint:", e)
         return jsonify({"error": str(e)}), 500
-
 
 @operator_bp.route("/review-person-document", methods=["POST"])
 @require_auth
