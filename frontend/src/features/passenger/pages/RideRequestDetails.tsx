@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
 import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
-import { getRideRequestDetails, type RideRequestDetails, submitRideRating } from "@/features/passenger/api";
+import { getRideRequestDetails, type RideRequestDetails, submitRideRating, getRideLiveLocation } from "@/features/passenger/api";
 import { 
   Clock,
   MapPin,
@@ -17,10 +18,8 @@ import {
   Car,
   User2,
   MessageCircle,
-  X,
-  RefreshCw,
-  Send,
   Star,
+  CarTaxiFront
 } from "lucide-react";
 import {
   Dialog,
@@ -104,6 +103,39 @@ export default function RideRequestDetailsPage() {
   };
 
   const hasRides = !!(data?.rides && data.rides.length > 0);
+
+  // Rides we care about for live tracking
+  const activeRides = useMemo(
+    () =>
+      data?.rides?.filter(
+        (r) => r.status === "Scheduled" || r.status === "InProgress"
+      ) ?? [],
+    [data]
+  );
+
+  // One query per active ride → live location
+  const liveQueries = useQueries({
+    queries: activeRides.map((ride) => ({
+      queryKey: ["ride-live-location", ride.rideId],
+      queryFn: () => getRideLiveLocation(ride.rideId),
+      refetchInterval: 5000,
+    })),
+  });
+
+  // Map rideId -> liveLocation result
+  const liveLocationByRideId = useMemo(() => {
+    const map: Record<number, any> = {};
+
+    activeRides.forEach((ride, idx) => {
+      const q = liveQueries[idx];
+      if (q && q.data && q.data.success) {
+        map[ride.rideId] = q.data;
+      }
+    });
+
+    return map;
+  }, [activeRides, liveQueries]);
+
   const allRidesCompleted =
     hasRides && data!.rides!.every((r) => r.status === "Completed");
   const requestCompleted =
@@ -129,19 +161,20 @@ export default function RideRequestDetailsPage() {
   };
 
   const mapCenter: [number, number] = useMemo(() => {
-    if (hasPickupCoords) {
+    if (hasPickupCoords && data) {
       return [
         (data as any).pickup.latitude as number,
         (data as any).pickup.longitude as number,
       ];
     }
+
     return DEFAULT_MAP_CENTER as [number, number];
   }, [hasPickupCoords, data]);
 
   const markers = useMemo(() => {
     const m: {
       position: [number, number];
-      icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle";
+      icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle" | "taxi";
       popup?: string;
       onClick?: () => void;
     }[] = [];
@@ -164,8 +197,27 @@ export default function RideRequestDetailsPage() {
       });
     }
 
+    if (data?.rides) {
+      for (const ride of data.rides) {
+        const live = liveLocationByRideId[ride.rideId];
+        if (
+          live &&
+          live.success &&
+          live.hasLocation &&
+          typeof live.lat === "number" &&
+          typeof live.lng === "number"
+        ) {
+          m.push({
+            position: [live.lat, live.lng],
+            icon: "taxi",
+            popup: `Driver for leg ${ride.legIndex}: ${ride.driverName}`,
+          });
+        }
+      }
+    }
+
     return m;
-  }, [hasPickupCoords, hasDropoffCoords, data]);
+  }, [hasPickupCoords, hasDropoffCoords, data, liveLocationByRideId]);
 
   const polyline: [number, number][] = useMemo(() => {
     if (hasPickupCoords && hasDropoffCoords && data) {
@@ -177,6 +229,7 @@ export default function RideRequestDetailsPage() {
     }
     return [];
   }, [hasPickupCoords, hasDropoffCoords, data]);
+
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">

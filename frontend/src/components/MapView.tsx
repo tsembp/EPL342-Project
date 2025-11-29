@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import { renderToString } from 'react-dom/server';
 
 // Fix default Leaflet marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -21,7 +22,7 @@ interface MapViewProps {
   markers?: Array<{
     position: [number, number];
     popup?: string;
-    icon?: "default" | "pickup" | "dropoff" | "vehicle" | "station";
+    icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle" | "taxi";
     onClick?: () => void;
   }>;
   polyline?: [number, number][];
@@ -143,16 +144,74 @@ export function MapView({
 
 // Marker Icon function
 function getMarkerIcon(type?: string) {
+  // For standard markers, use colored pins
   const urls: Record<string, string> = {
     pickup:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
     dropoff:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-    vehicle:
-      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
     station:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
   };
+
+  // For taxi, use custom SVG icon with circular background
+  if (type === "taxi") {
+    const taxiSvg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <!-- Circular background -->
+        <circle cx="20" cy="20" r="18" fill="#eab308" opacity="0.9"/>
+        <circle cx="20" cy="20" r="18" fill="none" stroke="#fff" stroke-width="2"/>
+        
+        <!-- Taxi icon centered -->
+        <g transform="translate(8, 8)">
+          <path d="M10 2h4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M7 14h.01" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M17 14h.01" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <rect width="18" height="8" x="3" y="10" rx="2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M5 18v2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M19 18v2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </g>
+      </svg>
+    `;
+    
+    const taxiIconUrl = 'data:image/svg+xml;base64,' + btoa(taxiSvg);
+    
+    return new L.Icon({
+      iconUrl: taxiIconUrl,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -20],
+    });
+  }
+
+  // For vehicle, use car icon with circular background
+  if (type === "vehicle") {
+    const carSvg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <!-- Circular background -->
+        <circle cx="20" cy="20" r="18" fill="#3b82f6" opacity="0.9"/>
+        <circle cx="20" cy="20" r="18" fill="none" stroke="#fff" stroke-width="2"/>
+        
+        <!-- Car icon centered -->
+        <g transform="translate(8, 8)">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="7" cy="17" r="2" stroke="#fff" stroke-width="2" fill="none"/>
+          <path d="M9 17h6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="17" cy="17" r="2" stroke="#fff" stroke-width="2" fill="none"/>
+        </g>
+      </svg>
+    `;
+    
+    const carIconUrl = 'data:image/svg+xml;base64,' + btoa(carSvg);
+    
+    return new L.Icon({
+      iconUrl: carIconUrl,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -20],
+    });
+  }
 
   if (!type || !urls[type]) return null;
 
