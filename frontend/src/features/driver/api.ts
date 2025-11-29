@@ -165,3 +165,42 @@ export const uploadDriverDocument = (params: {
     body: formData,
   });
 };
+
+export type DriverRideRow = {
+  RideId: number;
+  RequestId: number;
+  LegId: number;
+  NumOfPeople: number;
+  Status: "Scheduled" | "InProgress" | "Completed" | "Cancelled" | string;
+  FromName: string;
+  ToName: string;
+  ScheduledStart: string;
+  ScheduledEnd: string;
+};
+
+export const getDriverUpcomingRides = () =>
+  fetchAPI<{
+    success: boolean;
+    rides?: DriverRideRow[];
+    error?: string;
+  }>("/driver/rides/upcoming");
+
+export const startDriverRide = (rideId: number) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/driver/rides/${rideId}/start`,
+    {
+      method: "POST",
+    }
+  );
+
+export const endDriverRide = (
+  rideId: number,
+  paymentMethod: "Cash" | "CreditCard" = "Cash"
+) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/driver/rides/${rideId}/end`,
+    {
+      method: "POST",
+      body: JSON.stringify({ payment_method: paymentMethod }),
+    }
+  );
