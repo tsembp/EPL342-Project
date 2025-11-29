@@ -5,7 +5,9 @@ import { fetchAPI } from "@/lib/apiClient";
 
 type RideChatWindowProps = {
   rideId: number;
-  driverName: string;
+  driverName?: string; // now optional, for backwards compatibility
+  peerName?: string;
+  mode?: "passenger" | "driver";
   onClose: () => void;
 };
 
@@ -25,6 +27,8 @@ type ChatMessage = {
 export default function RideChatWindow({
   rideId,
   driverName,
+  peerName,
+  mode = "passenger",
   onClose,
 }: RideChatWindowProps) {
   const [message, setMessage] = useState("");
@@ -34,6 +38,12 @@ export default function RideChatWindow({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // Who are we chatting with (label in header)
+  const displayName = peerName ?? driverName ?? "User";
+
+  // API base prefix depends on mode
+  const apiPrefix = mode === "driver" ? "/driver" : "/passenger";
 
   // Initial position (bottom-right-ish)
   useEffect(() => {
@@ -87,13 +97,14 @@ export default function RideChatWindow({
 
     try {
       setSending(true);
-      const res = await fetchAPI<{ success: boolean; message?: ChatMessage; error?: string }>(
-        `/passenger/rides/${rideId}/messages`,
-        {
-          method: "POST",
-          body: JSON.stringify({ body: text }),
-        }
-      );
+      const res = await fetchAPI<{
+        success: boolean;
+        message?: ChatMessage;
+        error?: string;
+      }>(`${apiPrefix}/rides/${rideId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ body: text }),
+      });
 
       if (!res.success || !res.message) {
         console.error(res.error || "Failed to send message");
@@ -113,9 +124,11 @@ export default function RideChatWindow({
   const handleFetch = async () => {
     try {
       setLoading(true);
-      const res = await fetchAPI<{ success: boolean; messages?: ChatMessage[]; error?: string }>(
-        `/passenger/rides/${rideId}/messages`
-      );
+      const res = await fetchAPI<{
+        success: boolean;
+        messages?: ChatMessage[];
+        error?: string;
+      }>(`${apiPrefix}/rides/${rideId}/messages`);
 
       if (!res.success) {
         console.error(res.error || "Failed to fetch messages");
@@ -144,7 +157,7 @@ export default function RideChatWindow({
           <div className="flex flex-col">
             <span className="text-[11px] text-neutral-400">Chat with</span>
             <span className="text-sm font-semibold text-neutral-50 truncate">
-              {driverName}
+              {displayName}
             </span>
           </div>
           <Button
@@ -163,7 +176,9 @@ export default function RideChatWindow({
           {loading ? (
             <p className="text-neutral-500">Loading messages…</p>
           ) : messages.length === 0 ? (
-            <p className="text-neutral-500">No messages yet. Start the conversation.</p>
+            <p className="text-neutral-500">
+              No messages yet. Start the conversation.
+            </p>
           ) : (
             <div className="flex flex-col gap-1">
               {messages.map((m) => (
@@ -202,13 +217,19 @@ export default function RideChatWindow({
               placeholder="Type a message…"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (message.trim() && !sending) handleSend();
+                }
+              }}
             />
             <Button
               type="button"
               size="sm"
               className="gap-1 bg-emerald-600 text-xs text-white hover:bg-emerald-500 disabled:opacity-50"
               onClick={handleSend}
-              disabled={!message.trim()}
+              disabled={!message.trim() || sending}
             >
               <Send className="h-3 w-3" />
             </Button>

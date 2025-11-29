@@ -76,33 +76,10 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-
-            {/* PASSENGER */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/trip/:id"
-              element={
-                <ProtectedRoute>
-                  <TripDetail />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/passenger/*"
-              element={
-                <ProtectedRoute>
-                  <PassengerLayout />
-                </ProtectedRoute>
-              }
-            >
+            
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            
+            <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
               <Route index element={<PassengerHome />} />
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
