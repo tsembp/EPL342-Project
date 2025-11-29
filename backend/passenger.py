@@ -312,70 +312,70 @@ def get_ride_request_details(request_id: int):
                 )
                 progress_row = cur.fetchone()
                 progress_status = progress_row[0] if progress_row else None
+                print("DEBUG get_ride_request_details: RequestId", request_id, "progress_status =", progress_status)
 
                 # 3) If rides have been created/accepted, load them
                 rides: list[dict] = []
 
-                if progress_status in ("AllAccepted", "RidesCreated"):
-                    cur.execute(
-                        """
-                        SELECT
-                            R.RideId,
-                            IL.SeqNo            AS LegIndex,
-                            zp_leg_from.Name    AS FromName,
-                            zp_leg_to.Name      AS ToName,
-                            R.Status            AS RideStatus,
-                            U.FirstName + ' ' + U.LastName AS DriverName,
-                            V.PlateNumber       AS VehiclePlate,
-                            VT.Name             AS VehicleType,
-                            IL.ApproxStartTime AS PlannedStart,
-                            IL.ApproxEndTime   AS PlannedEnd
-                        FROM dbo.Ride R
-                        JOIN dbo.DispatchOffer DO
-                            ON DO.OfferId = R.OfferId
-                        JOIN dbo.ItineraryLeg IL
-                            ON IL.LegId = DO.LegId
-                        JOIN dbo.ZonePoint zp_leg_from
-                            ON zp_leg_from.PointId = IL.FromPointId
-                        JOIN dbo.ZonePoint zp_leg_to
-                            ON zp_leg_to.PointId = IL.ToPointId
-                        LEFT JOIN dbo.[User] U
-                            ON U.UserId = R.DriverUserId
-                        LEFT JOIN dbo.Vehicle V
-                            ON V.VehicleId = R.VehicleId
-                        LEFT JOIN dbo.VehicleType VT
-                            ON VT.VehicleTypeId = V.VehicleTypeId
+                cur.execute(
+                    """
+                    SELECT
+                        R.RideId,
+                        IL.SeqNo            AS LegIndex,
+                        zp_leg_from.Name    AS FromName,
+                        zp_leg_to.Name      AS ToName,
+                        R.Status            AS RideStatus,
+                        U.FirstName + ' ' + U.LastName AS DriverName,
+                        V.PlateNumber       AS VehiclePlate,
+                        VT.Name             AS VehicleType,
+                        IL.ApproxStartTime AS PlannedStart,
+                        IL.ApproxEndTime   AS PlannedEnd
+                    FROM dbo.Ride R
+                    JOIN dbo.DispatchOffer DO
+                        ON DO.OfferId = R.OfferId
+                    JOIN dbo.ItineraryLeg IL
+                        ON IL.LegId = DO.LegId
+                    JOIN dbo.ZonePoint zp_leg_from
+                        ON zp_leg_from.PointId = IL.FromPointId
+                    JOIN dbo.ZonePoint zp_leg_to
+                        ON zp_leg_to.PointId = IL.ToPointId
+                    LEFT JOIN dbo.[User] U
+                        ON U.UserId = R.DriverUserId
+                    LEFT JOIN dbo.Vehicle V
+                        ON V.VehicleId = R.VehicleId
+                    LEFT JOIN dbo.VehicleType VT
+                        ON VT.VehicleTypeId = V.VehicleTypeId
 
-                        WHERE DO.Status = 'Accepted' AND IL.RideRequestId = ?
-                        ORDER BY IL.SeqNo
-                        """,
-                        request_id,
+                    WHERE DO.Status = 'Accepted' AND IL.RideRequestId = ?
+                    ORDER BY IL.SeqNo
+                    """,
+                    request_id,
+                )
+                ride_rows = cur.fetchall()
+
+                for r in ride_rows:
+                    rides.append(
+                        {
+                            "rideId": r.RideId,
+                            "legIndex": r.LegIndex,
+                            "fromName": r.FromName,
+                            "toName": r.ToName,
+                            "status": r.RideStatus,
+                            "driverName": r.DriverName,
+                            "vehiclePlate": r.VehiclePlate,
+                            "vehicleType": r.VehicleType,
+                            "plannedStart": (
+                                r.PlannedStart.isoformat()
+                                if getattr(r, "PlannedStart", None)
+                                else None
+                            ),
+                            "plannedEnd": (
+                                r.PlannedEnd.isoformat()
+                                if getattr(r, "PlannedEnd", None)
+                                else None
+                            ),
+                        }
                     )
-                    ride_rows = cur.fetchall()
-
-                    for r in ride_rows:
-                        rides.append(
-                            {
-                                "rideId": r.RideId,
-                                "legIndex": r.LegIndex,
-                                "fromName": r.FromName,
-                                "toName": r.ToName,
-                                "status": r.RideStatus,
-                                "driverName": r.DriverName,
-                                "vehiclePlate": r.VehiclePlate,
-                                "vehicleType": r.VehicleType,
-                                "plannedStart": (
-                                    r.PlannedStart.isoformat()
-                                    if getattr(r, "PlannedStart", None)
-                                    else None
-                                ),
-                                "plannedEnd": (
-                                    r.PlannedEnd.isoformat()
-                                    if getattr(r, "PlannedEnd", None)
-                                    else None
-                                ),
-                            }
-                        )
 
         # 4) Build response JSON
         return (
@@ -654,6 +654,95 @@ def send_ride_message(ride_id: int):
             ),
             200,
         )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+# Create review for ride (from passenger->driver but can be reused for driver->passenger)
+@passenger_bp.route("/rides/<int:ride_id>/rating", methods=["POST"])
+@require_auth
+@require_role("P")
+def create_ride_rating(ride_id: int):
+    """
+    Passenger creates a rating for a completed ride.
+    We only accept stars + comment from the client; we derive author/target
+    from the session and the Ride row.
+    """
+    user_id = session["user_id"]  # Author
+    data = request.json or {}
+
+    try:
+        stars = int(data.get("stars", 0))
+        comment = data.get("comment")
+
+        if stars < 1 or stars > 5:
+            return (
+                jsonify({"success": False, "error": "Stars must be between 1 and 5."}),
+                400,
+            )
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get ride participants
+                cur.execute(
+                    """
+                    SELECT DriverUserId, PassengerUserId, Status
+                    FROM dbo.Ride
+                    WHERE RideId = ?
+                    """,
+                    ride_id,
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                driver_id, passenger_id, ride_status = row
+
+                # Decide target user based on who is logged in
+                if user_id == passenger_id:
+                    target_id = driver_id
+                elif user_id == driver_id:
+                    target_id = passenger_id
+                else:
+                    # Shouldn't happen. Guard anyway
+                    return (
+                        jsonify(
+                            {"success": False, "error": "User did not participate in this ride."}
+                        ),
+                        403,
+                    )
+
+                # Call sproc
+                cur.execute(
+                    """
+                    EXEC dbo.usp_CreateRating
+                        @RideId=?,
+                        @AuthorUserId=?,
+                        @TargetUserId=?,
+                        @Stars=?,
+                        @Comment=?
+                    """,
+                    ride_id,
+                    user_id,
+                    target_id,
+                    stars,
+                    comment,
+                )
+
+                row = cur.fetchone()
+                conn.commit()
+
+                rating_id = row[0] if row else None
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "ratingId": rating_id,
+                        }
+                    ),
+                    201,
+                )
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

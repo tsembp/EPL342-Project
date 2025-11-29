@@ -141,3 +141,18 @@ export const cancelRideRequest = (requestId: number) =>
       method: "POST",
     }
   );
+
+export const submitRideRating = (
+  rideId: number,
+  data: { stars: number; comment?: string }
+) =>
+  fetchAPI<{ success: boolean; ratingId?: number; error?: string }>(
+    `/passenger/rides/${rideId}/rating`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        stars: data.stars,
+        comment: data.comment,
+      }),
+    }
+  );
