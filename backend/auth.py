@@ -98,8 +98,8 @@ def login():
                     session["role"] = row[1]
                     session["account_type"] = row[2]
                     session["email"] = row[3]
-                    session["verification_status"] = row[4]
-                    session["username"] = row[5] # Store username in session
+                    session["verification_status"] = row[4] # Store new status in session
+                    session["username"] = row[5]  # Store username in session
                     session.permanent = True
 
                     return jsonify({
@@ -108,8 +108,8 @@ def login():
                         "role": row[1],
                         "accountType": row[2],
                         "email": row[3],
-                        "verificationStatus": row[4],
-                        "username": row[5], # Include username in response
+                        "verificationStatus": row[4], # Include new status in response
+                        "username": row[5],  # Include username in response
                     }), 200
 
                 print("[LOGIN] No row returned from stored procedure")
@@ -146,6 +146,6 @@ def get_current_user():
             "role": session["role"],
             "accountType": session["account_type"],
             "email": session["email"],
-            "username": session["username"], # Include username
+            "username": session["username"],
         }), 200
     return jsonify({"authenticated": False}), 401

@@ -19,7 +19,7 @@ BEGIN
         @Role               CHAR(1),
         @Verified           BIT,
         @AccountType        NVARCHAR(20),
-        @Username           NVARCHAR(256); -- Declare Username variable
+        @Username           NVARCHAR(100);
 
     -- 1. Find account by email from the unified view
     SELECT TOP (1)
@@ -29,7 +29,7 @@ BEGIN
         @Role               = A.Role,
         @Verified           = A.Verified,
         @AccountType        = A.AccountType,
-        @Username           = A.Username -- Retrieve Username
+        @Username           = A.Username
     FROM dbo.vw_AllAccounts AS A
     WHERE A.Email = @InputEmail;
 
@@ -92,6 +92,6 @@ BEGIN
         @AccountType AS AccountType,
         @Email      AS Email,
         @VerificationStatus AS VerificationStatus,
-        @Username   AS Username; -- Include Username
+        @Username   AS Username;
 END;
 GO
