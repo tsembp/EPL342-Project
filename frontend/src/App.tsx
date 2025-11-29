@@ -79,6 +79,7 @@ function App() {
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
             
             <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
+              <Route index element={<PassengerHome />} />
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
               <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
