@@ -312,16 +312,7 @@ def upload_vehicle_document():
         print(f"Error in /vehicle-documents endpoint: {e}")
         return jsonify({"error": "An internal error occurred.", "details": str(e)}), 500
 
-@driver_bp.route("/vehicles", methods=["GET"])
-@require_auth
-@require_role("D")
-def get_driver_vehicles():
-    """
-    Retrieve all vehicles for the authenticated driver.
-    Calls dbo.usp_GetDriverVehicles.
-    """
-    user_id = session["user_id"]
-    
+
 @driver_bp.route("/offers", methods=["GET"])
 @require_auth
 @require_role("D")
@@ -378,19 +369,27 @@ def respond_to_dispatch_offer(offer_id: int):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    EXEC dbo.usp_GetDriverVehicles @UserId = ?
+                    EXEC dbo.usp_RespondToDispatchOffer
+                        @OfferId = ?,
+                        @DriverUserId = ?,
+                        @Action = ?
                     """,
+                    offer_id,
                     user_id,
+                    db_action,
                 )
-                rows = cur.fetchall()
-                if rows:
-                    columns = [column[0] for column in cur.description]
-                    vehicles = [dict(zip(columns, row)) for row in rows]
-                    return jsonify(vehicles), 200
-                return jsonify([]), 200 # Return empty array if no vehicles found
+
+                updated = []
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    updated = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify({"success": True, "offer": updated[0] if updated else None}), 200
     except Exception as e:
-        print(f"Error in /vehicles endpoint: {e}")
-        return jsonify({"error": str(e)}), 500
+        print("Error in /driver/offers/<offer_id>/respond:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 
 @driver_bp.route("/vehicle-documents-status", methods=["GET"])
 @require_auth
@@ -429,25 +428,36 @@ def get_vehicle_documents_status():
     except Exception as e:
         print(f"Error in /vehicle-documents-status endpoint: {e}")
         return jsonify({"error": str(e)}), 500
-                    EXEC dbo.usp_RespondToDispatchOffer
-                        @OfferId = ?,
-                        @DriverUserId = ?,
-                        @Action = ?
+    
+@driver_bp.route("/vehicles", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_driver_vehicles():
+    """
+    Retrieve all vehicles for the authenticated driver.
+    Calls dbo.usp_GetDriverVehicles.
+    """
+    user_id = session["user_id"]
+    
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetDriverVehicles @UserId = ?
                     """,
-                    offer_id,
                     user_id,
-                    db_action,
                 )
-
-                updated = []
-                if cur.description:
-                    columns = [col[0] for col in cur.description]
-                    updated = [dict(zip(columns, row)) for row in cur.fetchall()]
-
-        return jsonify({"success": True, "offer": updated[0] if updated else None}), 200
+                rows = cur.fetchall()
+                if rows:
+                    columns = [column[0] for column in cur.description]
+                    vehicles = [dict(zip(columns, row)) for row in rows]
+                    return jsonify(vehicles), 200
+                return jsonify([]), 200 # Return empty array if no vehicles found
     except Exception as e:
-        print("Error in /driver/offers/<offer_id>/respond:", e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"Error in /vehicles endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+    
 
 @driver_bp.route("/rides/upcoming", methods=["GET"])
 @require_auth
