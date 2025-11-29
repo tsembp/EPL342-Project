@@ -24,6 +24,7 @@ import TripDetail from "@/features/passenger/pages/TripDetail";
 import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
+import CheckoutPage from "@/features/passenger/pages/CheckoutPage";
 
 // OPERATOR
 import OperatorDashboard from "@/features/operator/pages/OperatorDashboard";
@@ -83,6 +84,7 @@ function App() {
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
               <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
             </Route>
 
             <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
