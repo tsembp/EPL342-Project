@@ -681,7 +681,7 @@ def send_ride_message_for_driver(ride_id: int):
 
     if not text:
         return jsonify({"success": False, "error": "Message body is required"}), 400
-
+      
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -728,3 +728,60 @@ def send_ride_message_for_driver(ride_id: int):
     except Exception as e:
         print("Error in /api/driver/rides/<ride_id>/messages [POST]:", e)
         return jsonify({"success": False, "error": str(e)}), 400
+      
+
+# Get driver's vehicle location for ride
+@driver_bp.route("/vehicle/location", methods=["POST"])
+@require_auth
+@require_role("D")
+def update_vehicle_location():
+    """
+    Driver pushes their current vehicle location.
+    Body:
+    {
+      "vehicleId": "<uuid>",
+      "lat": 34.123456,
+      "lng": 32.123456
+    }
+
+    Upserts into dbo.VehicleLocationLive.
+    """
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+
+    vehicle_id = data.get("vehicleId")
+    lat = data.get("lat")
+    lng = data.get("lng")
+
+    if not vehicle_id or lat is None or lng is None:
+        return jsonify({
+            "success": False,
+            "error": "vehicleId, lat and lng are required"
+        }), 400
+      
+      try:
+        with get_connection() as conn:
+          with conn.cursor() as cur:
+              # Upsert into VehicleLocationLive
+              cur.execute(
+                  """
+                  MERGE dbo.VehicleLocationLive AS target
+                  USING (VALUES (?, ?, ?)) AS src(VehicleId, Lat, Lng)
+                      ON target.VehicleId = src.VehicleId
+                  WHEN MATCHED THEN
+                      UPDATE SET 
+                          Lat = src.Lat,
+                          Lng = src.Lng,
+                          UpdatedAt = SYSUTCDATETIME()
+                  WHEN NOT MATCHED THEN
+                      INSERT (VehicleId, Lat, Lng, UpdatedAt)
+                      VALUES (src.VehicleId, src.Lat, src.Lng, SYSUTCDATETIME());
+                  """,
+                  (vehicle_id, lat, lng),
+              )
+              conn.commit()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print("Error in /api/driver/vehicle/location:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
