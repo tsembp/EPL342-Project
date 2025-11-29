@@ -759,7 +759,7 @@ def update_vehicle_location():
             "error": "vehicleId, lat and lng are required"
         }), 400
       
-      try:
+    try:
         with get_connection() as conn:
           with conn.cursor() as cur:
               # Upsert into VehicleLocationLive
