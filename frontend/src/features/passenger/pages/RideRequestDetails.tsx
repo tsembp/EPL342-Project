@@ -9,7 +9,7 @@ import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
 import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
-import { getRideRequestDetails, type RideRequestDetails, submitRideRating, getRideLiveLocation } from "@/features/passenger/api";
+import { getRideRequestDetails, type RideRequestDetails, submitRideRating, getRideLiveLocation, cancelRideRequest } from "@/features/passenger/api";
 import { 
   Clock,
   MapPin,
@@ -230,6 +230,34 @@ export default function RideRequestDetailsPage() {
     return [];
   }, [hasPickupCoords, hasDropoffCoords, data]);
 
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelRequest = async () => {
+    if (!data) return;
+
+    if (data.status !== "Pending") {
+      toast.error("You can only cancel a pending request.");
+      return;
+    }
+
+    try {
+      setCancelling(true);
+
+      const res = await cancelRideRequest(data.requestId);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to cancel ride request.");
+      }
+
+      toast.success("Your ride has been cancelled.");
+      await loadDetails(true);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to cancel ride request.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">
@@ -337,7 +365,8 @@ export default function RideRequestDetailsPage() {
                     {/* Waiting-for-drivers block */}
                     <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
                       {data.progressStatus === "AllAccepted" ||
-                      data.progressStatus === "RidesCreated"  || data?.progressStatus === "Completed"? (
+                      data.progressStatus === "RidesCreated" ||
+                      data.progressStatus === "Completed" ? (
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
                             <Car className="h-5 w-5 text-emerald-400" />
@@ -348,6 +377,20 @@ export default function RideRequestDetailsPage() {
                             </p>
                             <p className="mt-1 text-xs text-neutral-400">
                               Drivers have accepted your ride. Your trip will begin soon.
+                            </p>
+                          </div>
+                        </div>
+                      ) : data.progressStatus === "Failed" ? (
+                        <div className="flex items-center gap-3">
+                          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
+                            <Car className="h-5 w-5 text-red-400" />
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-400">
+                              Ride request has been cancelled.
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              You have cancelled this ride request.
                             </p>
                           </div>
                         </div>
@@ -370,20 +413,43 @@ export default function RideRequestDetailsPage() {
                           </div>
                         </div>
                       )}
-                      <div className="mt-4 flex items-center justify-between gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => loadDetails(true)}
-                          disabled={refreshing || requestCompleted}
-                          className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
-                        >
-                          {refreshing && (
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                          )}
-                          Refresh status
-                        </Button>
-                      </div>
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                          {/* Left: Refresh */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => loadDetails(true)}
+                            disabled={
+                              refreshing ||
+                              requestCompleted ||
+                              ["AllAccepted", "RidesCreated", "Completed"].includes(data?.progressStatus) ||
+                              ["Accepted", "Cancelled", "Completed"].includes(data?.status)
+                            }
+                            className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                          >
+                            {refreshing && (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            )}
+                            Refresh status
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelRequest}
+                            disabled={
+                              cancelling ||
+                              ["Cancelled", "Declined", "Accepted"].includes(data.status) ||
+                              ["Failed", "Completed", "RidesCreated", "AllAccepted"].includes(data.progressStatus)
+                            }
+                            className="border-red-500/70 text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-100"
+                          >
+                            {cancelling && (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            )}
+                            Cancel ride
+                          </Button>
+                        </div>
                     </div>
                   </>
                 )}
