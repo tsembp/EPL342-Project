@@ -118,7 +118,7 @@ export default function RideRequestDetailsPage() {
     queries: activeRides.map((ride) => ({
       queryKey: ["ride-live-location", ride.rideId],
       queryFn: () => getRideLiveLocation(ride.rideId),
-      refetchInterval: 5000,
+      enabled: activeRides.length > 0,
     })),
   });
 
