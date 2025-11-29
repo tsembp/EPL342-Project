@@ -429,18 +429,8 @@ def get_ride_request_details(request_id: int):
 def get_ride_history():
     user_id = session["user_id"]
 
-    # Query params
-    try:
-        page = int(request.args.get("page", 1))
-    except ValueError:
-        page = 1
-    if page < 1:
-        page = 1
-
-    try:
-        page_size = int(request.args.get("page_size", 50))
-    except ValueError:
-        page_size = 50
+    page = int(request.args.get("page", 1) or 1)
+    page_size = int(request.args.get("page_size", 50) or 50)
     page_size = max(1, min(page_size, 50))
 
     status_filter = request.args.get("status")

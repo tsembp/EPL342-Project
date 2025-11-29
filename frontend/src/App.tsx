@@ -18,9 +18,7 @@ import DriverDashboard from "@/features/driver/pages/Dashboard";
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
-import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";  
-import TripDetail from "@/features/passenger/pages/TripDetail";
 import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
@@ -77,7 +75,6 @@ function App() {
 
             {/* PASSENGER */}
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
             
             <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
               <Route index element={<PassengerHome />} />
