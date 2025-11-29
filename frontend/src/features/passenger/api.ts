@@ -72,6 +72,18 @@ export interface RidePaymentSummary {
   paymentMethod: string;
 }
 
+export interface RideLiveLocation {
+  success: boolean;
+  hasLocation?: boolean;
+  reason?: string;
+  rideId?: number;
+  vehicleId?: string;
+  lat?: number;
+  lng?: number;
+  updatedAt?: string;
+  error?: string;
+}
+
 // == API Functions ==
 
 export const getRideRequests = (status: string) =>
@@ -112,6 +124,10 @@ export const requestRide = (data: {
     }
   );
 };
+
+export const getRideLiveLocation = (rideId: number) =>
+  fetchAPI<RideLiveLocation>(`/passenger/rides/${rideId}/vehicle-location-live`);
+
 
 export const getRideRequestAlternatives = async (requestId: number) => {
   const response = await fetchAPI<{
