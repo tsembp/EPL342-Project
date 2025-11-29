@@ -321,3 +321,63 @@ def end_ride(ride_id: int):
         return jsonify({"success": False, "error": str(e)}), 400
 
     return jsonify({"success": True})
+
+@driver_bp.route("/rides/history", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_ride_history():
+    """
+    Return past rides for the logged-in driver.
+    Wraps dbo.usp_Driver_GetRideHistory.
+    """
+    driver_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_Driver_GetRideHistory @DriverUserId = ?",
+                    (driver_id,),
+                )
+                rows = cur.fetchall()
+
+        rides = []
+        for r in rows:
+            rides.append(
+                {
+                    "RideId": r.RideId,
+                    "LegId": getattr(r, "LegId", None),
+                    "RequestId": getattr(r, "RequestId", None),
+                    "NumOfPeople": getattr(r, "NumOfPeople", None),
+                    "Status": r.Status,
+                    "FromName": r.FromName,
+                    "ToName": r.ToName,
+                    "StartedAt": (
+                        r.StartedAt.isoformat()
+                        if getattr(r, "StartedAt", None)
+                        else None
+                    ),
+                    "EndedAt": (
+                        r.EndedAt.isoformat()
+                        if getattr(r, "EndedAt", None)
+                        else None
+                    ),
+                    "PriceFinal": (
+                        float(r.PriceFinal)
+                        if getattr(r, "PriceFinal", None) is not None
+                        else None
+                    ),
+                    "PaymentMethod": getattr(r, "PaymentMethod", None),
+                    "PaymentStatus": getattr(r, "PaymentStatus", None),
+                    "PaymentPaidAt": (
+                        r.PaymentPaidAt.isoformat()
+                        if getattr(r, "PaymentPaidAt", None)
+                        else None
+                    ),
+                }
+            )
+
+        return jsonify({"success": True, "rides": rides}), 200
+    except Exception as e:
+        print("Error in /api/driver/rides/history:", e)
+        return jsonify({"success": False, "error": str(e)}), 500

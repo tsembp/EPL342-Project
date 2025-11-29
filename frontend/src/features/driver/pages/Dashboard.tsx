@@ -22,10 +22,10 @@ import {
   Settings,
 } from "lucide-react";
 
-// 🔹 Our split-out Offers tab
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
 import DriverProfile from "@/features/driver/pages/DriverProfile";
 import { DriverScheduleSection } from "@/features/driver/pages/DriverScheduleSection";
+import { DriverHistorySection } from "@/features/driver/pages/DriverHistorySection";
 
 type TabKey =
   | "rides"
@@ -208,11 +208,7 @@ export default function Dashboard() {
 
           {/* HISTORY TAB */}
           <TabsContent value="history">
-            <PlaceholderSection
-              icon={<History className="h-5 w-5 text-emerald-400" />}
-              title="Ride history"
-              description="Past trips, filters, and detailed receipts will be shown here."
-            />
+            <DriverHistorySection />
           </TabsContent>
 
           {/* PROFILE TAB */}
