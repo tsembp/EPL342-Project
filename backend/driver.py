@@ -247,3 +247,137 @@ def respond_to_dispatch_offer(offer_id: int):
     except Exception as e:
         print("Error in /driver/offers/<offer_id>/respond:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+@driver_bp.route("/rides/upcoming", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_upcoming_rides():
+    driver_id = session["user_id"]
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("EXEC dbo.usp_Driver_GetUpcomingRides @DriverUserId = ?", (driver_id,))
+            rows = cur.fetchall()
+
+    rides = []
+    for r in rows:
+        rides.append({
+            "RideId": r.RideId,
+            "RequestId": r.RequestId,
+            "LegId": r.LegId,
+            "NumOfPeople": r.NumOfPeople,
+            "Status": r.Status,
+            "ScheduledStart": r.ScheduledStart.isoformat() if r.ScheduledStart else None,
+            "ScheduledEnd": r.ScheduledEnd.isoformat() if r.ScheduledEnd else None,
+            "FromName": r.FromName,
+            "ToName": r.ToName,
+        })
+
+    return jsonify({"success": True, "rides": rides})
+
+
+@driver_bp.route("/rides/<int:ride_id>/start", methods=["POST"])
+@require_auth
+@require_role("D")
+def start_ride(ride_id: int):
+    driver_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_Driver_StartRide @DriverUserId = ?, @RideId = ?",
+                    (driver_id, ride_id),
+                )
+                conn.commit()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": True})
+
+
+@driver_bp.route("/rides/<int:ride_id>/end", methods=["POST"])
+@require_auth
+@require_role("D")
+def end_ride(ride_id: int):
+    driver_id = session["user_id"]
+    data = request.get_json(silent=True) or {}
+    payment_method = data.get("payment_method", "Cash")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Driver_EndRide
+                        @DriverUserId = ?,
+                        @RideId       = ?,
+                        @PaymentMethod = ?
+                    """,
+                    (driver_id, ride_id, payment_method),
+                )
+                conn.commit()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    return jsonify({"success": True})
+
+@driver_bp.route("/rides/history", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_ride_history():
+    """
+    Return past rides for the logged-in driver.
+    Wraps dbo.usp_Driver_GetRideHistory.
+    """
+    driver_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_Driver_GetRideHistory @DriverUserId = ?",
+                    (driver_id,),
+                )
+                rows = cur.fetchall()
+
+        rides = []
+        for r in rows:
+            rides.append(
+                {
+                    "RideId": r.RideId,
+                    "LegId": getattr(r, "LegId", None),
+                    "RequestId": getattr(r, "RequestId", None),
+                    "NumOfPeople": getattr(r, "NumOfPeople", None),
+                    "Status": r.Status,
+                    "FromName": r.FromName,
+                    "ToName": r.ToName,
+                    "StartedAt": (
+                        r.StartedAt.isoformat()
+                        if getattr(r, "StartedAt", None)
+                        else None
+                    ),
+                    "EndedAt": (
+                        r.EndedAt.isoformat()
+                        if getattr(r, "EndedAt", None)
+                        else None
+                    ),
+                    "PriceFinal": (
+                        float(r.PriceFinal)
+                        if getattr(r, "PriceFinal", None) is not None
+                        else None
+                    ),
+                    "PaymentMethod": getattr(r, "PaymentMethod", None),
+                    "PaymentStatus": getattr(r, "PaymentStatus", None),
+                    "PaymentPaidAt": (
+                        r.PaymentPaidAt.isoformat()
+                        if getattr(r, "PaymentPaidAt", None)
+                        else None
+                    ),
+                }
+            )
+
+        return jsonify({"success": True, "rides": rides}), 200
+    except Exception as e:
+        print("Error in /api/driver/rides/history:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
