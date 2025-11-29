@@ -231,3 +231,31 @@ export const getDriverRideHistory = () =>
     rides?: DriverHistoryRow[];
     error?: string;
   }>("/driver/rides/history");
+
+// ---------------------------------------------
+// Driver daily availability
+// ---------------------------------------------
+
+export type DriverDailyAvailability = {
+  date: string;           // "YYYY-MM-DD"
+  enabled: boolean;
+  startTime: string | null; // "HH:MM" or null
+  endTime: string | null;   // "HH:MM" or null
+};
+
+export const getDriverDailyAvailability = (date: string) =>
+  fetchAPI<{
+    success: boolean;
+    availability?: DriverDailyAvailability;
+    error?: string;
+  }>(`/driver/availability?date=${encodeURIComponent(date)}`);
+
+export const setDriverDailyAvailability = (payload: DriverDailyAvailability) =>
+  fetchAPI<{
+    success: boolean;
+    error?: string;
+  }>("/driver/availability", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+

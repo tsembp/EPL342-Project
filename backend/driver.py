@@ -381,3 +381,223 @@ def get_ride_history():
     except Exception as e:
         print("Error in /api/driver/rides/history:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+from datetime import datetime, date
+
+@driver_bp.route("/availability", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_driver_daily_availability():
+    """
+    Get daily availability for the logged-in driver.
+
+    Query param:
+      ?date=YYYY-MM-DD (if missing, defaults to today)
+    Response:
+    {
+      "success": true,
+      "availability": {
+        "date": "2025-12-01",
+        "enabled": true/false,
+        "startTime": "08:00" | null,
+        "endTime":   "18:00" | null
+      }
+    }
+    """
+    user_id = session["user_id"]
+
+    date_str = request.args.get("date")
+    if not date_str:
+        target_date = date.today()
+        date_str = target_date.isoformat()
+    else:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get one approved enrollment for this driver
+                cur.execute(
+                    """
+                    SELECT TOP (1) EnrollId
+                    FROM dbo.UserServiceEnrollment
+                    WHERE UserId = ? AND Status = 'Approved'
+                    ORDER BY EnrollId
+                    """,
+                    user_id,
+                )
+                row = cur.fetchone()
+
+                if not row:
+                    # No enrollment -> no availability yet
+                    return jsonify({
+                        "success": True,
+                        "availability": {
+                            "date": date_str,
+                            "enabled": False,
+                            "startTime": None,
+                            "endTime": None,
+                        },
+                    }), 200
+
+                enroll_id = row.EnrollId
+
+                # Get existing availability for that date (if any)
+                cur.execute(
+                    """
+                    SELECT TOP (1) StartsAt, EndsAt
+                    FROM dbo.DriverAvailability
+                    WHERE EnrollId = ? AND AvailabilityDate = ?
+                    ORDER BY StartsAt
+                    """,
+                    (enroll_id, target_date),
+                )
+                avail = cur.fetchone()
+
+        if not avail:
+            availability = {
+                "date": date_str,
+                "enabled": False,
+                "startTime": None,
+                "endTime": None,
+            }
+        else:
+            availability = {
+                "date": date_str,
+                "enabled": True,
+                "startTime": avail.StartsAt.strftime("%H:%M"),
+                "endTime": avail.EndsAt.strftime("%H:%M"),
+            }
+
+        return jsonify({"success": True, "availability": availability}), 200
+
+    except Exception as e:
+        print("Error in /api/driver/availability [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@driver_bp.route("/availability", methods=["PUT"])
+@require_auth
+@require_role("D")
+def set_driver_daily_availability():
+    """
+    Set daily availability for the logged-in driver.
+
+    Body:
+    {
+      "date": "2025-12-01",
+      "enabled": true/false,
+      "startTime": "08:00" | null,
+      "endTime": "18:00"  | null
+    }
+    If enabled = false -> deletes any availability for that date.
+    If enabled = true  -> upserts a single block using sp_AddDriverAvailability
+                          with @IsRecurring = 0 (no weekly pattern).
+    """
+    user_id = session["user_id"]
+    payload = request.get_json(silent=True) or {}
+
+    date_str = payload.get("date")
+    enabled = bool(payload.get("enabled", False))
+    start_time = payload.get("startTime")
+    end_time = payload.get("endTime")
+
+    if not date_str:
+        return jsonify({"success": False, "error": "date is required"}), 400
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1. Get one approved enrollment for this driver
+                cur.execute(
+                    """
+                    SELECT TOP (1) EnrollId
+                    FROM dbo.UserServiceEnrollment
+                    WHERE UserId = ? AND Status = 'Approved'
+                    ORDER BY EnrollId
+                    """,
+                    user_id,
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"success": False, "error": "No approved enrollment found."}), 400
+
+                enroll_id = row.EnrollId
+
+                # 2. If disabling availability -> delete existing rows for that day
+                if not enabled:
+                    cur.execute(
+                        """
+                        DELETE FROM dbo.DriverAvailability
+                        WHERE EnrollId = ? AND AvailabilityDate = ?
+                        """,
+                        (enroll_id, target_date),
+                    )
+                    conn.commit()
+                    return jsonify({"success": True}), 200
+
+                # 3. Validate times if enabling
+                if not start_time or not end_time:
+                    return jsonify({
+                        "success": False,
+                        "error": "startTime and endTime are required when enabled = true."
+                    }), 400
+
+                # 4. Choose a Geofence zone (for now: first ZoneId)
+                cur.execute(
+                    "SELECT TOP (1) ZoneId FROM dbo.Geofencezone ORDER BY ZoneId"
+                )
+                zone_row = cur.fetchone()
+                if not zone_row:
+                    return jsonify({
+                        "success": False,
+                        "error": "No Geofencezone configured in the system."
+                    }), 400
+
+                geofence_zone_id = zone_row.ZoneId
+
+                # 5. Delete existing availability for that date & enroll
+                cur.execute(
+                    """
+                    DELETE FROM dbo.DriverAvailability
+                    WHERE EnrollId = ? AND AvailabilityDate = ?
+                    """,
+                    (enroll_id, target_date),
+                )
+
+                # 6. Insert new daily availability using existing sproc
+                #    (no weekly recurrence)
+                cur.execute(
+                    """
+                    EXEC dbo.sp_AddDriverAvailability
+                        @EnrollId        = ?,
+                        @AvailabilityDate = ?,
+                        @GeofencezoneId  = ?,
+                        @StartsAt        = ?,
+                        @EndsAt          = ?,
+                        @IsRecurring     = 0
+                    """,
+                    (
+                        enroll_id,
+                        target_date,
+                        geofence_zone_id,
+                        start_time,
+                        end_time,
+                    ),
+                )
+
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("Error in /api/driver/availability [PUT]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
