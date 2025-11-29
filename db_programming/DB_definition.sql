@@ -389,6 +389,7 @@ CREATE TABLE [dbo].[VehicleDocument] (
     [VehDocId] INT IDENTITY(1,1) NOT NULL,
     [VehicleId] UNIQUEIDENTIFIER NOT NULL,
     [DocType] NVARCHAR(100) NOT NULL,
+    [DocNo] VARCHAR(100) NOT NULL DEFAULT 1,
     [UploadedAt] UtcStamp DEFAULT GETUTCDATE(),
     [IssueDate] UtcStamp DEFAULT NULL,
     [ExpiryDate] UtcStamp DEFAULT NULL,
@@ -436,7 +437,7 @@ CREATE TABLE [dbo].[UserServiceEnrollment] (
 CREATE TABLE [dbo].[DriverAvailability] (
     [EnrollId] INT NOT NULL, -- reference valid enrollment ID (vehicle type, service type, ride type)
     [AvailabilityDate] DATE NOT NULL,
-    [GeofencezoneId] INT NOT NULL, -- works within this zone
+    [GeofencezoneId] INT NOT NULL, 
     [StartsAt] TIME(0) NOT NULL,
     [EndsAt] TIME(0) NOT NULL,
     [IsRecurring] BIT NOT NULL DEFAULT 0,

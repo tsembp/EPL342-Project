@@ -14,6 +14,8 @@ import Signup from "@/features/auth/pages/Signup";
 import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
 import DriverDashboard from "@/features/driver/pages/Dashboard";
+import VehicleDocuments from "@/features/driver/pages/VehicleDocuments";
+import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
@@ -94,6 +96,8 @@ function App() {
             <Route path="/driver/*" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>}>
               <Route index path="dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
               <Route path="documents" element={<DriverDocuments />} />
+              <Route path="/VehicleDocuments" element={<ProtectedRoute><VehicleDocuments /></ProtectedRoute>} />
+              <Route path="/add-vehicle" element={<ProtectedRoute><AddVehiclePage /></ProtectedRoute>} />
               <Route path="pending-approval" element={<PendingApproval />} />
             </Route>
 
