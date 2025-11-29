@@ -601,3 +601,130 @@ def set_driver_daily_availability():
     except Exception as e:
         print("Error in /api/driver/availability [PUT]:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+def get_ride_participants(cur, ride_id: int):
+    """
+    Returns (passenger_user_id, driver_user_id) for a ride, or (None, None) if not found.
+    """
+    cur.execute(
+        """
+        SELECT PassengerUserId, DriverUserId
+        FROM dbo.vw_RideParticipants
+        WHERE RideId = ?
+        """,
+        ride_id,
+    )
+    row = cur.fetchone()
+    if not row:
+        return None, None
+
+    return row.PassengerUserId, row.DriverUserId
+
+@driver_bp.route("/rides/<int:ride_id>/messages", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_ride_messages_for_driver(ride_id: int):
+    """
+    Get in-app chat messages for a ride (driver view).
+    Wraps dbo.usp_GetMessage.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Ensure ride exists and get participants
+                passenger_user_id, driver_user_id = get_ride_participants(cur, ride_id)
+                if not passenger_user_id or not driver_user_id:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                # Make sure the logged-in driver is one of the participants
+                if str(user_id) not in (str(passenger_user_id), str(driver_user_id)):
+                    return jsonify({"success": False, "error": "Not a participant of this ride"}), 403
+
+                cur.execute(
+                    "EXEC dbo.usp_GetMessage ?, ?",
+                    ride_id,
+                    user_id,
+                )
+                rows = cur.fetchall()
+
+        messages = []
+        for r in rows:
+            messages.append(
+                {
+                    "msgId": r.MsgId,
+                    "body": r.Body,
+                    "sentAt": r.SentAt.isoformat() if r.SentAt else None,
+                    "isMine": str(r.SenderUserId) == str(user_id),
+                }
+            )
+
+        return jsonify({"success": True, "messages": messages}), 200
+
+    except Exception as e:
+        print("Error in /api/driver/rides/<ride_id>/messages [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@driver_bp.route("/rides/<int:ride_id>/messages", methods=["POST"])
+@require_auth
+@require_role("D")
+def send_ride_message_for_driver(ride_id: int):
+    """
+    Send a new in-app message from the driver (or passenger if ever reused).
+    Wraps dbo.usp_SendMessage.
+    """
+    user_id = session["user_id"]
+    body = request.get_json(silent=True) or {}
+    text = (body.get("body") or "").strip()
+
+    if not text:
+        return jsonify({"success": False, "error": "Message body is required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                passenger_user_id, driver_user_id = get_ride_participants(cur, ride_id)
+                if not passenger_user_id or not driver_user_id:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                # Logged-in user must be a participant
+                if str(user_id) not in (str(passenger_user_id), str(driver_user_id)):
+                    return jsonify({"success": False, "error": "Not a participant of this ride"}), 403
+
+                # Decide recipient
+                if str(user_id) == str(driver_user_id):
+                    recipient_id = passenger_user_id
+                else:
+                    recipient_id = driver_user_id
+
+                cur.execute(
+                    "EXEC dbo.usp_SendMessage ?, ?, ?, ?",
+                    user_id,
+                    recipient_id,
+                    ride_id,
+                    text,
+                )
+
+                inserted = cur.fetchone()
+                conn.commit()
+
+        msg_id = inserted.MsgId
+        sent_at = inserted.SentAt.isoformat() if inserted.SentAt else None
+
+        return jsonify(
+            {
+                "success": True,
+                "message": {
+                    "msgId": msg_id,
+                    "body": text,
+                    "sentAt": sent_at,
+                    "isMine": True,
+                },
+            }
+        ), 200
+
+    except Exception as e:
+        print("Error in /api/driver/rides/<ride_id>/messages [POST]:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
