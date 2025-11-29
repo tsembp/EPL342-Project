@@ -329,7 +329,8 @@ def get_ride_request_details(request_id: int):
                         V.PlateNumber       AS VehiclePlate,
                         VT.Name             AS VehicleType,
                         IL.ApproxStartTime AS PlannedStart,
-                        IL.ApproxEndTime   AS PlannedEnd
+                        IL.ApproxEndTime   AS PlannedEnd,
+                        R.PriceFinal        AS PriceFinal
                     FROM dbo.Ride R
                     JOIN dbo.DispatchOffer DO
                         ON DO.OfferId = R.OfferId
@@ -374,6 +375,7 @@ def get_ride_request_details(request_id: int):
                                 if getattr(r, "PlannedEnd", None)
                                 else None
                             ),
+                            "priceFinal": float(r.PriceFinal) if getattr(r, "PriceFinal", None) is not None else None,
                         }
                     )
 
@@ -743,6 +745,115 @@ def create_ride_rating(ride_id: int):
                     ),
                     201,
                 )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+# Pay for rides of ride request
+@passenger_bp.route("/ride-requests/<int:request_id>/pay", methods=["POST"])
+@require_auth
+@require_role("P")
+def pay_for_ride_request(request_id: int):
+    """
+    Create payments for all completed rides of this ride request
+    that belong to the logged-in passenger and have no payment yet.
+    Expects JSON: { "paymentMethod": "CreditCard" | "Cash" }
+    """
+    user_id = session["user_id"]
+    data = request.json or {}
+
+    payment_method = data.get("paymentMethod", "CreditCard")
+    if payment_method not in ("CreditCard", "Cash"):
+        return jsonify({
+            "success": False,
+            "error": "Invalid payment method. Must be 'CreditCard' or 'Cash'."
+        }), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1) Verify ride request belongs to user and is Completed
+                cur.execute("""
+                    SELECT Status
+                    FROM dbo.RideRequest
+                    WHERE RequestId = ? AND PassengerId = ?
+                """, request_id, user_id)
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({
+                        "success": False,
+                        "error": "RideRequest not found"
+                    }), 404
+
+                request_status = row[0]
+                if request_status != "Completed":
+                    return jsonify({
+                        "success": False,
+                        "error": f"RideRequest is not in Completed status (current: {request_status})"
+                    }), 400
+
+                # 2) Find all completed rides for this request with no payment
+                cur.execute("""
+                    SELECT DISTINCT r.RideId
+                    FROM dbo.Ride r
+                    JOIN dbo.DispatchOffer dof ON r.OfferId = dof.OfferId
+                    JOIN dbo.ItineraryLeg il   ON dof.LegId = il.LegId
+                    WHERE il.RideRequestId = ?
+                      AND r.PassengerUserId = ?
+                      AND r.Status = 'Completed'
+                      AND r.Payment IS NULL
+                    ORDER BY r.RideId
+                """, request_id, user_id)
+                ride_rows = cur.fetchall()
+
+                if not ride_rows:
+                    return jsonify({
+                        "success": True,
+                        "requestId": request_id,
+                        "payments": [],
+                        "message": "No rides pending payment for this request."
+                    }), 200
+
+                payments = []
+
+                for r in ride_rows:
+                    ride_id = r[0]
+
+                    # Call the payment sproc for each ride
+                    cur.execute("""
+                        EXEC dbo.usp_CompleteRidePayment
+                            @RideId = ?,
+                            @PaymentMethod = ?
+                    """, ride_id, payment_method)
+
+                    result = cur.fetchone()
+                    if not result:
+                        raise Exception(f"No result returned from usp_CompleteRidePayment for RideId {ride_id}")
+
+                    # pyodbc row: access by attribute or index
+                    result_code = getattr(result, "Result", None) or result[0]
+
+                    if result_code != "SUCCESS":
+                        error_msg = getattr(result, "ErrorMessage", None) or "Unknown payment error"
+                        raise Exception(f"Payment failed for RideId {ride_id}: {error_msg}")
+
+                    payments.append({
+                        "rideId": int(getattr(result, "RideId", ride_id)),
+                        "paymentId": str(getattr(result, "PaymentId", "")),
+                        "finalPrice": float(getattr(result, "FinalPrice", 0)),
+                        "grossAmount": float(getattr(result, "GrossAmount", 0)),
+                        "platformFee": float(getattr(result, "PlatformFee", 0)),
+                        "driverPayout": float(getattr(result, "DriverPayout", 0)),
+                        "paymentMethod": getattr(result, "PaymentMethod", payment_method),
+                    })
+
+                conn.commit()
+
+        return jsonify({
+            "success": True,
+            "requestId": request_id,
+            "payments": payments,
+        }), 200
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

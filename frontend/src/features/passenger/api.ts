@@ -40,6 +40,7 @@ export interface RideSummary {
   driverPhoneMasked?: string;
   vehiclePlate?: string;
   vehicleType?: string;
+  priceFinal?: number;
 }
 
 export type RideRequestDetails = {
@@ -60,6 +61,16 @@ export type RideRequestDetails = {
   };
   progressStatus: string;
 };
+
+export interface RidePaymentSummary {
+  rideId: number;
+  paymentId: string;
+  finalPrice: number;
+  grossAmount: number;
+  platformFee: number;
+  driverPayout: number;
+  paymentMethod: string;
+}
 
 // == API Functions ==
 
@@ -156,3 +167,19 @@ export const submitRideRating = (
       }),
     }
   );
+
+export const payForRideRequest = (
+  requestId: number,
+  paymentMethod: "CreditCard" | "Cash" = "CreditCard"
+) => {
+  return fetchAPI<{
+    success: boolean;
+    requestId?: number;
+    payments?: RidePaymentSummary[];
+    message?: string;
+    error?: string;
+  }>(`/passenger/ride-requests/${requestId}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ paymentMethod }),
+  });
+};

@@ -1,20 +1,9 @@
--- =============================================
--- Stored Procedure: usp_CompleteRide
--- Description: Complete a ride and create payment transaction
--- Parameters:
---   @RideId: The ride to complete
---   @PaymentMethod: 'CreditCard' or 'Cash'
---   @PlatformFeePercent: Platform fee percentage (default 15%)
--- Returns: Success/Error message
--- =============================================
 IF OBJECT_ID('dbo.usp_CompleteRide', 'P') IS NOT NULL
     DROP PROCEDURE dbo.usp_CompleteRide;
 GO
 
 CREATE PROCEDURE dbo.usp_CompleteRide
-    @RideId             INT,
-    @PaymentMethod      NVARCHAR(20),
-    @PlatformFeePercent DECIMAL(5,2) = 15.0
+    @RideId INT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -67,19 +56,10 @@ BEGIN
 
         IF @ExistingPayment IS NOT NULL
         BEGIN
-            RAISERROR('Ride %d already has a payment and cannot be completed again.', 16, 1, @RideId);
-            RETURN;
-        END;
-
-        IF @PaymentMethod NOT IN ('CreditCard', 'Cash')
-        BEGIN
-            RAISERROR('PaymentMethod must be either CreditCard or Cash.', 16, 1);
-            RETURN;
-        END;
-
-        IF @PlatformFeePercent < 0 OR @PlatformFeePercent > 100
-        BEGIN
-            RAISERROR('PlatformFeePercent must be between 0 and 100.', 16, 1);
+            RAISERROR(
+                'Ride %d already has a payment; please check data consistency before completing.',
+                16, 1, @RideId
+            );
             RETURN;
         END;
 
@@ -149,7 +129,7 @@ BEGIN
         SET @DistanceKm = ROUND(@DistanceMeters / 1000.0, 2);
 
         ------------------------------------------------
-        -- 4. Update ride metrics
+        -- 4. Update ride metrics (time + distance)
         ------------------------------------------------
         UPDATE dbo.Ride
         SET 
@@ -159,75 +139,30 @@ BEGIN
         WHERE RideId = @RideId;
 
         ------------------------------------------------
-        -- 5. Price calculation
+        -- 5. Calculate and store PriceFinal
         ------------------------------------------------
         DECLARE @PriceFinal DECIMAL(12,2);
 
         SET @PriceFinal = dbo.ufn_CalculateRidePrice(@RideId);
 
-        IF @PriceFinal IS NULL OR @PriceFinal = 0
+        IF @PriceFinal IS NULL OR @PriceFinal <= 0
         BEGIN
             RAISERROR(
                 'Failed to calculate ride price for RideId %d. Please check pricing configuration.',
                 16, 1, @RideId
             );
-            ROLLBACK TRANSACTION;
             RETURN;
         END;
 
-        ------------------------------------------------
-        -- 6. Payment breakdown
-        ------------------------------------------------
-        DECLARE @GrossAmount  DECIMAL(10,2);
-        DECLARE @OsrhFee      DECIMAL(10,2);
-        DECLARE @DriverPayout DECIMAL(10,2);
-        DECLARE @PaymentId    UNIQUEIDENTIFIER;
-
-        SET @GrossAmount  = @PriceFinal;
-        SET @OsrhFee      = ROUND(@GrossAmount * (@PlatformFeePercent / 100.0), 2);
-        SET @DriverPayout = @GrossAmount - @OsrhFee;
-
-        IF @DriverPayout < 0
-            SET @DriverPayout = 0;
-
-        SET @PaymentId = NEWID();
-
-        INSERT INTO dbo.Payment (
-            PaymentId,
-            SenderUserId,
-            ReceiverUserId,
-            GrossAmount,
-            OsrhFee,
-            DriverPayout,
-            PaidAt,
-            Method,
-            Status
-        )
-        VALUES (
-            @PaymentId,
-            @PassengerId,
-            @DriverId,
-            @GrossAmount,
-            @OsrhFee,
-            @DriverPayout,
-            SYSUTCDATETIME(),
-            @PaymentMethod,
-            'Completed'
-        );
-
-        ------------------------------------------------
-        -- 7. Mark this ride as Completed
-        ------------------------------------------------
         UPDATE dbo.Ride
         SET 
             PriceFinal = @PriceFinal,
-            Payment    = @PaymentId,
             Status     = 'Completed'
         WHERE RideId = @RideId;
 
         ------------------------------------------------
         -- 8. Multi-leg: if all rides for the request are Completed,
-        --    mark RideRequest / Progress as Completed + (optional) aggregate totals
+        --    mark RideRequest / Progress as Completed + aggregate totals
         ------------------------------------------------
         DECLARE @RequestId INT;
 
@@ -239,7 +174,6 @@ BEGIN
 
         IF @RequestId IS NOT NULL
         BEGIN
-            -- Check if any ride for this request is NOT completed
             IF NOT EXISTS (
                 SELECT 1
                 FROM dbo.Ride r2
@@ -249,7 +183,6 @@ BEGIN
                   AND r2.Status <> 'Completed'
             )
             BEGIN
-                -- All rides Completed → aggregate totals for the trip
                 DECLARE @TotalDistanceKm       DECIMAL(10,2);
                 DECLARE @TotalDurationMinutes  INT;
                 DECLARE @TotalPrice            DECIMAL(12,2);
@@ -263,12 +196,10 @@ BEGIN
                 INNER JOIN dbo.ItineraryLeg il2   ON dof2.LegId = il2.LegId
                 WHERE il2.RideRequestId = @RequestId;
 
-                -- Update RideRequest & Progress final status
                 UPDATE dbo.RideRequest
                 SET 
                     Status    = 'Completed',
                     UpdatedAt = SYSUTCDATETIME()
-                    -- Optional: if you add columns later, set TotalPrice, TotalDistanceKm here
                 WHERE RequestId = @RequestId;
 
                 UPDATE dbo.RideRequestProgress
@@ -276,9 +207,6 @@ BEGIN
                     Status    = 'Completed',
                     UpdatedAt = SYSUTCDATETIME()
                 WHERE RequestId = @RequestId;
-
-                -- You can also RETURN the aggregated totals as part of the result,
-                -- but that's optional – see final SELECT below.
             END
         END;
 
@@ -288,17 +216,12 @@ BEGIN
         COMMIT TRANSACTION;
 
         SELECT 
-            'SUCCESS'      AS Result,
-            @RideId        AS RideId,
-            @PriceFinal    AS FinalPrice,
-            @GrossAmount   AS GrossAmount,
-            @OsrhFee       AS PlatformFee,
-            @DriverPayout  AS DriverPayout,
-            @PaymentId     AS PaymentId,
-            @PaymentMethod AS PaymentMethod,
-            @RequestId     AS RideRequestId,
-            @DistanceKm    AS DistanceKm,
-            @DurationMinutes AS DurationMinutes,
+            'SUCCESS'          AS Result,
+            @RideId            AS RideId,
+            @RequestId         AS RideRequestId,
+            @DistanceKm        AS DistanceKm,
+            @DurationMinutes   AS DurationMinutes,
+            @PriceFinal        AS FinalPrice,
             'Ride completed successfully.' AS Message;
 
     END TRY
@@ -318,6 +241,6 @@ BEGIN
             @ErrorState    AS ErrorState;
 
         RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
-    END CATCH
+    END CATCH;
 END;
 GO
