@@ -93,7 +93,7 @@ def login():
                 row = cur.fetchone()
 
                 if row:
-                    print(f"[LOGIN] Success! UserId: {row[0]}, Role: {row[1]}, Status: {row[4]}")
+                    print(f"[LOGIN] Success! UserId: {row[0]}, Role: {row[1]}, Status: {row[4]}, Username: {row[5]}")
                     session["user_id"] = str(row[0])
                     session["role"] = row[1]
                     session["account_type"] = row[2]
