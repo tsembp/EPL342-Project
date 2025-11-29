@@ -8,7 +8,7 @@ import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
 import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
-import { getRideRequestDetails, type RideRequestDetails } from "@/features/passenger/api";
+import { getRideRequestDetails, type RideRequestDetails, submitRideRating } from "@/features/passenger/api";
 import { 
   Clock,
   MapPin,
@@ -20,7 +20,17 @@ import {
   X,
   RefreshCw,
   Send,
+  Star,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+
 
 
 export default function RideRequestDetailsPage() {
@@ -31,6 +41,14 @@ export default function RideRequestDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRideId, setReviewRideId] = useState<number | null>(null);
+
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const [activeChat, setActiveChat] = useState<{
     rideId: number;
@@ -75,7 +93,7 @@ export default function RideRequestDetailsPage() {
       case "SearchingDrivers":
       case "Pending":
         return "bg-amber-500/10 text-amber-400 border-amber-500/60";
-      case "FullyMatched":
+      case "Completed":
       case "Matched":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/60";
       case "Cancelled":
@@ -88,10 +106,6 @@ export default function RideRequestDetailsPage() {
   const formattedPickupTime =
     data?.pickupAt ? new Date(data.pickupAt).toLocaleString() : "—";
 
-  // === MAP STUFF ===
-  // We assume backend now returns:
-  // data.pickup.latitude, data.pickup.longitude
-  // data.dropoff.latitude, data.dropoff.longitude
   const hasPickupCoords =
     data &&
     typeof (data as any).pickup?.latitude === "number" &&
@@ -257,7 +271,7 @@ export default function RideRequestDetailsPage() {
                     {/* Waiting-for-drivers block */}
                     <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
                       {data.progressStatus === "AllAccepted" ||
-                      data.progressStatus === "RidesCreated" ? (
+                      data.progressStatus === "RidesCreated"  || data?.progressStatus === "Completed"? (
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
                             <Car className="h-5 w-5 text-emerald-400" />
@@ -337,7 +351,7 @@ export default function RideRequestDetailsPage() {
           {/* BOTTOM: Rides */}
             <div className="w-full px-4 py-4">
             {/* If accepted → show rides */}
-            {(data?.progressStatus === "AllAccepted" || data?.progressStatus === "RidesCreated") &&
+            {(data?.progressStatus === "AllAccepted" || data?.progressStatus === "RidesCreated" || data?.progressStatus === "Completed") &&
               data?.rides && data.rides.length > 0 ? (
               <>
                 <h2 className="text-sm font-semibold text-neutral-200 mb-2">
@@ -378,17 +392,37 @@ export default function RideRequestDetailsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="mt-3 w-full border-neutral-700 bg-neutral-800 text-neutral-50 hover:bg-neutral-700 hover:text-emerald-400"
+                          className="mt-3 w-full border-neutral-700 bg-neutral-800 text-neutral-50 hover:bg-neutral-700 hover:text-emerald-400 flex items-center gap-1"
                           onClick={() =>
-                            setActiveChat({
-                              rideId: ride.rideId,
-                              driverName: ride.driverName,
-                            })
+                          setActiveChat({
+                            rideId: ride.rideId,
+                            driverName: ride.driverName,
+                          })
+                          }
+                          disabled={data.status === "Completed"}
+                          title={
+                          data.status === "Completed"
+                            ? "Can't chat if ride is completed"
+                            : undefined
                           }
                         >
-                          <MessageCircle className="h-4 w-4 mr-2 text-neutral-50" />
+                          <MessageCircle className="h-4 w-4 text-neutral-50" />
                           <span className="text-neutral-50 font-semibold">Chat</span>
                         </Button>
+                        { data.status === "Completed" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-3 w-full border-neutral-200 bg-neutral-50 text-neutral-900 hover:bg-neutral-200 hover:text-neutral-900"
+                              onClick={() => {
+                                setReviewRideId(ride.rideId);
+                                setReviewOpen(true);
+                              }}
+                            >
+                              <Star className="h-4 w-4 mr-2 text-neutral-900" />
+                              <span className="text-neutral-900 font-semibold">Leave a review</span>
+                            </Button>
+                        )}
                       </div>
                       {/* Arrow between legs, except after last leg */}
                       {idx < data.rides.length - 1 && (
@@ -420,6 +454,86 @@ export default function RideRequestDetailsPage() {
           onClose={() => setActiveChat(null)}
         />
       )}
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="bg-neutral-900 border border-neutral-800 text-neutral-50">
+          <DialogHeader>
+            <DialogTitle className="text-neutral-50">Leave a review</DialogTitle>
+          </DialogHeader>
+
+          {/* ⭐ STAR SELECTOR */}
+          <div className="flex gap-2 py-3 justify-center">
+            {[1, 2, 3, 4, 5].map((star) => {
+              const filled = hoverRating >= star || rating >= star;
+              return (
+                <Star
+                  key={star}
+                  className={`h-8 w-8 cursor-pointer transition-colors ${
+                    filled ? "text-yellow-400 fill-yellow-400" : "text-neutral-600"
+                  }`}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setRating(star)}
+                />
+              );
+            })}
+          </div>
+
+          {/* COMMENT FIELD */}
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Write your feedback..."
+            className="bg-neutral-800 border-neutral-700 text-neutral-50"
+          />
+
+          <DialogFooter className="pt-3">
+            <Button
+              variant="outline"
+              className="bg-neutral-800 border-neutral-600 text-white hover:bg-neutral-700 hover:text-emerald-400"
+              onClick={() => setReviewOpen(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              disabled={rating === 0 || submittingReview}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              onClick={async () => {
+                if (!reviewRideId) {
+                  toast.error("Missing ride id for review.");
+                  return;
+                }
+
+                try {
+                  setSubmittingReview(true);
+                  const res = await submitRideRating(reviewRideId, {
+                    stars: rating,
+                    comment: comment.trim() || undefined,
+                  });
+
+                  if (!res.success) {
+                    throw new Error(res.error || "Failed to submit review.");
+                  }
+
+                  toast.success("Review submitted. Thank you!");
+                  setReviewOpen(false);
+                  setRating(0);
+                  setHoverRating(0);
+                  setComment("");
+                } catch (err: any) {
+                  console.error(err);
+                  toast.error(err.message || "Failed to submit review.");
+                } finally {
+                  setSubmittingReview(false);
+                }
+              }}
+            >
+              {submittingReview ? "Submitting..." : "Submit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
