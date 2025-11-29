@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
 import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
-import { getRideRequestDetails, type RideRequestDetails, submitRideRating } from "@/features/passenger/api";
+import { getRideRequestDetails, type RideRequestDetails, submitRideRating, getRideLiveLocation, cancelRideRequest } from "@/features/passenger/api";
 import { 
   Clock,
   MapPin,
@@ -17,10 +18,8 @@ import {
   Car,
   User2,
   MessageCircle,
-  X,
-  RefreshCw,
-  Send,
   Star,
+  CarTaxiFront
 } from "lucide-react";
 import {
   Dialog,
@@ -104,6 +103,39 @@ export default function RideRequestDetailsPage() {
   };
 
   const hasRides = !!(data?.rides && data.rides.length > 0);
+
+  // Rides we care about for live tracking
+  const activeRides = useMemo(
+    () =>
+      data?.rides?.filter(
+        (r) => r.status === "Scheduled" || r.status === "InProgress"
+      ) ?? [],
+    [data]
+  );
+
+  // One query per active ride → live location
+  const liveQueries = useQueries({
+    queries: activeRides.map((ride) => ({
+      queryKey: ["ride-live-location", ride.rideId],
+      queryFn: () => getRideLiveLocation(ride.rideId),
+      enabled: activeRides.length > 0,
+    })),
+  });
+
+  // Map rideId -> liveLocation result
+  const liveLocationByRideId = useMemo(() => {
+    const map: Record<number, any> = {};
+
+    activeRides.forEach((ride, idx) => {
+      const q = liveQueries[idx];
+      if (q && q.data && q.data.success) {
+        map[ride.rideId] = q.data;
+      }
+    });
+
+    return map;
+  }, [activeRides, liveQueries]);
+
   const allRidesCompleted =
     hasRides && data!.rides!.every((r) => r.status === "Completed");
   const requestCompleted =
@@ -129,19 +161,20 @@ export default function RideRequestDetailsPage() {
   };
 
   const mapCenter: [number, number] = useMemo(() => {
-    if (hasPickupCoords) {
+    if (hasPickupCoords && data) {
       return [
         (data as any).pickup.latitude as number,
         (data as any).pickup.longitude as number,
       ];
     }
+
     return DEFAULT_MAP_CENTER as [number, number];
   }, [hasPickupCoords, data]);
 
   const markers = useMemo(() => {
     const m: {
       position: [number, number];
-      icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle";
+      icon?: "default" | "pickup" | "dropoff" | "station" | "vehicle" | "taxi";
       popup?: string;
       onClick?: () => void;
     }[] = [];
@@ -164,8 +197,27 @@ export default function RideRequestDetailsPage() {
       });
     }
 
+    if (data?.rides) {
+      for (const ride of data.rides) {
+        const live = liveLocationByRideId[ride.rideId];
+        if (
+          live &&
+          live.success &&
+          live.hasLocation &&
+          typeof live.lat === "number" &&
+          typeof live.lng === "number"
+        ) {
+          m.push({
+            position: [live.lat, live.lng],
+            icon: "taxi",
+            popup: `Driver for leg ${ride.legIndex}: ${ride.driverName}`,
+          });
+        }
+      }
+    }
+
     return m;
-  }, [hasPickupCoords, hasDropoffCoords, data]);
+  }, [hasPickupCoords, hasDropoffCoords, data, liveLocationByRideId]);
 
   const polyline: [number, number][] = useMemo(() => {
     if (hasPickupCoords && hasDropoffCoords && data) {
@@ -177,6 +229,35 @@ export default function RideRequestDetailsPage() {
     }
     return [];
   }, [hasPickupCoords, hasDropoffCoords, data]);
+
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelRequest = async () => {
+    if (!data) return;
+
+    if (data.status !== "Pending") {
+      toast.error("You can only cancel a pending request.");
+      return;
+    }
+
+    try {
+      setCancelling(true);
+
+      const res = await cancelRideRequest(data.requestId);
+      if (!res.success) {
+        throw new Error(res.error || "Failed to cancel ride request.");
+      }
+
+      toast.success("Your ride has been cancelled.");
+      await loadDetails(true);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Failed to cancel ride request.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">
@@ -284,7 +365,8 @@ export default function RideRequestDetailsPage() {
                     {/* Waiting-for-drivers block */}
                     <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
                       {data.progressStatus === "AllAccepted" ||
-                      data.progressStatus === "RidesCreated"  || data?.progressStatus === "Completed"? (
+                      data.progressStatus === "RidesCreated" ||
+                      data.progressStatus === "Completed" ? (
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
                             <Car className="h-5 w-5 text-emerald-400" />
@@ -295,6 +377,20 @@ export default function RideRequestDetailsPage() {
                             </p>
                             <p className="mt-1 text-xs text-neutral-400">
                               Drivers have accepted your ride. Your trip will begin soon.
+                            </p>
+                          </div>
+                        </div>
+                      ) : data.progressStatus === "Failed" ? (
+                        <div className="flex items-center gap-3">
+                          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
+                            <Car className="h-5 w-5 text-red-400" />
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-400">
+                              Ride request has been cancelled.
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              You have cancelled this ride request.
                             </p>
                           </div>
                         </div>
@@ -317,20 +413,43 @@ export default function RideRequestDetailsPage() {
                           </div>
                         </div>
                       )}
-                      <div className="mt-4 flex items-center justify-between gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => loadDetails(true)}
-                          disabled={refreshing || requestCompleted}
-                          className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
-                        >
-                          {refreshing && (
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                          )}
-                          Refresh status
-                        </Button>
-                      </div>
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                          {/* Left: Refresh */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => loadDetails(true)}
+                            disabled={
+                              refreshing ||
+                              requestCompleted ||
+                              ["AllAccepted", "RidesCreated", "Completed"].includes(data?.progressStatus) ||
+                              ["Accepted", "Cancelled", "Completed"].includes(data?.status)
+                            }
+                            className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                          >
+                            {refreshing && (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            )}
+                            Refresh status
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelRequest}
+                            disabled={
+                              cancelling ||
+                              ["Cancelled", "Declined", "Accepted"].includes(data.status) ||
+                              ["Failed", "Completed", "RidesCreated", "AllAccepted"].includes(data.progressStatus)
+                            }
+                            className="border-red-500/70 text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-100"
+                          >
+                            {cancelling && (
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            )}
+                            Cancel ride
+                          </Button>
+                        </div>
                     </div>
                   </>
                 )}

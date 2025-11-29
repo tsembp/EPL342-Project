@@ -22,7 +22,6 @@ import {
   MapPin,
   Settings,
 } from "lucide-react";
-import { useAuthStore } from "@/features/auth/store";
 import { VehicleManagementSection } from "@/features/driver/components/VehicleManagementSection";
 
 
