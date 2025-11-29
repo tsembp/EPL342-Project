@@ -9,6 +9,7 @@ interface AuthState {
   userId: string | null;
   email: string | null;
   accountType: 'USER' | 'STAFF' | null;
+  username: string | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
   signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => Promise<void>;
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       userRole: 'passenger',
       userId: null,
       email: null,
+      username: null,
       accountType: null,
       
       login: async (email, password) => {
@@ -49,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               userId: responseWithVerification.userId,
               email: responseWithVerification.email,
+              username: responseWithVerification.username,
               accountType: responseWithVerification.accountType === 'STAFF' ? 'STAFF' : 'USER',
               userRole: mapRoleToUserRole(responseWithVerification.role),
             });
@@ -82,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           userId: null,
           email: null,
+          username: null,
           accountType: null,
           userRole: 'passenger',
         });
@@ -95,6 +99,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               userId: data.userId,
               email: data.email,
+              username: data.username,
               accountType: data.accountType,
               userRole: mapRoleToUserRole(data.role!),
             });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { useSearchParams } from "react-router-dom";
+import { useAuthStore } from "@/lib/store";
 import {
   Tabs,
   TabsList,
@@ -22,21 +23,25 @@ import {
   Settings,
 } from "lucide-react";
 
+
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
 import DriverProfile from "@/features/driver/pages/DriverProfile";
 import { DriverScheduleSection } from "@/features/driver/pages/DriverScheduleSection";
 import { DriverHistorySection } from "@/features/driver/pages/DriverHistorySection";
+import { DriverAvailabilitySection } from "@/features/driver/pages/DriverAvailabilitySection";
 
 type TabKey =
   | "rides"
   | "offers"
   | "services"
   | "vehicles"
-  | "earnings"
+  | "availability"
   | "history"
   | "profile";
 
 export default function Dashboard() {
+
+  const username = useAuthStore((state) => state.username);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabKey) || "rides";
@@ -78,7 +83,7 @@ export default function Dashboard() {
                   Driver mode
                 </p>
                 <h1 className="text-xl font-semibold text-neutral-50 sm:text-2xl">
-                  Welcome back, Driver
+                  Welcome back, {username || "Driver"}
                 </h1>
                 <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
                   <Badge
@@ -149,10 +154,10 @@ export default function Dashboard() {
               Vehicles
             </TabsTrigger>
             <TabsTrigger
-              value="earnings"
+              value="availability"
               className="text-xs sm:text-sm text-neutral-400 data-[state=active]:bg-neutral-800 data-[state=active]:text-neutral-50"
             >
-              Earnings
+              Availability
             </TabsTrigger>
             <TabsTrigger
               value="history"
@@ -196,16 +201,10 @@ export default function Dashboard() {
               description="Here you’ll register vehicles, upload vehicle documents, and see verification status."
             />
           </TabsContent>
-
-          {/* EARNINGS TAB */}
-          <TabsContent value="earnings">
-            <PlaceholderSection
-              icon={<CreditCard className="h-5 w-5 text-emerald-400" />}
-              title="Earnings"
-              description="A dark-mode earnings dashboard with today, weekly, monthly stats and charts will live here."
-            />
+          {/* AVAILABILITY TAB */}
+          <TabsContent value="availability">
+            <DriverAvailabilitySection />
           </TabsContent>
-
           {/* HISTORY TAB */}
           <TabsContent value="history">
             <DriverHistorySection />

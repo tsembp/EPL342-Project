@@ -28,7 +28,6 @@ BEGIN
         RETURN;
     END;
 
-    -- ❌ NO @EndedAt here, usp_CompleteRide handles it
     EXEC dbo.usp_CompleteRide
          @RideId             = @RideId,
          @PaymentMethod      = @PaymentMethod,
