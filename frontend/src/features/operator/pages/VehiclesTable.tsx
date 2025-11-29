@@ -1,12 +1,8 @@
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+// src/features/operator/pages/VehiclesTable.tsx
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
 
 export type VehicleRow = {
   id: string;
@@ -21,119 +17,131 @@ export type VehicleRow = {
   docsStatus: "ok" | "expiring" | "expired";
 };
 
-export default function VehiclesTable({ data }: { data: VehicleRow[] }) {
+interface VehiclesTableProps {
+  data: VehicleRow[];
+}
+
+function statusBadge(status: VehicleRow["status"]) {
+  switch (status) {
+    case "verified":
+      return (
+        <Badge className="rounded-full bg-emerald-600/80 text-emerald-50 border border-emerald-500/70 text-xs">
+          Verified
+        </Badge>
+      );
+    case "rejected":
+      return (
+        <Badge className="rounded-full bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
+          Rejected
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="rounded-full bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
+          Pending
+        </Badge>
+      );
+  }
+}
+
+function docsBadge(docsStatus: VehicleRow["docsStatus"]) {
+  switch (docsStatus) {
+    case "expiring":
+      return (
+        <Badge className="rounded-full bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
+          At risk
+        </Badge>
+      );
+    case "expired":
+      return (
+        <Badge className="rounded-full bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
+          Expired
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="rounded-full bg-emerald-700/80 text-emerald-50 border border-emerald-500/70 text-xs">
+          Ok
+        </Badge>
+      );
+  }
+}
+
+export default function VehiclesTable({ data }: VehiclesTableProps) {
+  const navigate = useNavigate();
+
+  if (!data.length) {
+    return (
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 px-6 py-10 text-center text-sm text-neutral-400">
+        No vehicles found.
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full rounded-xl border border-neutral-800/70 bg-neutral-950/50 shadow-lg overflow-hidden">
-      <Table className="w-full">
-        <TableHeader className="bg-neutral-900/80">
-          <TableRow className="border-b border-neutral-800/80">
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Owner
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Plate
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Type
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Seats
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Cargo
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Status
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              #Enrollments
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              MOT Expiry
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-              Docs
-            </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400 text-right">
-              Actions
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody className="bg-neutral-950/40">
+    <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900/60">
+      <table className="min-w-full text-sm text-neutral-200">
+        <thead className="border-b border-neutral-800 bg-neutral-900/80 text-xs uppercase tracking-wide text-neutral-500">
+          <tr>
+            <th className="px-4 py-3 text-left">Owner</th>
+            <th className="px-4 py-3 text-left">Plate</th>
+            <th className="px-4 py-3 text-left">Type</th>
+            <th className="px-4 py-3 text-right">Seats</th>
+            <th className="px-4 py-3 text-right">Cargo</th>
+            <th className="px-4 py-3 text-left">Status</th>
+            <th className="px-4 py-3 text-right">#Enrollments</th>
+            <th className="px-4 py-3 text-left">MOT Expiry</th>
+            <th className="px-4 py-3 text-left">Docs</th>
+            <th className="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
           {data.map((row) => (
-            <TableRow
+            <tr
               key={row.id}
-              className="border-b border-neutral-900/80 last:border-0 hover:bg-neutral-900/70 transition-colors"
+              className="border-b border-neutral-800/70 hover:bg-neutral-800/40 transition-colors"
             >
-              <TableCell className="text-sm text-neutral-100">
+              <td className="px-4 py-3 whitespace-nowrap text-neutral-100">
                 {row.owner}
-              </TableCell>
-              <TableCell className="text-sm text-neutral-100 font-medium">
+              </td>
+              <td className="px-4 py-3 font-mono text-sm text-neutral-50">
                 {row.plate}
-              </TableCell>
-              <TableCell className="text-sm text-neutral-200">
-                {row.type}
-              </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              </td>
+              <td className="px-4 py-3 text-neutral-300">{row.type}</td>
+              <td className="px-4 py-3 text-right tabular-nums">
                 {row.seats}
-              </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums">
                 {row.cargo}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className={
-                    "rounded-full px-2.5 py-0.5 text-[11px] font-medium border " +
-                    (row.status === "verified"
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-                      : row.status === "pending"
-                      ? "bg-amber-500/10 text-amber-300 border-amber-500/40"
-                      : "bg-rose-500/10 text-rose-300 border-rose-500/40")
-                  }
-                >
-                  {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              </td>
+              <td className="px-4 py-3">{statusBadge(row.status)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">
                 {row.enrollments}
-              </TableCell>
-              <TableCell className="text-sm text-neutral-300">
-                {row.motExpiry}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className={
-                    "rounded-full px-2.5 py-0.5 text-[11px] font-medium border " +
-                    (row.docsStatus === "ok"
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-                      : row.docsStatus === "expiring"
-                      ? "bg-amber-500/10 text-amber-300 border-amber-500/40"
-                      : "bg-rose-500/10 text-rose-300 border-rose-500/40")
+              </td>
+              <td className="px-4 py-3 text-neutral-300">
+                {row.motExpiry || "—"}
+              </td>
+              <td className="px-4 py-3">{docsBadge(row.docsStatus)}</td>
+              <td className="px-4 py-3 text-right">
+                <Button
+                  size="sm"
+                  className="h-8 px-3 rounded-full bg-emerald-500/95 hover:bg-emerald-400 text-xs font-medium text-emerald-950 border border-emerald-300 shadow-sm flex items-center gap-1 ml-auto"
+                  onClick={() =>
+                    navigate(
+                      `/operator/documents?vehicleId=${encodeURIComponent(
+                        row.id,
+                      )}`,
+                    )
                   }
                 >
-                  {row.docsStatus.charAt(0).toUpperCase() +
-                    row.docsStatus.slice(1)}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <button className="text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:underline">
-                  View
-                </button>
-              </TableCell>
-            </TableRow>
+                  <FileText className="h-3 w-3" />
+                  <span>View docs</span>
+                </Button>
+              </td>
+            </tr>
           ))}
-          {data.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={10}
-                className="py-6 text-center text-sm text-neutral-500"
-              >
-                No vehicles found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 }
