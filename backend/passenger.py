@@ -89,8 +89,9 @@ def cancel_ride_request(request_id: int):
                 # Run the cancel sproc
                 cur.execute("""
                     EXEC dbo.usp_RideRequest_Cancel
+                        @PassengerId=?,
                         @RequestId=?
-                """, request_id)
+                """, user_id, request_id)
                 conn.commit()
 
         return jsonify({"success": True}), 200
