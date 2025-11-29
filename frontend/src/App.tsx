@@ -14,11 +14,15 @@ import Signup from "@/features/auth/pages/Signup";
 import DriverDocuments from "@/features/driver/pages/DriverDocuments";
 import PendingApproval from "@/features/driver/pages/PendingApproval";
 import DriverDashboard from "@/features/driver/pages/Dashboard";
+import VehicleDocuments from "@/features/driver/pages/VehicleDocuments";
+import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
-import Profile from "@/features/passenger/pages/Profile";  
+import Services from "@/features/passenger/pages/Services";
+import Profile from "@/features/passenger/pages/Profile";
+import TripDetail from "@/features/passenger/pages/TripDetail";
 import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
@@ -72,30 +76,93 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-
-            {/* PASSENGER */}
+            
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             
             <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
               <Route index element={<PassengerHome />} />
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
-              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
+              <Route
+                path="rides/:requestId/details"
+                element={<RideRequestDetailsPage />}
+              />
               <Route path="checkout" element={<CheckoutPage />} />
             </Route>
 
-            <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
-            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
+            <Route
+              path="/gdpr"
+              element={
+                <ProtectedRoute>
+                  <GDPRRequest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/gdpr/export"
+              element={
+                <ProtectedRoute>
+                  <GDPRExport />
+                </ProtectedRoute>
+              }
+            />
 
             {/* DRIVER */}
-            <Route path="/driver/*" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>}>
-              <Route index path="dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
-              <Route path="documents" element={<DriverDocuments />} />
-              <Route path="pending-approval" element={<PendingApproval />} />
-            </Route>
+            {/* main dashboard (tabs, including Vehicles tab) */}
+            <Route
+              path="/driver"
+              element={
+                <ProtectedRoute>
+                  <DriverDashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* driver personal docs */}
+            <Route
+              path="/driver/documents"
+              element={
+                <ProtectedRoute>
+                  <DriverDocuments />
+                </ProtectedRoute>
+              }
+            />
+            {/* vehicle docs for a specific vehicle (navigated with state.vehicleId) */}
+            <Route
+              path="/driver/VehicleDocuments"
+              element={
+                <ProtectedRoute>
+                  <VehicleDocuments />
+                </ProtectedRoute>
+              }
+            />
+            {/* add vehicle page */}
+            <Route
+              path="/driver/add-vehicle"
+              element={
+                <ProtectedRoute>
+                  <AddVehiclePage />
+                </ProtectedRoute>
+              }
+            />
+            {/* pending approval page */}
+            <Route
+              path="/driver/pending-approval"
+              element={
+                <ProtectedRoute>
+                  <PendingApproval />
+                </ProtectedRoute>
+              }
+            />
 
             {/* OPERATOR */}
-            <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
+            <Route
+              path="/operator/*"
+              element={
+                <ProtectedRoute>
+                  <OperatorDashboard />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Overview />} />
               <Route path="overview" element={<Overview />} />
               <Route path="users" element={<UsersDrivers />} />
@@ -108,9 +175,15 @@ function App() {
               <Route path="logs" element={<SystemAuditLogs />} />
             </Route>
 
-
             {/* ADMIN */}
-            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>}>
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <AdminPendingOperatorsPage />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<AdminPendingOperatorsPage />} />
               <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
             </Route>

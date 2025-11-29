@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Tabs,
   TabsList,
@@ -6,54 +7,92 @@ import {
   TabsContent,
 } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Loader2 } from "lucide-react";
 import VehiclesTable, { VehicleRow } from "./VehiclesTable";
+import { fetchAPI } from "@/lib/apiClient";
 
-const demoVehicles: VehicleRow[] = [
-  {
-    id: "1",
-    owner: "D. Papadopoulos",
-    plate: "KAA123",
-    type: "Sedan",
-    seats: 4,
-    cargo: "300L",
-    status: "verified",
-    enrollments: 2,
-    motExpiry: "2026-01-10",
-    docsStatus: "ok",
-  },
-  {
-    id: "2",
-    owner: "A. Ioannou",
-    plate: "ZBB456",
-    type: "SUV",
-    seats: 5,
-    cargo: "500L",
-    status: "pending",
-    enrollments: 1,
-    motExpiry: "2025-12-01",
-    docsStatus: "expiring",
-  },
-  {
-    id: "3",
-    owner: "M. Christou",
-    plate: "XCC789",
-    type: "Van",
-    seats: 2,
-    cargo: "1200L",
-    status: "rejected",
-    enrollments: 0,
-    motExpiry: "2024-11-20",
-    docsStatus: "expired",
-  },
-];
+function mapVehicleFromApi(row: any): VehicleRow {
+  // Status mapping
+  const rawStatus = String(row.VehicleStatus ?? row.Status ?? "").toLowerCase();
+  let status: VehicleRow["status"] = "pending";
+  if (rawStatus === "active" || rawStatus === "verified") {
+    status = "verified";
+  } else if (rawStatus === "rejected" || rawStatus === "inactive") {
+    status = "rejected";
+  }
+
+  // Docs health mapping
+  const rawDocs = String(row.DocsStatus ?? row.DocsHealth ?? "").toLowerCase();
+  let docsStatus: VehicleRow["docsStatus"] = "ok";
+  if (rawDocs.includes("expir")) {
+    docsStatus = "expiring";
+  }
+  if (rawDocs.includes("expired") || rawDocs.includes("bad")) {
+    docsStatus = "expired";
+  }
+
+  // MOT expiry formatting
+  const motRaw = row.MotExpiry ?? row.MOTExpiry ?? row.NextMotExpiry ?? null;
+  let motExpiry = "";
+  if (motRaw) {
+    const d = new Date(motRaw);
+    if (!isNaN(d.getTime())) {
+      motExpiry = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    }
+  }
+
+  return {
+    id: String(row.VehicleId ?? row.Id ?? ""),
+    owner: String(row.OwnerName ?? row.Owner ?? row.DriverName ?? "Unknown"),
+    plate: String(row.PlateNumber ?? row.Plate ?? ""),
+    type: String(row.VehicleType ?? row.Type ?? ""),
+    seats: Number(row.Seats ?? row.SeatCount ?? 0),
+    cargo:
+      row.CargoVolume != null
+        ? String(row.CargoVolume)
+        : String(row.Cargo ?? ""),
+    status,
+    enrollments: Number(
+      row.EnrollmentsCount ?? row.ActiveEnrollments ?? row.NumEnrollments ?? 0
+    ),
+    motExpiry,
+    docsStatus,
+  };
+}
+
+async function getVehiclesOverview(): Promise<VehicleRow[]> {
+  const apiRows = await fetchAPI<any[]>("/operator/vehicles-overview");
+  return apiRows.map(mapVehicleFromApi);
+}
 
 export default function Vehicles() {
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"all" | "pending" | "risk">("all");
 
-  const filteredAll = demoVehicles.filter(
-    (v) =>
-      v.owner.toLowerCase().includes(search.toLowerCase()) ||
-      v.plate.toLowerCase().includes(search.toLowerCase())
+  const {
+    data: vehicles = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["operatorVehiclesOverview"],
+    queryFn: getVehiclesOverview,
+  });
+
+  const matchesSearch = (v: VehicleRow) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      v.owner.toLowerCase().includes(q) ||
+      v.plate.toLowerCase().includes(q)
+    );
+  };
+
+  const filteredAll = vehicles.filter(matchesSearch);
+  const pendingVehicles = vehicles.filter(
+    (v) => v.status === "pending" && matchesSearch(v)
+  );
+  const riskVehicles = vehicles.filter(
+    (v) => v.docsStatus !== "ok" && matchesSearch(v)
   );
 
   return (
@@ -69,7 +108,7 @@ export default function Vehicles() {
           </p>
         </div>
 
-        <Tabs defaultValue="all">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
             <TabsTrigger
               value="all"
@@ -91,7 +130,7 @@ export default function Vehicles() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all" className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4">
             <div className="flex items-center gap-4">
               <Input
                 placeholder="Search by owner or plate…"
@@ -99,23 +138,33 @@ export default function Vehicles() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-xs border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
               />
-              {/* Future filters (vehicle type, status, docs) can go here */}
             </div>
 
-            <VehiclesTable data={filteredAll} />
-          </TabsContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10 text-neutral-400 text-sm gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading vehicles…</span>
+              </div>
+            ) : isError ? (
+              <div className="py-10 text-center text-sm text-red-400">
+                Failed to load vehicles overview.
+              </div>
+            ) : (
+              <>
+                <TabsContent value="all" className="mt-0">
+                  <VehiclesTable data={filteredAll} />
+                </TabsContent>
 
-          <TabsContent value="pending" className="mt-4">
-            <VehiclesTable
-              data={demoVehicles.filter((v) => v.status === "pending")}
-            />
-          </TabsContent>
+                <TabsContent value="pending" className="mt-0">
+                  <VehiclesTable data={pendingVehicles} />
+                </TabsContent>
 
-          <TabsContent value="risk" className="mt-4">
-            <VehiclesTable
-              data={demoVehicles.filter((v) => v.docsStatus !== "ok")}
-            />
-          </TabsContent>
+                <TabsContent value="risk" className="mt-0">
+                  <VehiclesTable data={riskVehicles} />
+                </TabsContent>
+              </>
+            )}
+          </div>
         </Tabs>
       </div>
     </div>

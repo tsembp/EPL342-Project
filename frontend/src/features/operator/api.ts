@@ -40,6 +40,17 @@ export const getPendingVehicleDocuments = async () => {
   return Array.isArray(res) ? res : [];  
 };
 
+export const getAcceptedPersonDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/accepted-person-documents");
+  return Array.isArray(res) ? res : [];
+};
+
+export const getRejectedPersonDocuments = async () => {
+  const res = await fetchAPI<any[]>("/operator/rejected-person-documents");
+  return Array.isArray(res) ? res : [];
+};
+
+
 export const reviewPersonDocument = (params: {
   docId: number;
   status: "Accepted" | "Rejected";
