@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
+import { useSearchParams } from "react-router-dom";
+import { useAuthStore } from "@/lib/store";
 import {
   Tabs,
   TabsList,
@@ -23,22 +25,34 @@ import {
 import { useAuthStore } from "@/features/auth/store";
 import { VehicleManagementSection } from "@/features/driver/components/VehicleManagementSection";
 
+
+import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
+import DriverProfile from "@/features/driver/pages/DriverProfile";
+import { DriverScheduleSection } from "@/features/driver/pages/DriverScheduleSection";
+import { DriverHistorySection } from "@/features/driver/pages/DriverHistorySection";
+import { DriverAvailabilitySection } from "@/features/driver/pages/DriverAvailabilitySection";
+
 type TabKey =
-  | "home"
+  | "rides"
   | "offers"
   | "services"
   | "vehicles"
-  | "earnings"
+  | "availability"
   | "history"
   | "profile";
 
-export default function DriverDashboard() {
-  const [tab, setTab] = useState<TabKey>("home");
+export default function Dashboard() {
+
+  const username = useAuthStore((state) => state.username);
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as TabKey) || "rides";
+  
+  const [tab, setTab] = useState<TabKey>(initialTab);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
   const userName = useAuthStore((state) => state.username);
 
-  // NOTE: In a later step we will hook this to the backend
   async function handleToggleOnline(next: boolean) {
     setIsTogglingOnline(true);
     try {
@@ -48,6 +62,12 @@ export default function DriverDashboard() {
       setIsTogglingOnline(false);
     }
   }
+
+  const handleTabChange = (v: string) => {
+    const newTab = v as TabKey;
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50">
@@ -66,7 +86,7 @@ export default function DriverDashboard() {
                   Driver mode
                 </p>
                 <h1 className="text-xl font-semibold text-neutral-50 sm:text-2xl">
-                  Welcome back, {userName || "Driver"}
+                  Welcome back, {username || "Driver"}
                 </h1>
                 <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
                   <Badge
@@ -108,15 +128,15 @@ export default function DriverDashboard() {
         {/* Tabs */}
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as TabKey)}
+          onValueChange={handleTabChange}
           className="space-y-4"
         >
           <TabsList className="grid w-full grid-cols-7 rounded-xl bg-neutral-900/70 p-1">
             <TabsTrigger
-              value="home"
+              value="rides"
               className="text-xs sm:text-sm text-neutral-400 data-[state=active]:bg-neutral-800 data-[state=active]:text-neutral-50"
             >
-              Home
+              Rides
             </TabsTrigger>
             <TabsTrigger
               value="offers"
@@ -137,10 +157,10 @@ export default function DriverDashboard() {
               Vehicles
             </TabsTrigger>
             <TabsTrigger
-              value="earnings"
+              value="availability"
               className="text-xs sm:text-sm text-neutral-400 data-[state=active]:bg-neutral-800 data-[state=active]:text-neutral-50"
             >
-              Earnings
+              Availability
             </TabsTrigger>
             <TabsTrigger
               value="history"
@@ -156,22 +176,15 @@ export default function DriverDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* HOME TAB */}
-          <TabsContent value="home">
-            <DriverHomeSection
-              isOnline={isOnline}
-              onRegisterServiceClick={() => setTab("services")}
-              onRegisterVehicleClick={() => setTab("vehicles")}
-            />
+          {/* RIDES TAB */}
+          <TabsContent value="rides">
+            <DriverScheduleSection />
           </TabsContent>
 
-          {/* OFFERS TAB */}
+
+          {/* OFFERS TAB – now split */}
           <TabsContent value="offers">
-            <PlaceholderSection
-              icon={<MapPin className="h-5 w-5 text-emerald-400" />}
-              title="Offers & active rides"
-              description="Here you’ll see incoming dispatch offers and manage your active ride. We’ll wire this up to the backend next."
-            />
+            <DriverOffersSection />
           </TabsContent>
 
           {/* SERVICES TAB */}
@@ -187,32 +200,18 @@ export default function DriverDashboard() {
           <TabsContent value="vehicles">
             <VehicleManagementSection />
           </TabsContent>
-
-          {/* EARNINGS TAB */}
-          <TabsContent value="earnings">
-            <PlaceholderSection
-              icon={<CreditCard className="h-5 w-5 text-emerald-400" />}
-              title="Earnings"
-              description="A dark-mode earnings dashboard with today, weekly, monthly stats and charts will live here."
-            />
+          {/* AVAILABILITY TAB */}
+          <TabsContent value="availability">
+            <DriverAvailabilitySection />
           </TabsContent>
-
           {/* HISTORY TAB */}
           <TabsContent value="history">
-            <PlaceholderSection
-              icon={<History className="h-5 w-5 text-emerald-400" />}
-              title="Ride history"
-              description="Past trips, filters, and detailed receipts will be shown here."
-            />
+            <DriverHistorySection />
           </TabsContent>
 
           {/* PROFILE TAB */}
           <TabsContent value="profile">
-            <PlaceholderSection
-              icon={<Settings className="h-5 w-5 text-emerald-400" />}
-              title="Profile & GDPR"
-              description="Profile settings, notification preferences, and GDPR tools (export data, right-to-be-forgotten) will be here."
-            />
+            <DriverProfile />
           </TabsContent>
         </Tabs>
       </main>

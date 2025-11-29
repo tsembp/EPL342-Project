@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/store";
+import { RoleRedirect } from "@/components/RoleRedirect";
 
 import Login from "@/features/auth/pages/Login";
 import Signup from "@/features/auth/pages/Signup";
@@ -17,12 +18,15 @@ import VehicleDocuments from "@/features/driver/pages/VehicleDocuments";
 import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 
 // PASSENGER
+import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
 import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";  
 import TripDetail from "@/features/passenger/pages/TripDetail";
-import CreateRide from "@/features/passenger/pages/CreateRide";
+import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
+import RideHistory from "@/features/passenger/pages/RideHistory";
+import CheckoutPage from "@/features/passenger/pages/CheckoutPage";
 
 // OPERATOR
 import OperatorDashboard from "@/features/operator/pages/OperatorDashboard";
@@ -36,11 +40,16 @@ import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
 
+// ADMIN
+import AdminPendingOperatorsPage from "@/features/admin/pages/AdminPendingOperators";
+
 // GDPR
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
 import NotFound from "@/pages/NotFound";
 import RideRequestDetailsPage from "./features/passenger/pages/RideRequestDetails";
+
+import AdminLogin from "@/features/auth/pages/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -63,30 +72,38 @@ function App() {
           <Toaster />
           <Sonner />
           <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/" element={<RoleRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* PASSENGER */}
-            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/trip/:id" element={<ProtectedRoute><TripDetail /></ProtectedRoute>} />
-
-            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
-              <Route path="ride" element={<CreateRide />} />
-              <Route path="rides/:requestId" element={<TripDetail />} />
-              <Route index element={<Services />} />
+            
+            <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
+              <Route index element={<PassengerHome />} />
+              <Route path="ride" element={<PassengerHome />} />
+              <Route path="history" element={<RideHistory />} />
+              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
             </Route>
 
+            <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
+            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
+
             {/* DRIVER */}
-            <Route path="/driver/dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
-            <Route path="/driver/documents" element={<DriverDocuments />} />
-            <Route path="/driver/VehicleDocuments" element={<ProtectedRoute><VehicleDocuments /></ProtectedRoute>} />
-            <Route path="/driver/add-vehicle" element={<ProtectedRoute><AddVehiclePage /></ProtectedRoute>} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
+            <Route path="/driver/*" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>}>
+              <Route index path="dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+              <Route path="documents" element={<DriverDocuments />} />
+              <Route path="/VehicleDocuments" element={<ProtectedRoute><VehicleDocuments /></ProtectedRoute>} />
+              <Route path="/add-vehicle" element={<ProtectedRoute><AddVehiclePage /></ProtectedRoute>} />
+              <Route path="pending-approval" element={<PendingApproval />} />
+            </Route>
 
             {/* OPERATOR */}
             <Route path="/operator/*" element={<ProtectedRoute><OperatorDashboard /></ProtectedRoute>}>
+              <Route index element={<Overview />} />
               <Route path="overview" element={<Overview />} />
               <Route path="users" element={<UsersDrivers />} />
               <Route path="vehicles" element={<Vehicles />} />
@@ -96,16 +113,14 @@ function App() {
               <Route path="rides" element={<RidesOperations />} />
               <Route path="reports" element={<ReportsAnalytics />} />
               <Route path="logs" element={<SystemAuditLogs />} />
-              <Route index element={<Overview />} />
             </Route>
 
-            <Route path="/passenger/*" element={<ProtectedRoute><Home /></ProtectedRoute>}>
-              <Route path="ride" element={<CreateRide />} />
-              <Route path="rides/:requestId/details" element={<RideRequestDetailsPage />} />
-              <Route index element={<Services />} />
+
+            {/* ADMIN */}
+            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>}>
+              <Route index element={<AdminPendingOperatorsPage />} />
+              <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
             </Route>
-            <Route path="/gdpr" element={<ProtectedRoute><GDPRRequest /></ProtectedRoute>} />
-            <Route path="/gdpr/export" element={<ProtectedRoute><GDPRExport /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

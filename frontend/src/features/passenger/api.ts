@@ -27,9 +27,26 @@ export interface RideRequestAlternative {
   legs: RideRequestAlternativeLeg[];
 }
 
+export interface RideSummary {
+  rideId: number;
+  legIndex: number;
+  legLabel: string;
+  fromName: string;
+  toName: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  status: string;
+  driverName: string;
+  driverPhoneMasked?: string;
+  vehiclePlate?: string;
+  vehicleType?: string;
+  priceFinal?: number;
+}
+
 export type RideRequestDetails = {
   requestId: number;
   status: string;
+  rides? : RideSummary[];
   numOfPeople: number;
   pickupAt: string;
   pickup: {
@@ -45,7 +62,22 @@ export type RideRequestDetails = {
   progressStatus: string;
 };
 
+export interface RidePaymentSummary {
+  rideId: number;
+  paymentId: string;
+  finalPrice: number;
+  grossAmount: number;
+  platformFee: number;
+  driverPayout: number;
+  paymentMethod: string;
+}
+
 // == API Functions ==
+
+export const getRideRequests = (status: string) =>
+  fetchAPI<{ success: boolean; requests?: RideRequestDetails[]; error?: string }>(
+    `/passenger/ride-requests/?status=${encodeURIComponent(status)}`
+  );
 
 export const getFareEstimate = (params: {
   pickup: Location;
@@ -120,3 +152,34 @@ export const cancelRideRequest = (requestId: number) =>
       method: "POST",
     }
   );
+
+export const submitRideRating = (
+  rideId: number,
+  data: { stars: number; comment?: string }
+) =>
+  fetchAPI<{ success: boolean; ratingId?: number; error?: string }>(
+    `/passenger/rides/${rideId}/rating`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        stars: data.stars,
+        comment: data.comment,
+      }),
+    }
+  );
+
+export const payForRideRequest = (
+  requestId: number,
+  paymentMethod: "CreditCard" | "Cash" = "CreditCard"
+) => {
+  return fetchAPI<{
+    success: boolean;
+    requestId?: number;
+    payments?: RidePaymentSummary[];
+    message?: string;
+    error?: string;
+  }>(`/passenger/ride-requests/${requestId}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ paymentMethod }),
+  });
+};
