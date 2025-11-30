@@ -67,7 +67,7 @@ export const submitDriverVehicle = (data: {
   });
 
 // ---------------------------------------------
-// Driver availability
+// Driver availability (legacy online/offline)
 // ---------------------------------------------
 
 export const setDriverAvailability = (is_online: boolean) =>
@@ -194,7 +194,7 @@ export const uploadVehicleDocument = (params: {
   }
   formData.append("file", params.file); // The file itself
 
-  return fetchAPI("/driver/vehicle-documents", { // New endpoint
+  return fetchAPI("/driver/vehicle-documents", {
     method: "POST",
     body: formData,
   });
@@ -262,7 +262,10 @@ export interface VehicleDocumentStatus {
  * Get the status of all documents for a given vehicle.
  */
 export const getVehicleDocumentStatus = (vehicleId: string) =>
-  fetchAPI<VehicleDocumentStatus[]>(`/driver/vehicle-documents-status?vehicleId=${vehicleId}`);
+  fetchAPI<VehicleDocumentStatus[]>(
+    `/driver/vehicle-documents-status?vehicleId=${vehicleId}`
+  );
+
 export type DriverRideRow = {
   RideId: number;
   RequestId: number;
@@ -278,7 +281,6 @@ export type DriverRideRow = {
   ToLat: number | null;
   ToLng: number | null;
 };
-
 
 export const startDriverRide = (rideId: number) =>
   fetchAPI<{ success: boolean; error?: string }>(
@@ -301,7 +303,7 @@ export const endDriverRide = (
   );
 
 export const getDriverUpcomingRides = () =>
-  fetchAPI<{  
+  fetchAPI<{
     success: boolean;
     rides?: DriverRideRow[];
     error?: string;
@@ -330,7 +332,6 @@ export type DriverHistoryRow = {
   PaymentOsrhFee: number | null;
   PaymentDriverPayout: number | null;
 };
-
 
 export const getDriverRideHistory = () =>
   fetchAPI<{
@@ -375,7 +376,7 @@ export const cancelDriverServiceEnrollment = (enrollId: number) =>
     {
       method: "POST",
     },
-  );  
+  );
 
 export const confirmDriverDailyAvailability = (date: string) =>
   fetchAPI<{
@@ -403,7 +404,9 @@ export const setDriverDailyAvailability = (payload: DriverDailyAvailability) =>
     body: JSON.stringify(payload),
   });
 
-export async function uploadDriverPhoto(file: File): Promise<{ photoUrl: string }> {
+export async function uploadDriverPhoto(
+  file: File
+): Promise<{ photoUrl: string }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -412,3 +415,41 @@ export async function uploadDriverPhoto(file: File): Promise<{ photoUrl: string 
     body: formData,
   });
 }
+
+// ---------------------------------------------
+// Driver user preferences
+// ---------------------------------------------
+
+export interface UserPreferences {
+  notificationsEnabled: boolean;
+  locEnabled: boolean;
+}
+
+export const getDriverPreferences = async (): Promise<UserPreferences> => {
+  const res = await fetchAPI<{
+    success: boolean;
+    preferences?: UserPreferences;
+    hasRow?: boolean;
+    error?: string;
+  }>("/driver/preferences");
+
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load preferences.");
+  }
+
+  return (
+    res.preferences ?? {
+      notificationsEnabled: false,
+      locEnabled: false,
+    }
+  );
+};
+
+export const updateDriverPreferences = (prefs: UserPreferences) =>
+  fetchAPI<{
+    success: boolean;
+    error?: string;
+  }>("/driver/preferences", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
+  });

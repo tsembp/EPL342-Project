@@ -233,3 +233,37 @@ export const payForRideRequest = (
     body: JSON.stringify({ paymentMethod }),
   });
 };
+
+export interface UserPreferences {
+  notificationsEnabled: boolean;
+  locEnabled: boolean;
+}
+
+// GET /api/passenger/preferences
+export const getPassengerPreferences = async (): Promise<UserPreferences> => {
+  const res = await fetchAPI<{
+    success: boolean;
+    preferences?: UserPreferences;
+    hasRow?: boolean;
+    error?: string;
+  }>("/passenger/preferences");
+
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load preferences.");
+  }
+
+  // If no row yet, backend already sends defaults, but be safe:
+  return (
+    res.preferences ?? {
+      notificationsEnabled: false,
+      locEnabled: false,
+    }
+  );
+};
+
+// PUT /api/passenger/preferences
+export const updatePassengerPreferences = (prefs: UserPreferences) =>
+  fetchAPI<{ success: boolean; error?: string }>("/passenger/preferences", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
+  });

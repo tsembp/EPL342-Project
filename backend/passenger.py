@@ -922,3 +922,91 @@ def upload_self_drive_license():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400
+
+@passenger_bp.route("/preferences", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_passenger_preferences():
+    """
+    Return notification + location prefs for logged-in passenger.
+    Wraps dbo.usp_UserPreferences_Get.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_UserPreferences_Get @UserId = ?",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+
+                if not row:
+                    # No row yet → default values
+                    return jsonify({
+                        "success": True,
+                        "hasRow": False,
+                        "preferences": {
+                            "notificationsEnabled": False,
+                            "locEnabled": False,
+                        },
+                    }), 200
+
+                columns = [col[0] for col in cur.description]
+                data = dict(zip(columns, row))
+
+        return jsonify({
+            "success": True,
+            "hasRow": True,
+            "preferences": {
+                "notificationsEnabled": bool(data.get("NotificationsEnabled", False)),
+                "locEnabled": bool(data.get("LocEnabled", False)),
+            },
+        }), 200
+
+    except Exception as e:
+        print("Error in /api/passenger/preferences [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@passenger_bp.route("/preferences", methods=["PUT"])
+@require_auth
+@require_role("P")
+def set_passenger_preferences():
+    """
+    Update/create preferences row.
+    Body: { "notificationsEnabled": boolean, "locEnabled": boolean }
+    Wraps dbo.usp_UserPreferences_Set.
+    """
+    user_id = session["user_id"]
+    payload = request.get_json(silent=True) or {}
+
+    notifications_enabled = bool(payload.get("notificationsEnabled", False))
+    loc_enabled = bool(payload.get("locEnabled", False))
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_UserPreferences_Set
+                        @UserId = ?,
+                        @NotificationsEnabled = ?,
+                        @LocEnabled = ?
+                    """,
+                    (
+                        user_id,
+                        1 if notifications_enabled else 0,
+                        1 if loc_enabled else 0,
+                    ),
+                )
+                # sproc returns final row, but we don't need it here
+                cur.fetchone()
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("Error in /api/passenger/preferences [PUT]:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
