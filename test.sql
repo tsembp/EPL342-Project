@@ -1,1 +1,1 @@
-SELECT * FROM Driver
+SELECT * FROM UserPreferences
