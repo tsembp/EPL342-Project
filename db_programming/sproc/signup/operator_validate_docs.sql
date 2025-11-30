@@ -79,7 +79,7 @@ BEGIN
     INNER JOIN [dbo].[User] U
         ON U.UserId = PD.UserId
     WHERE PD.Status = 'Pending'
-      AND U.Role IN ('D','C')
+      AND U.Role IN ('D','C', 'P')
     ORDER BY PD.UploadedAt;
 END;
 GO
@@ -136,7 +136,7 @@ BEGIN
     -- Update review info on the document
     UPDATE [dbo].[PersonDocument]
     SET
-        Status               = @NewStatus,
+        [Status]               = @NewStatus,
         ReviewedByOperatorId = @OperatorId,
         ReviewedAt           = SYSUTCDATETIME(),
         ReviewComments       = @ReviewComment
@@ -156,7 +156,7 @@ BEGIN
 
     -- Check if user has all required document types approved
     DECLARE @RequiredDocCountForDriver INT = 8;
-    DECLARE @RequiredDocCountForPassenger INT = 4;
+    DECLARE @RequiredDocCountForPassenger INT = 1;
     DECLARE @ApprovedDocCount INT;
 
     SELECT @ApprovedDocCount = COUNT(DISTINCT DocType)
