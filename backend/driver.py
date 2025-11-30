@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from flask import Blueprint, jsonify, session, request
 from db import get_connection
 from decorators import require_auth, require_role
@@ -376,6 +377,21 @@ def get_ride_history():
                     "PaymentPaidAt": (
                         r.PaymentPaidAt.isoformat()
                         if getattr(r, "PaymentPaidAt", None)
+                        else None
+                    ),
+                    "PaymentGrossAmount": (
+                        float(r.PaymentGrossAmount)
+                        if getattr(r, "PaymentGrossAmount", None) is not None
+                        else None
+                    ),
+                    "PaymentOsrhFee": (
+                        float(r.PaymentOsrhFee)
+                        if getattr(r, "PaymentOsrhFee", None) is not None
+                        else None
+                    ),
+                    "PaymentDriverPayout": (
+                        float(r.PaymentDriverPayout)
+                        if getattr(r, "PaymentDriverPayout", None) is not None
                         else None
                     ),
                 }
