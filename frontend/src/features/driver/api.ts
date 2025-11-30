@@ -346,9 +346,46 @@ export const getDriverRideHistory = () =>
 export type DriverDailyAvailability = {
   date: string;           // "YYYY-MM-DD"
   enabled: boolean;
+  enrollId: number | null;
   startTime: string | null; // "HH:MM" or null
   endTime: string | null;   // "HH:MM" or null
+  locked?: boolean;
 };
+
+export type DriverServiceEnrollment = {
+  EnrollId: number;
+  Status: string;
+  VehiclePlate: string;
+  ServiceTypeId: number;
+  ServiceTypeName: string | null;
+  RideTypeId: number;
+  RideTypeName: string | null;
+};
+
+export const getDriverServiceEnrollments = () =>
+  fetchAPI<{
+    success: boolean;
+    enrollments: DriverServiceEnrollment[];
+    error?: string;
+  }>("/driver/service-enrollments");
+
+export const cancelDriverServiceEnrollment = (enrollId: number) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/driver/service-enrollments/${enrollId}/cancel`,
+    {
+      method: "POST",
+    },
+  );  
+
+export const confirmDriverDailyAvailability = (date: string) =>
+  fetchAPI<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>("/driver/availability/confirm", {
+    method: "POST",
+    body: JSON.stringify({ date }),
+  });
 
 export const getDriverDailyAvailability = (date: string) =>
   fetchAPI<{
