@@ -482,9 +482,9 @@ export function InspectorDashboard() {
                   <p className="text-xs uppercase tracking-wide text-neutral-400">
                     Tests (page)
                   </p>
-                  <p className="mt-1 text-2xl font-semibold">
+                    <p className="mt-1 text-2xl font-semibold text-neutral-200">
                     {stats.total.toString()}
-                  </p>
+                    </p>
                 </div>
                 <div className="rounded-xl bg-neutral-800 p-2">
                   <Car className="h-5 w-5 text-neutral-200" />
@@ -549,9 +549,6 @@ export function InspectorDashboard() {
                     Past tests
                   </p>
                 </div>
-                <p className="text-xs text-neutral-400">
-                  Showing paginated tests for all vehicles. Use status and plate filters to narrow down.
-                </p>
               </div>
 
               <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
