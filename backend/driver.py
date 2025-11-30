@@ -1187,3 +1187,103 @@ def update_vehicle_location():
     except Exception as e:
         print("Error in /api/driver/vehicle/location:", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+@driver_bp.route("/preferences", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_driver_preferences():
+    """
+    Get user preferences (notifications + location) for the logged-in driver.
+    Wraps dbo.usp_UserPreferences_Get.
+
+    Response:
+    {
+      "success": true,
+      "hasRow": true/false,
+      "preferences": {
+        "notificationsEnabled": bool,
+        "locEnabled": bool
+      }
+    }
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_UserPreferences_Get @UserId = ?",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+
+        if not row:
+            # No row yet → default prefs
+            return jsonify({
+                "success": True,
+                "hasRow": False,
+                "preferences": {
+                    "notificationsEnabled": False,
+                    "locEnabled": False,
+                },
+            }), 200
+
+        # Assuming sproc SELECTs directly from dbo.UserPreferences:
+        # UserPreferencesId, UserId, NotificationsEnabled, LocEnabled, CreatedAt, UpdatedAt
+        notifications_enabled = bool(row.NotificationsEnabled)
+        loc_enabled = bool(row.LocEnabled)
+
+        return jsonify({
+            "success": True,
+            "hasRow": True,
+            "preferences": {
+                "notificationsEnabled": notifications_enabled,
+                "locEnabled": loc_enabled,
+            },
+        }), 200
+
+    except Exception as e:
+        print("Error in /api/driver/preferences [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@driver_bp.route("/preferences", methods=["PUT"])
+@require_auth
+@require_role("D")
+def set_driver_preferences():
+    """
+    Update/create driver user preferences.
+    Body: { "notificationsEnabled": boolean, "locEnabled": boolean }
+    Wraps dbo.usp_UserPreferences_Set.
+    """
+    user_id = session["user_id"]
+    payload = request.get_json(silent=True) or {}
+
+    notifications_enabled = bool(payload.get("notificationsEnabled", False))
+    loc_enabled = bool(payload.get("locEnabled", False))
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_UserPreferences_Set
+                        @UserId = ?,
+                        @NotificationsEnabled = ?,
+                        @LocEnabled = ?
+                    """,
+                    (
+                        user_id,
+                        1 if notifications_enabled else 0,
+                        1 if loc_enabled else 0,
+                    ),
+                )
+                # Sproc returns final row; we don't really need it here
+                cur.fetchone()
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("Error in /api/driver/preferences [PUT]:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
