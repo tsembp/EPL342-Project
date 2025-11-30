@@ -30,13 +30,17 @@ export default function Login() {
         if (response.verificationStatus === "DOCS_PENDING") {
           navigate("/driver/documents");
         } else if (response.verificationStatus === "PENDING_APPROVAL") {
-          navigate("/pending-approval");
+          navigate("/driver/pending-approval");
         } else { // VERIFIED or any other status that implies full access
           const role = useAuthStore.getState().userRole; // Get role from store for final redirection
           if (role === "operator") {
             navigate("/operator/overview");
+          } else if (role === "inspector") {
+            navigate("/inspector");
+          } else if (role === "admin") {
+            navigate("/admin");
           } else if (role === "driver") {
-            navigate("/driver/dashboard"); 
+            navigate("/driver"); 
           } else { // Default for passenger or fully verified company representative
             navigate("/passenger/ride");;
           }
