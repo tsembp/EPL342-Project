@@ -22,6 +22,7 @@ import {
   MapPin,
   Settings,
 } from "lucide-react";
+import { VehicleManagementSection } from "@/features/driver/components/VehicleManagementSection";
 
 
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
@@ -49,6 +50,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
+  const userName = useAuthStore((state) => state.username);
 
   async function handleToggleOnline(next: boolean) {
     setIsTogglingOnline(true);
@@ -195,11 +197,7 @@ export default function Dashboard() {
 
           {/* VEHICLES TAB */}
           <TabsContent value="vehicles">
-            <PlaceholderSection
-              icon={<CarFront className="h-5 w-5 text-emerald-400" />}
-              title="My vehicles"
-              description="Here you’ll register vehicles, upload vehicle documents, and see verification status."
-            />
+            <VehicleManagementSection />
           </TabsContent>
           {/* AVAILABILITY TAB */}
           <TabsContent value="availability">
