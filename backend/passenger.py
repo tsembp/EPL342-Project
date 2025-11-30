@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, session
 from db import get_connection
 from decorators import require_auth, require_role
 import json
+from datetime import datetime 
 
 passenger_bp = Blueprint("passenger", __name__, url_prefix="/api/passenger")
 
@@ -925,3 +926,112 @@ def get_ride_vehicle_location_live(ride_id: int):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# Get passenger's self driving status
+@passenger_bp.route("/self-drive/status", methods=["GET"])
+@require_auth
+@require_role("P")
+def self_drive_status():
+    """
+    Returns the passenger's CanDrive flag from dbo.Passenger.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT CanDrive
+                    FROM dbo.Passenger
+                    WHERE UserId = ?
+                    """,
+                    user_id,
+                )
+                row = cur.fetchone()
+
+        if not row:
+            return jsonify({
+                "success": False,
+                "error": "Passenger record not found."
+            }), 404
+
+        can_drive = bool(row[0])
+
+        return jsonify({
+            "success": True,
+            "eligible": can_drive,
+            "hasLicense": can_drive,
+            "licenseStatus": "Approved" if can_drive else "Pending",
+            "reason": None if can_drive else "Your licence is still pending approval."
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
+
+
+# Upload passenger's driver license
+@passenger_bp.route("/self-drive/upload-license", methods=["POST"])
+@require_auth
+@require_role("P")
+def upload_self_drive_license():
+    """
+    Upload metadata for a driving licence for the logged-in passenger.
+
+    Frontend sends multipart/form-data with:
+      - docNumber
+      - issueDate (YYYY-MM-DD)
+      - expiryDate (YYYY-MM-DD)
+      - file  (we just check that it's there; usp_AddPersonDocument does NOT store it)
+
+    We call dbo.usp_AddPersonDocument, which:
+      - validates user & doc type
+      - inserts into PersonDocument
+      - generates a dummy FileUrl for storage
+    """
+    user_id = session["user_id"]
+
+    doc_number = (request.form.get("docNumber") or "").strip()
+    issue_date = request.form.get("issueDate") or None
+    expiry_date = request.form.get("expiryDate") or None
+    file = request.files.get("file")
+
+    if not doc_number:
+        return jsonify({"success": False, "error": "docNumber is required."}), 400
+
+    if not file:
+        # We don't send file to DB, but we still want the user to attach something.
+        return jsonify({"success": False, "error": "Licence file is required."}), 400
+
+    try:
+        # We read the file to "consume" it, but we DO NOT store it in DB.
+        # The sproc will generate a dummy URL by itself.
+        _ = file.read()
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_AddPersonDocument
+                        @UserId=?,
+                        @DocType=?,
+                        @DocNumber=?,
+                        @IssueDate=?,
+                        @ExpiryDate=?
+                    """,
+                    user_id,
+                    "DRIVING_LICENSE",
+                    doc_number,
+                    issue_date,
+                    expiry_date,
+                )
+                # usp_AddPersonDocument SELECTs DocId; we don't need it here.
+                _ = cur.fetchone()
+                conn.commit()
+
+        return jsonify({"success": True}), 201
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
