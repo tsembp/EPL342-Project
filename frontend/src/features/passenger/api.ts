@@ -84,6 +84,15 @@ export interface RideLiveLocation {
   error?: string;
 }
 
+export interface SelfDriveStatus {
+  success: boolean;
+  eligible: boolean;
+  hasLicense: boolean;
+  licenseStatus?: string | null;
+  reason?: string;
+}
+
+
 // == API Functions ==
 
 export const getRideRequests = (status: string) =>
@@ -127,6 +136,31 @@ export const requestRide = (data: {
 
 export const getRideLiveLocation = (rideId: number) =>
   fetchAPI<RideLiveLocation>(`/passenger/rides/${rideId}/vehicle-location-live`);
+
+export const getSelfDriveStatus = () =>
+  fetchAPI<SelfDriveStatus>("/passenger/self-drive/status");
+
+export const uploadPassengerLicense = (payload: {
+  docNumber: string;
+  issueDate: string;
+  expiryDate: string;
+  file: File;
+}) => {
+  const formData = new FormData();
+  formData.append("docType", "DRIVING_LICENSE");
+  formData.append("docNumber", payload.docNumber);
+  formData.append("issueDate", payload.issueDate);
+  formData.append("expiryDate", payload.expiryDate);
+  formData.append("file", payload.file);
+
+  return fetchAPI<{ success: boolean; error?: string }>(
+    "/passenger/self-drive/upload-license",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+};
 
 
 export const getRideRequestAlternatives = async (requestId: number) => {
