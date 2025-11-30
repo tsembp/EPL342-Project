@@ -92,6 +92,8 @@ export default function RideRequestDetailsPage() {
       case "SearchingDrivers":
       case "Pending":
         return "bg-amber-500/10 text-amber-400 border-amber-500/60";
+      case "Accepted":
+        return "border-sky-500/70 text-sky-300";
       case "Completed":
       case "Matched":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/60";
