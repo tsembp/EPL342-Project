@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { uploadDriverDocument } from "@/features/driver/api";
+import { useAuthStore } from "@/lib/store";
+
 
 type DocumentType = {
   id: string;
@@ -46,9 +48,15 @@ const getInitialState = () => {
 };
 
 export default function DriverDocuments() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const userId = location.state?.userId;
+const navigate = useNavigate();
+const location = useLocation();
+
+// 1) From global auth store (works after login)
+const storeUserId = useAuthStore((state) => state.userId);
+
+// 2) Optional override from navigation state (works right after signup)
+const userId = (location.state as { userId?: string } | null)?.userId || storeUserId;
+
 
   const [documents, setDocuments] = useState<Record<string, DocumentData>>(getInitialState());
 
