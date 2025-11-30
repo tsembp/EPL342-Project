@@ -670,16 +670,6 @@ def get_ride_history():
         print("Error in /api/driver/rides/history:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
-from flask import Blueprint, jsonify, session, request
-from db import get_connection
-from decorators import require_auth, require_role
-import os
-import uuid
-
-driver_bp = Blueprint("driver", __name__, url_prefix="/api/driver")
-
-# ... your existing routes ...
-
 @driver_bp.route("/photo", methods=["POST"])
 @require_auth
 @require_role("D")
