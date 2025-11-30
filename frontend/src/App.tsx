@@ -20,9 +20,7 @@ import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
-import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";
-import TripDetail from "@/features/passenger/pages/TripDetail";
 import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
