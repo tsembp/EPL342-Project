@@ -4,4 +4,4 @@ flask_session
 __pycache__/
 secrets/
 test.sql
-/uploads/
+uploads/
