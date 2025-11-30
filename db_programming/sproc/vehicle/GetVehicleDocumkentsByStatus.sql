@@ -1,6 +1,7 @@
-CREATE OR ALTER PROCEDURE dbo.usp_GetPendingVehicleDocumentsForReview
+CREATE OR ALTER PROCEDURE dbo.usp_GetVehicleDocumentsByStatus
 (
-    @OperatorId UNIQUEIDENTIFIER
+    @OperatorId UNIQUEIDENTIFIER,
+    @Status     NVARCHAR(20) = NULL  -- 'Pending' | 'Accepted' | 'Rejected' | NULL = all
 )
 AS
 BEGIN
@@ -18,7 +19,14 @@ BEGIN
         RETURN;
     END;
 
-    -- Return all pending vehicle documents
+    -- Validate @Status if given
+    IF @Status IS NOT NULL
+       AND @Status NOT IN ('Pending','Accepted','Rejected')
+    BEGIN
+        RAISERROR('@Status must be Pending, Accepted or Rejected or NULL.', 16, 1);
+        RETURN;
+    END;
+
     SELECT
         VD.VehDocId,
         VD.VehicleId,
@@ -33,7 +41,7 @@ BEGIN
     FROM [dbo].[VehicleDocument] VD
     INNER JOIN [dbo].[Vehicle] V
         ON V.VehicleId = VD.VehicleId
-    WHERE VD.Status = 'Pending'
+    WHERE (@Status IS NULL OR VD.Status = @Status)
     ORDER BY VD.UploadedAt;
 END;
 GO

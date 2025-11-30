@@ -8,6 +8,7 @@ interface AuthState {
   userRole: UserRole;
   userId: string | null;
   email: string | null;
+  username: string | null; // New field
   accountType: 'USER' | 'STAFF' | null;
   username: string | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
@@ -102,6 +103,7 @@ export const useAuthStore = create<AuthState>()(
               username: data.username,
               accountType: data.accountType,
               userRole: mapRoleToUserRole(data.role!),
+              username: data.username!, // Store username
             });
           } else {
             set({
