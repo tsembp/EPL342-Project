@@ -35,6 +35,8 @@ export default function Login() {
           const role = useAuthStore.getState().userRole; // Get role from store for final redirection
           if (role === "operator") {
             navigate("/operator/overview");
+          } else if (role === "inspector") {
+            navigate("/inspector");
           } else if (role === "driver") {
             navigate("/driver/dashboard"); 
           } else { // Default for passenger or fully verified company representative
