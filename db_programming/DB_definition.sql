@@ -223,6 +223,7 @@ CREATE TABLE [dbo].[Bridge] (
 
 CREATE TABLE [dbo].[Driver] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
+    [PhotoUrl] NVARCHAR(MAX),
     CONSTRAINT [PK_Driver] PRIMARY KEY CLUSTERED ([UserId])
 );
 
@@ -442,6 +443,7 @@ CREATE TABLE [dbo].[DriverAvailability] (
     [EndsAt] TIME(0) NOT NULL,
     [IsRecurring] BIT NOT NULL DEFAULT 0,
     [UpdatedAt] UtcStamp DEFAULT GETUTCDATE(),
+    [IsLocked] BIT DEFAULT 0,
     CONSTRAINT CK_DriverAvailability_Time CHECK ([EndsAt] > [StartsAt]),
     CONSTRAINT PK_DriverAvailability PRIMARY KEY ([EnrollId], [AvailabilityDate], [StartsAt]) -- allow for multiple entries per day (8:00-12:00 and 14:00-18:00)
 );
