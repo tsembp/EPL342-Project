@@ -42,7 +42,12 @@ BEGIN
 
         -- ZonePoint Names
         ZP_From.Name AS FromPointName,
-        ZP_To.Name AS ToPointName,
+        ZP_To.Name   AS ToPointName,
+
+        ZP_From.Latitude   AS FromLat,
+        ZP_From.Longitude  AS FromLng,
+        ZP_To.Latitude     AS ToLat,
+        ZP_To.Longitude    AS ToLng,
 
         -- Original Ride Request
         RR.RequestId,
