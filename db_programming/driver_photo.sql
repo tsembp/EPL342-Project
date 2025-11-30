@@ -1,0 +1,3 @@
+ALTER TABLE dbo.Driver
+ADD PhotoUrl NVARCHAR(MAX) NULL;
+GO

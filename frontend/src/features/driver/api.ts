@@ -403,3 +403,12 @@ export const setDriverDailyAvailability = (payload: DriverDailyAvailability) =>
     body: JSON.stringify(payload),
   });
 
+export async function uploadDriverPhoto(file: File): Promise<{ photoUrl: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return fetchAPI<{ photoUrl: string }>("/driver/photo", {
+    method: "POST",
+    body: formData,
+  });
+}

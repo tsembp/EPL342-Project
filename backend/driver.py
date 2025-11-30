@@ -670,6 +670,67 @@ def get_ride_history():
         print("Error in /api/driver/rides/history:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
+from flask import Blueprint, jsonify, session, request
+from db import get_connection
+from decorators import require_auth, require_role
+import os
+import uuid
+
+driver_bp = Blueprint("driver", __name__, url_prefix="/api/driver")
+
+# ... your existing routes ...
+
+@driver_bp.route("/photo", methods=["POST"])
+@require_auth
+@require_role("D")
+def upload_driver_photo():
+    """
+    Upload / update driver's profile photo.
+    - Accepts multipart/form-data with field: 'file'
+    - Saves the file
+    - Calls dbo.usp_UpdateDriverPhoto to store the URL
+    """
+    user_id = session["user_id"]
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # Very basic content-type check – you can tighten this
+    if not file.mimetype.startswith("image/"):
+        return jsonify({"error": "Only image files are allowed"}), 400
+
+    ext = os.path.splitext(file.filename)[1] or ".jpg"
+    filename = f"photo-{uuid.uuid4().hex}{ext}"
+
+    base_dir = os.path.join("uploads", "drivers", str(user_id))
+    os.makedirs(base_dir, exist_ok=True)
+
+    file_path = os.path.join(base_dir, filename)
+    file.save(file_path)
+
+    # Build URL that frontend can use (adapt if you serve static differently)
+    # For example if /uploads is served under /static/uploads:
+    photo_url = f"/static/uploads/drivers/{user_id}/{filename}"
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_UpdateDriverPhoto @UserId = ?, @PhotoUrl = ?",
+                    (user_id, photo_url),
+                )
+                row = cur.fetchone()
+
+        return jsonify({"photoUrl": photo_url}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @driver_bp.route("/availability", methods=["GET"])
 @require_auth
 @require_role("D")
