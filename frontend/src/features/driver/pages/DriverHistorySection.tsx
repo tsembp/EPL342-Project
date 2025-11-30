@@ -171,15 +171,6 @@ export function DriverHistorySection() {
                         >
                           {ride.Status}
                         </Badge>
-
-                        {ride.PaymentStatus && (
-                          <Badge
-                            variant="outline"
-                            className="border-neutral-700 bg-neutral-900/70 text-[11px] font-normal text-neutral-200"
-                          >
-                            {ride.PaymentStatus}
-                          </Badge>
-                        )}
                       </div>
 
                       {/* Instead of showing price, show a details button */}
