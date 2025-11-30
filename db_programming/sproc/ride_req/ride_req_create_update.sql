@@ -59,9 +59,11 @@ BEGIN
 
         -- Validate service type and points - if NOT bridged route -> ensure pickup & dropoff at same zone
         DECLARE @ServiceType NVARCHAR(100);
-        SELECT @ServiceType = ST.Name
+        DECLARE @RideType NVARCHAR(100);
+        SELECT @ServiceType = ST.Name, @RideType = RT.Name
         FROM [dbo].[AllowedRideProfile] ARP
         JOIN [dbo].[Servicetype] ST ON ARP.ServiceTypeId = ST.ServiceTypeId
+        JOIN [dbo].[Ridetype] RT ON ARP.RideTypeId = RT.RideTypeId
         WHERE ARP.RideProfileId = @RideProfileId;
 
         IF @ServiceType <> 'bridged_route'
@@ -72,6 +74,21 @@ BEGIN
             IF @PickupZone <> @DropoffZone
             BEGIN
                 ;THROW 50005, 'Pickup and dropoff must be in the same zone for this service type.', 1;
+                RETURN;
+            END
+        END
+
+        -- if ride type is renting vehicle -> Passenger.CanDrive must be 1
+        IF @RideType = 'vehicle_no_driver'
+        BEGIN
+            DECLARE @CanDrive BIT;
+            SELECT @CanDrive = P.CanDrive
+            FROM [dbo].[Passenger] AS P
+            WHERE P.[UserId] = @PassengerId;
+
+            IF @CanDrive <> 1
+            BEGIN
+                ;THROW 50009, 'Passenger is not authorized to rent a vehicle without a driver.', 1;
                 RETURN;
             END
         END

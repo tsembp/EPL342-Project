@@ -265,7 +265,7 @@ export default function RideRequestDetailsPage() {
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">
       <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-semibold tracking-tight">Ride</span>
+          <span className="text-xl font-semibold tracking-tight">OSRH | Ride</span>
         </div>
       </header>
 
