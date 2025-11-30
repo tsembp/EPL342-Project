@@ -238,6 +238,7 @@ export interface Vehicle {
   VehicleStatus: string;
   VehicleType: string;
   IsApproved: boolean;
+  HasAllRequiredDocsSubmitted: boolean;
 }
 
 /**
