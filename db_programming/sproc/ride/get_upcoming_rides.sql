@@ -15,7 +15,11 @@ BEGIN
         il.ApproxStartTime   AS ScheduledStart,
         il.ApproxEndTime     AS ScheduledEnd,
         zp_from.Name         AS FromName,
-        zp_to.Name           AS ToName
+        zp_to.Name           AS ToName,
+        zp_from.Latitude     AS FromLat,
+        zp_from.Longitude    AS FromLng,
+        zp_to.Latitude       AS ToLat,
+        zp_to.Longitude      AS ToLng
     FROM dbo.Ride AS r
     INNER JOIN dbo.DispatchOffer AS dof
         ON dof.OfferId = r.OfferId
