@@ -72,17 +72,8 @@ def my_gdpr_requests():
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT 
-                        G.GdprId,
-                        G.[Type],
-                        G.[Status],
-                        G.RequestedAt,
-                        G.[Reason]
-                    FROM dbo.GdprRequest AS G
-                    WHERE G.UserId = ?
-                    ORDER BY G.RequestedAt DESC, G.GdprId DESC
-                """, user_id)
+                cur.execute("EXEC dbo.usp_GetUserGdprRequests ?", user_id)
+
                 columns = [c[0] for c in cur.description]
                 rows = [dict(zip(columns, row)) for row in cur.fetchall()]
                 return jsonify(rows), 200
