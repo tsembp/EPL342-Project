@@ -24,8 +24,10 @@ export default function AdminLogin() {
 
       if (response.success) {
         toast.success("Admin login successful");
+        await useAuthStore.getState().checkAuth();
+
         const role = useAuthStore.getState().userRole;
-        navigate("/admin/dashboard");
+        navigate("/admin");
       } else {
         throw new Error(response.error || "Login failed");
       }

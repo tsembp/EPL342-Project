@@ -31,6 +31,7 @@ def admin_login():
                     session["account_type"] = row[2]
                     session["email"] = row[3]
                     session["verification_status"] = row[4]
+                    session["username"] = row[5]
                     session.permanent = True
 
                     return jsonify({

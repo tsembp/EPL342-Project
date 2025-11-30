@@ -49,7 +49,7 @@ export const login = (data: LoginRequest) =>
   });
 
 export const adminLogin = (data: { email: string; password: string }) =>
-  fetchAPI("/admin/login", {
+  fetchAPI<LoginResponse>("/admin/login", {
     method: "POST",
     body: JSON.stringify(data),
   });

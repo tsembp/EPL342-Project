@@ -204,7 +204,7 @@ BEGIN
 
                 UPDATE dbo.RideRequestProgress
                 SET 
-                    Status    = 'Completed',
+                    [Status]    = 'Completed',
                     UpdatedAt = SYSUTCDATETIME()
                 WHERE RequestId = @RequestId;
             END
