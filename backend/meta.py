@@ -19,18 +19,8 @@ def get_enums():
                 cur.execute("SELECT VehicleTypeId, Name, NumOfSeats FROM dbo.VehicleType")
                 veh_types = [(row[0], row[1], row[2]) for row in cur.fetchall()]
 
-                cur.execute("""
-                    SELECT 
-                        arp.RideProfileId,
-                        st.ServiceTypeId, st.Name,
-                        rt.RideTypeId, rt.Name,
-                        vt.VehicleTypeId, vt.Name,
-                        vt.NumOfSeats
-                    FROM dbo.AllowedRideProfile arp
-                    JOIN dbo.Servicetype st ON arp.ServiceTypeId = st.ServiceTypeId
-                    JOIN dbo.Ridetype rt ON arp.RideTypeId = rt.RideTypeId
-                    JOIN dbo.VehicleType vt ON arp.VehicleTypeId = vt.VehicleTypeId
-                """)
+                cur.execute("SELECT * FROM dbo.vw_AllowedRideProfiles")
+
                 combo_specs = []
                 for row in cur.fetchall():
                     combo_specs.append({
