@@ -382,7 +382,8 @@ export default function RideRequestDetailsPage() {
                             </p>
                           </div>
                         </div>
-                      ) : data.progressStatus === "Failed" ? (
+                      ) : data.progressStatus === "Failed" ||
+                          data.status === "Cancelled" ? (
                         <div className="flex items-center gap-3">
                           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
                             <Car className="h-5 w-5 text-red-400" />
