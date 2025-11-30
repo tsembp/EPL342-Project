@@ -223,16 +223,22 @@ export type DriverHistoryRow = {
   RequestId: number | null;
   LegId: number | null;
   NumOfPeople: number | null;
-  Status: "Completed" | "Cancelled" | string;
-  FromName: string;
-  ToName: string;
+  Status: string;
   StartedAt: string | null;
   EndedAt: string | null;
   PriceFinal: number | null;
-  PaymentMethod: "Cash" | "CreditCard" | string | null;
+  FromName: string;
+  ToName: string;
+
+  PaymentMethod: string | null;
   PaymentStatus: string | null;
   PaymentPaidAt: string | null;
+
+  PaymentGrossAmount: number | null;
+  PaymentOsrhFee: number | null;
+  PaymentDriverPayout: number | null;
 };
+
 
 export const getDriverRideHistory = () =>
   fetchAPI<{
