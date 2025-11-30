@@ -147,10 +147,12 @@ export type UserRole = "passenger" | "driver" | "operator" | "inspector" | "comp
 export type LoginResponse = {
   success: boolean;
   userId: string;
+  username: string;
   role: string;
   accountType: string;
   email: string;
   verificationStatus: string;
+  error?: string;
 }
 
 export type SignupResponse = {

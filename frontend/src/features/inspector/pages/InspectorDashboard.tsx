@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ListFilter,
+  LogOut
 } from "lucide-react";
 import {
   searchVehiclesByPlate,
@@ -32,6 +33,9 @@ import {
   type PagedResult,
 } from "@/features/inspector/api";
 import { toast } from "sonner";
+import { logout } from "@/features/auth/api";
+import { useAuthStore } from "@/lib/store";
+import { useNavigate } from "react-router-dom";
 
 type TestStatus = "valid" | "expiring" | "expired";
 
@@ -101,6 +105,18 @@ function statusBadge(status: TestStatus) {
 }
 
 export function InspectorDashboard() {
+
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (e) {
+      console.error("Logout failed", e);
+    }
+  };
+
   const queryClient = useQueryClient();
 
   // LEFT SIDE – create test
@@ -266,13 +282,28 @@ export function InspectorDashboard() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {testsFetching && (
             <span className="flex items-center gap-1 text-xs text-neutral-400">
               <Loader2 className="h-3 w-3 animate-spin" />
               Refreshing…
             </span>
           )}
+          <button
+            onClick={handleLogout}
+            className="
+              flex items-center gap-1 px-4 py-2 rounded-xl text-sm
+              text-red-400
+              transition-all duration-150
+
+              hover:bg-red-900/20
+              hover:text-red-300
+              hover:border-red-700
+            "
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
         </div>
       </header>
 
