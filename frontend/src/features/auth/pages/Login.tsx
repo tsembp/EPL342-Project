@@ -37,7 +37,10 @@ export default function Login() {
             navigate("/operator/overview");
           } else if (role === "inspector") {
             navigate("/inspector");
-          } else if (role === "driver") {
+          } else if (role === "admin") {
+            navigate("/admin");
+          }
+          else if (role === "driver") {
             navigate("/driver/dashboard"); 
           } else { // Default for passenger or fully verified company representative
             navigate("/passenger/ride");;

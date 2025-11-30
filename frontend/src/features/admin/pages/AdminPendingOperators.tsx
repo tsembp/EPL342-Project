@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, ShieldAlert, ShieldCheck, RefreshCw, User2 } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, RefreshCw, User2, LogOut } from "lucide-react";
 import { fetchAPI } from "@/lib/apiClient";
 import { toast } from "sonner";
 import { AdminBottomNav } from "@/features/admin/components/AdminBottomNav";
+import { useAuthStore } from "@/lib/store";
+import { useNavigate } from "react-router-dom";
 
 type PendingOperator = {
   userId: string;
@@ -19,7 +21,18 @@ export default function AdminPendingOperatorsPage() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { userRole, logout } = useAuthStore();
+  const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (e) {
+      console.error("Logout failed", e);
+    }
+  };
+  
   async function loadPendingOperators(isRefresh = false) {
     if (!isRefresh) setLoading(true);
     else setRefreshing(true);
@@ -104,10 +117,27 @@ export default function AdminPendingOperatorsPage() {
     <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
       <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Admin Dashboard</h1>
+          <h1 className="text-xl font-semibold tracking-tight">OSRH | Admin Dashboard</h1>
           <p className="mt-1 text-xs text-neutral-400">
             Review and approve new <span className="font-semibold">Operator</span> accounts.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLogout}
+            className="
+              flex items-center gap-1 px-4 py-2 rounded-xl text-sm
+              text-red-400
+              transition-all duration-150
+
+              hover:bg-red-900/20
+              hover:text-red-300
+              hover:border-red-700
+            "
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
         </div>
       </header>
 

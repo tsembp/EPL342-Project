@@ -20,8 +20,9 @@ BEGIN
             AdminID AS user_id,
             'A' AS role,
             'STAFF' AS account_type,
-            Username AS username,
-            'VERIFIED' AS verification_status
+            Email AS email,
+            'VERIFIED' AS verification_status,
+            Username AS username
         FROM dbo.Admin
         WHERE Email = @Email
           AND PasswordHash = @HashedPassword;

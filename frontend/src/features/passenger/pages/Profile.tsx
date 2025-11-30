@@ -21,8 +21,8 @@ export default function Profile() {
     switchRole(userRole === "passenger" ? "driver" : "passenger");
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 

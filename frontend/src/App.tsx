@@ -180,16 +180,7 @@ function App() {
             <Route path="/inspector/*" element={<ProtectedRoute><InspectorDashboard /></ProtectedRoute>} />
 
             {/* ADMIN */}
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute>
-                  <AdminPendingOperatorsPage />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<AdminPendingOperatorsPage />} />
-              <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
+            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>} >
             </Route>
 
             <Route path="*" element={<NotFound />} />
