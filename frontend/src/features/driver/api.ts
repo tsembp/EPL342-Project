@@ -28,6 +28,11 @@ export type DispatchOfferRow = {
   FromPointName: string | null;
   ToPointName: string | null;
 
+  FromLat: number | null;
+  FromLng: number | null;
+  ToLat: number | null;
+  ToLng: number | null;
+
   RequestId: number;
   NumOfPeople: number;
   PickupAt: string;
@@ -233,6 +238,7 @@ export interface Vehicle {
   VehicleStatus: string;
   VehicleType: string;
   IsApproved: boolean;
+  HasAllRequiredDocsSubmitted: boolean;
 }
 
 /**
@@ -267,6 +273,10 @@ export type DriverRideRow = {
   ToName: string;
   ScheduledStart: string;
   ScheduledEnd: string;
+  FromLat: number | null;
+  FromLng: number | null;
+  ToLat: number | null;
+  ToLng: number | null;
 };
 
 
@@ -305,16 +315,22 @@ export type DriverHistoryRow = {
   RequestId: number | null;
   LegId: number | null;
   NumOfPeople: number | null;
-  Status: "Completed" | "Cancelled" | string;
-  FromName: string;
-  ToName: string;
+  Status: string;
   StartedAt: string | null;
   EndedAt: string | null;
   PriceFinal: number | null;
-  PaymentMethod: "Cash" | "CreditCard" | string | null;
+  FromName: string;
+  ToName: string;
+
+  PaymentMethod: string | null;
   PaymentStatus: string | null;
   PaymentPaidAt: string | null;
+
+  PaymentGrossAmount: number | null;
+  PaymentOsrhFee: number | null;
+  PaymentDriverPayout: number | null;
 };
+
 
 export const getDriverRideHistory = () =>
   fetchAPI<{

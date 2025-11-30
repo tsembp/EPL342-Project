@@ -15,6 +15,7 @@ from gdpr import gdpr_bp
 from meta import meta_bp
 from console import console_bp
 from admin import admin_bp
+from inspector import inspector_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -42,6 +43,8 @@ app.register_blueprint(gdpr_bp)
 app.register_blueprint(meta_bp)
 app.register_blueprint(console_bp)
 app.register_blueprint(admin_bp, url_prefix="/api/admin")
+app.register_blueprint(inspector_bp)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

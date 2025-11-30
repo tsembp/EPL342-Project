@@ -121,7 +121,7 @@ export default function RideHistory() {
         <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-xl font-semibold tracking-tight">
-              Ride history
+              OSRH | Ride history
             </span>
           </div>
         </header>

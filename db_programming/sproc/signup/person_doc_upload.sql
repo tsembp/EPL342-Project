@@ -32,14 +32,9 @@ BEGIN
     IF @UserRole = 'P'
     BEGIN
         -- Passengers: only these 4
-        IF @DocType NOT IN (
-            'ID_OR_PASSPORT',
-            'DRIVING_LICENSE',
-            'CRIMINAL_RECORD',
-            'MEDICAL_CERT'
-        )
+        IF @DocType <> 'DRIVING_LICENSE'
         BEGIN
-            RAISERROR('Passengers can only upload ID, License, Criminal Record, or Medical Certificate.', 16, 1);
+            RAISERROR('Passengers can only upload their License.', 16, 1);
             RETURN;
         END;
     END

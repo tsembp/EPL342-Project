@@ -20,9 +20,7 @@ import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
 import Map from "@/features/passenger/pages/Map";
-import Services from "@/features/passenger/pages/Services";
 import Profile from "@/features/passenger/pages/Profile";
-import TripDetail from "@/features/passenger/pages/TripDetail";
 import PassengerHome from "@/features/passenger/pages/PassengerHome";
 import Home from "@/features/passenger/pages/Home";
 import RideHistory from "@/features/passenger/pages/RideHistory";
@@ -39,6 +37,9 @@ import Documents from "@/features/operator/pages/Documents";
 import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
+
+// INSPECTOR
+import { InspectorDashboard } from "@/features/inspector/pages/InspectorDashboard";
 
 // ADMIN
 import AdminPendingOperatorsPage from "@/features/admin/pages/AdminPendingOperators";
@@ -175,17 +176,11 @@ function App() {
               <Route path="logs" element={<SystemAuditLogs />} />
             </Route>
 
+            {/* INSPECTOR */}
+            <Route path="/inspector/*" element={<ProtectedRoute><InspectorDashboard /></ProtectedRoute>} />
+
             {/* ADMIN */}
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute>
-                  <AdminPendingOperatorsPage />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<AdminPendingOperatorsPage />} />
-              <Route path="dashboard" element={<AdminPendingOperatorsPage />} />
+            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>} >
             </Route>
 
             <Route path="*" element={<NotFound />} />

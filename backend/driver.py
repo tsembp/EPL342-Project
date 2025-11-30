@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from flask import Blueprint, jsonify, session, request
 from db import get_connection
 from decorators import require_auth, require_role
@@ -482,6 +483,10 @@ def get_upcoming_rides():
             "ScheduledEnd": r.ScheduledEnd.isoformat() if r.ScheduledEnd else None,
             "FromName": r.FromName,
             "ToName": r.ToName,
+            "FromLat": float(r.FromLat) if getattr(r, "FromLat", None) is not None else None,
+            "FromLng": float(r.FromLng) if getattr(r, "FromLng", None) is not None else None,
+            "ToLat":   float(r.ToLat)   if getattr(r, "ToLat", None)   is not None else None,
+            "ToLng":   float(r.ToLng)   if getattr(r, "ToLng", None)   is not None else None,
         })
 
     return jsonify({"success": True, "rides": rides})
@@ -585,6 +590,21 @@ def get_ride_history():
                         if getattr(r, "PaymentPaidAt", None)
                         else None
                     ),
+                    "PaymentGrossAmount": (
+                        float(r.PaymentGrossAmount)
+                        if getattr(r, "PaymentGrossAmount", None) is not None
+                        else None
+                    ),
+                    "PaymentOsrhFee": (
+                        float(r.PaymentOsrhFee)
+                        if getattr(r, "PaymentOsrhFee", None) is not None
+                        else None
+                    ),
+                    "PaymentDriverPayout": (
+                        float(r.PaymentDriverPayout)
+                        if getattr(r, "PaymentDriverPayout", None) is not None
+                        else None
+                    ),
                 }
             )
 
@@ -592,8 +612,6 @@ def get_ride_history():
     except Exception as e:
         print("Error in /api/driver/rides/history:", e)
         return jsonify({"success": False, "error": str(e)}), 500
-
-from datetime import datetime, date
 
 @driver_bp.route("/availability", methods=["GET"])
 @require_auth

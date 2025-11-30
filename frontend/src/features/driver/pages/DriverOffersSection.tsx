@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MapView } from "@/components/MapView";
+import { DEFAULT_MAP_CENTER } from "@/lib/constants";
+
 import {
   getDriverOffers,
   type DispatchOfferRow,
@@ -19,6 +22,110 @@ import {
 import { toast } from "sonner";
 
 const PAGE_SIZE = 5;
+
+/** Safely convert a value to a finite number or null */
+function toNum(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === "string" ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+function getOfferMarkers(offer: DispatchOfferRow) {
+  const markers: {
+    position: [number, number];
+    icon?: "pickup" | "dropoff";
+    popup?: string;
+  }[] = [];
+
+  const fromLat = toNum((offer as any).FromLat);
+  const fromLng = toNum((offer as any).FromLng);
+  const toLat = toNum((offer as any).ToLat);
+  const toLng = toNum((offer as any).ToLng);
+
+  if (fromLat !== null && fromLng !== null) {
+    markers.push({
+      position: [fromLat, fromLng],
+      icon: "pickup",
+      popup: `Pickup: ${offer.FromPointName ?? "Unknown"}`,
+    });
+  }
+
+  if (toLat !== null && toLng !== null) {
+    markers.push({
+      position: [toLat, toLng],
+      icon: "dropoff",
+      popup: `Dropoff: ${offer.ToPointName ?? "Unknown"}`,
+    });
+  }
+
+  return markers;
+}
+
+function getOfferPolyline(
+  offer: DispatchOfferRow
+): [number, number][] | undefined {
+  const fromLat = toNum((offer as any).FromLat);
+  const fromLng = toNum((offer as any).FromLng);
+  const toLat = toNum((offer as any).ToLat);
+  const toLng = toNum((offer as any).ToLng);
+
+  if (
+    fromLat !== null &&
+    fromLng !== null &&
+    toLat !== null &&
+    toLng !== null
+  ) {
+    return [
+      [fromLat, fromLng],
+      [toLat, toLng],
+    ];
+  }
+  return undefined;
+}
+
+function getOfferMapCenter(offer: DispatchOfferRow): [number, number] {
+  const fromLat = toNum((offer as any).FromLat);
+  const fromLng = toNum((offer as any).FromLng);
+  const toLat = toNum((offer as any).ToLat);
+  const toLng = toNum((offer as any).ToLng);
+
+  // Both points → midpoint
+  if (
+    fromLat !== null &&
+    fromLng !== null &&
+    toLat !== null &&
+    toLng !== null
+  ) {
+    const midLat = (fromLat + toLat) / 2;
+    const midLng = (fromLng + toLng) / 2;
+    if (Number.isFinite(midLat) && Number.isFinite(midLng)) {
+      return [midLat, midLng];
+    }
+  }
+
+  // Only pickup
+  if (fromLat !== null && fromLng !== null) {
+    return [fromLat, fromLng];
+  }
+
+  // Only dropoff
+  if (toLat !== null && toLng !== null) {
+    return [toLat, toLng];
+  }
+
+  // No coords at all → default center
+  return DEFAULT_MAP_CENTER;
+}
+
+function getOfferMinutesToPickup(offer: DispatchOfferRow): number | null {
+  // use PickupAt primarily; fall back to ApproxStartTime if needed
+  const pickup = offer.PickupAt || (offer as any).ApproxStartTime;
+  if (!pickup) return null;
+
+  const start = new Date(pickup);
+  const diffMs = start.getTime() - Date.now();
+  return Math.round(diffMs / 60000);
+}
 
 export function DriverOffersSection() {
   const [offers, setOffers] = useState<DispatchOfferRow[]>([]);
@@ -161,11 +268,18 @@ export function DriverOffersSection() {
               const isOpen = offer.OfferStatus === "Sent";
               const isActing = actionOfferId === offer.OfferId;
 
+              const markers = getOfferMarkers(offer);
+              const polyline = getOfferPolyline(offer);
+              const center = getOfferMapCenter(offer);
+              const hasValidCenter =
+                Number.isFinite(center[0]) && Number.isFinite(center[1]);
+
               return (
                 <Card
                   key={`${offer.OfferId}-${offer.LegId}-${offer.SeqNo}`}
                   className="cursor-pointer border border-neutral-800 bg-neutral-900/80 p-3 transition-colors hover:border-emerald-500/70"
                 >
+                  {/* card header */}
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Car className="h-4 w-4 text-emerald-400" />
@@ -193,31 +307,68 @@ export function DriverOffersSection() {
                     </span>
                   </div>
 
-                  <div className="mt-2 flex flex-col gap-1 text-xs text-neutral-300">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-3 w-3 text-emerald-400" />
-                      <span className="truncate">
-                        {offer.FromPointName || "Unknown pickup"}{" "}
-                        <ArrowRight className="mx-1 inline h-3 w-3 text-neutral-500" />
-                        {offer.ToPointName || "Unknown dropoff"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-neutral-400">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          Pickup at{" "}
-                          {new Date(offer.PickupAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                  {/* route details + mini map */}
+                  <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                    {/* LEFT: text details */}
+                    <div className="flex flex-col gap-1 text-xs text-neutral-300">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3 text-emerald-400" />
+                        <span className="truncate">
+                          {offer.FromPointName || "Unknown pickup"}{" "}
+                          <ArrowRight className="mx-1 inline h-3 w-3 text-neutral-500" />
+                          {offer.ToPointName || "Unknown dropoff"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-neutral-300">
-                        <Users className="h-3 w-3" />
-                        <span>{offer.NumOfPeople} pax</span>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-neutral-400">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            Pickup at{" "}
+                            {offer.PickupAt
+                              ? new Date(
+                                  offer.PickupAt
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-neutral-300">
+                          <Users className="h-3 w-3" />
+                          <span>{offer.NumOfPeople} pax</span>
+                        </div>
                       </div>
+
+                      {(() => {
+                        const minutes = getOfferMinutesToPickup(offer);
+                        if (minutes == null) return null;
+                        return (
+                          <div className="text-[11px] text-emerald-400">
+                            {minutes <= 0
+                              ? "Pickup time is starting"
+                              : `Pickup in ${minutes} min`}
+                          </div>
+                        );
+                      })()}
                     </div>
+
+                    {/* RIGHT: map (only if we have a valid center) */}
+                    {hasValidCenter ? (
+                      <div className="h-36 rounded-lg border border-neutral-800 bg-neutral-950/80 overflow-hidden">
+                        <MapView
+                          center={center}
+                          markers={markers}
+                          polyline={polyline}
+                          className="h-full w-full"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-36 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/40 text-[11px] text-neutral-500">
+                        Map not available for this offer
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}

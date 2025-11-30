@@ -71,6 +71,34 @@ def get_pending_vehicle_documents():
         return jsonify({"error": str(e)}), 500
 
 
+@operator_bp.route("/pending-person-documents", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_pending_person_documents():
+
+    operator_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetPersonDocumentsByStatus
+                        @OperatorId = ?,
+                        @Status     = ?
+                    """,
+                    (operator_id, 'Pending'),
+                )
+                columns = [column[0] for column in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in pending-vehicle-documents endpoint:", e)
+        return jsonify({"error": str(e)}), 500
+
+
 @operator_bp.route("/accepted-person-documents", methods=["GET"])
 @require_auth
 @require_role("O", "I")
