@@ -32,7 +32,7 @@ const operatorSections = [
 export default function OperatorDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userRole } = useAuthStore();
+  const { userRole, logout } = useAuthStore();
 
   if (userRole !== "operator") {
     return (
@@ -48,11 +48,11 @@ export default function OperatorDashboard() {
     operatorSections.find((s) => location.pathname.startsWith(s.path)) ??
     operatorSections[0];
 
-  function handleLogout() {
-    // If clearAuth is not available, just navigate to login
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
-  }
-
+  };
+  
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-neutral-950 text-neutral-50">
