@@ -1,3 +1,5 @@
+import { cleanDbErrorMessage } from "@/lib/errors";
+
 export const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 // apiClient.ts
@@ -17,11 +19,43 @@ export async function fetchAPI<T>(
           },
   });
 
+  // --- Handle non-2xx HTTP responses ---
   if (!res.ok) {
-    const text = await res.text(); // 👈 read JSON or plain text
+    const text = await res.text();
     console.error("API ERROR BODY:", text);
-    throw new Error(`API Error: ${res.status} ${res.statusText} - ${text}`);
+
+    let message = "Unexpected API error";
+
+    // Try to parse JSON body to grab { error: "...", message: "..." }
+    try {
+      const data = JSON.parse(text);
+      const rawError =
+        (data as any)?.error ??
+        (data as any)?.message ??
+        text;
+
+      message = cleanDbErrorMessage(rawError);
+    } catch {
+      // Not JSON → just clean the raw text
+      message = cleanDbErrorMessage(text);
+    }
+
+    throw new Error(message);
   }
 
-  return res.json();
+  // --- Handle 2xx but { success: false, error: "..."} pattern ---
+  const data = await res.json();
+
+  if (
+    data &&
+    typeof data === "object" &&
+    (data as any).success === false &&
+    (data as any).error
+  ) {
+    const rawError = (data as any).error;
+    const message = cleanDbErrorMessage(rawError);
+    throw new Error(message);
+  }
+
+  return data as T;
 }
