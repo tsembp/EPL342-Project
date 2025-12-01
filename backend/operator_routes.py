@@ -527,3 +527,74 @@ def update_allowed_ride_profile(ride_profile_id):
         return jsonify(
             {"error": "Failed to update allowed ride profile"}
         ), 500
+
+@operator_bp.route("/gdpr-requests", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_gdpr_requests():
+    """
+    Operator-side: list pending/under-review GDPR requests.
+    We filter to DataCorrection by default.
+    """
+    # Optional query param ?type=DataCorrection
+    type_filter = request.args.get("type") or "DataCorrection"
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                if type_filter:
+                    cur.execute(
+                        """
+                        EXEC dbo.usp_Gdpr_GetPendingRequests
+                            @TypeFilter = ?
+                        """,
+                        (type_filter,),
+                    )
+                else:
+                    cur.execute("EXEC dbo.usp_Gdpr_GetPendingRequests")
+
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /gdpr-requests:", e)
+        return jsonify({"error": "Failed to load GDPR requests"}), 500
+
+@operator_bp.route("/review-gdpr-request", methods=["POST"])
+@require_auth
+@require_role("O", "I")
+def review_gdpr_request():
+    """
+    Operator-side: resolve a GDPR DataCorrection request.
+    Body: { "gdprId": 1, "status": "Completed" | "Denied", "note": "..." }
+    """
+    data = request.get_json(silent=True) or {}
+    operator_id = session["user_id"]
+
+    gdpr_id = data.get("gdprId")
+    status = data.get("status")
+    note = (data.get("note") or "").strip()
+
+    if not gdpr_id or status not in ("Completed", "Denied"):
+        return jsonify({"error": "gdprId and valid status ('Completed' | 'Denied') are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Gdpr_ResolveDataCorrection
+                        @GdprId       = ?,
+                        @ActorAdminId = ?,
+                        @NewStatus    = ?,
+                        @ActorNote    = ?
+                    """,
+                    (gdpr_id, operator_id, status, note),
+                )
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print("Error in /review-gdpr-request:", e)
+        return jsonify({"error": "Failed to update GDPR request"}), 500
