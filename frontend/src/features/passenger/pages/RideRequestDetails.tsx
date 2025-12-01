@@ -9,7 +9,7 @@ import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";
 import RideChatWindow from "@/features/passenger/components/FloatingChatWindow";
-import { getRideRequestDetails, type RideRequestDetails, submitRideRating, getRideLiveLocation, cancelRideRequest } from "@/features/passenger/api";
+import { getRideRequestDetails, type RideRequestDetails, type RideRequestEditDraft, submitRideRating, getRideLiveLocation, cancelRideRequest, updateRideRequest } from "@/features/passenger/api";
 import { 
   Clock,
   MapPin,
@@ -19,7 +19,10 @@ import {
   User2,
   MessageCircle,
   Star,
-  CarTaxiFront
+  CarTaxiFront,
+  Pencil,
+  X,
+  Bot
 } from "lucide-react";
 import {
   Dialog,
@@ -29,8 +32,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-
+import { Input } from "@/components/ui/input";
+import type { Station } from "@/types/api"; 
 
 export default function RideRequestDetailsPage() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -48,6 +51,346 @@ export default function RideRequestDetailsPage() {
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editDraft, setEditDraft] = useState<RideRequestEditDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [editNumOfPeople, setEditNumOfPeople] = useState<string>("");
+  const [editPickupAt, setEditPickupAt] = useState<string>("");
+
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [rideTypes, setRideTypes] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+
+  const [selected, setSelected] = useState({
+    serviceType: "",
+    rideType: "",
+    vehicleType: "",
+  });
+
+  const [comboError, setComboError] = useState<string | null>(null);
+  
+  const formatName = (str: string) =>
+    str
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  useEffect(() => {
+    async function fetchMetaAndStations() {
+
+      try {
+        const metaRes = await fetch("/api/meta/enums");
+        if (!metaRes.ok) throw new Error("Failed to load ride metadata");
+        const meta = await metaRes.json();
+
+        setProfiles(meta.combo_specs || []);
+
+        // Normalise services: [id, name] OR {id, name} → { id, name }
+        const normalisedServices = (meta.services || []).map((s: any) => {
+          if (Array.isArray(s)) {
+            return {
+              id: String(s[0]),
+              name: formatName(String(s[1])),
+            };
+          }
+          return {
+            id: String(s.id),
+            name: String(s.name),
+          };
+        });
+        setServices(normalisedServices);
+
+        // Normalise ride types: [id, name] OR {id, name} → { id, name }
+        const normalisedRideTypes = (meta.ride_types || []).map((rt: any) => {
+          if (Array.isArray(rt)) {
+            return {
+              id: String(rt[0]),
+              name: formatName(String(rt[1])),
+            };
+          }
+          return {
+            id: String(rt.id),
+            name: String(rt.name),
+          };
+        });
+        setRideTypes(normalisedRideTypes);
+
+        // Normalise vehicle types: [id, name] OR {id, name} → { id, name }
+        const normalisedVehicleTypes = (meta.veh_types || []).map((vt: any) => {
+          if (Array.isArray(vt)) {
+            return {
+              id: String(vt[0]),
+              name: formatName(String(vt[1])),
+            };
+          }
+          return {
+            id: String(vt.id),
+            name: String(vt.name),
+          };
+        });
+        setVehicleTypes(normalisedVehicleTypes);
+      } catch (err: any) {
+        console.error(err);
+        toast.error(err.message || "Failed to load ride configuration metadata.");
+      }
+    }
+
+    fetchMetaAndStations();
+  }, []);
+
+  useEffect(() => {
+    if (!data) return;
+
+    // Init service/ride/vehicle from rideProfileId if we have both
+    if (profiles.length > 0 && (data as any).rideProfileId) {
+      const profile = profiles.find(
+        (p: any) =>
+          String(p.ride_profile_id ?? p.profile_id ?? p.id) ===
+          String((data as any).rideProfileId)
+      );
+      if (profile) {
+        setSelected({
+          serviceType: String(profile.service_type_id),
+          rideType: String(profile.ride_type_id),
+          vehicleType: String(profile.vehicle_type_id),
+        });
+      }
+    }
+  }, [data, profiles]);
+
+// Same pattern as PassengerHome
+const filteredRideTypeIds = selected.serviceType
+  ? Array.from(
+      new Set(
+        profiles
+          .filter(
+            (p: any) => String(p.service_type_id) === selected.serviceType
+          )
+          .map((p: any) => p.ride_type_id)
+      )
+    )
+  : [];
+
+  const filteredVehicleTypeIds =
+    selected.serviceType && selected.rideType
+      ? Array.from(
+          new Set(
+            profiles
+              .filter(
+                (p: any) =>
+                  String(p.service_type_id) === selected.serviceType &&
+                  String(p.ride_type_id) === selected.rideType
+              )
+              .map((p: any) => p.vehicle_type_id)
+          )
+        )
+      : [];
+
+  // Ride types allowed for the selected service
+  const filteredRideTypes = useMemo(() => {
+    if (!selected.serviceType) return [];
+
+    // Build a Set of allowed ride_type_ids for this service
+    const allowedRideTypeIds = new Set(
+      profiles
+        .filter((p: any) => String(p.service_type_id) === selected.serviceType)
+        .map((p: any) => String(p.ride_type_id))
+    );
+
+    // Keep only rideTypes whose id is allowed
+    return rideTypes.filter((rt: any) => allowedRideTypeIds.has(String(rt.id)));
+  }, [selected.serviceType, profiles, rideTypes]);
+
+  // Vehicle types allowed for the selected service + ride
+  const filteredVehicleTypes = useMemo(() => {
+    if (!selected.serviceType || !selected.rideType) return [];
+
+    const allowedVehicleTypeIds = new Set(
+      profiles
+        .filter(
+          (p: any) =>
+            String(p.service_type_id) === selected.serviceType &&
+            String(p.ride_type_id) === selected.rideType
+        )
+        .map((p: any) => String(p.vehicle_type_id))
+    );
+
+    return vehicleTypes.filter((vt: any) =>
+      allowedVehicleTypeIds.has(String(vt.id))
+    );
+  }, [selected.serviceType, selected.rideType, profiles, vehicleTypes]);
+
+
+  const handleServiceChange = (value: string) => {
+    setSelected({
+      serviceType: value,
+      rideType: "",
+      vehicleType: "",
+    });
+    setComboError(null);
+  };
+
+  const handleRideTypeChange = (value: string) => {
+    setSelected((prev) => ({
+      ...prev,
+      rideType: value,
+      vehicleType: "",
+    }));
+    setComboError(null);
+  };
+
+  const handleVehicleTypeChange = (value: string) => {
+    setSelected((prev) => ({
+      ...prev,
+      vehicleType: value,
+    }));
+    setComboError(null);
+  };
+
+  // Helper to convert ISO → datetime-local input value
+  const toDateTimeLocal = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM"
+  };
+
+  // When data loads / changes, sync edit fields
+  useEffect(() => {
+    if (!data) return;
+    setEditNumOfPeople(String(data.numOfPeople ?? ""));
+    setEditPickupAt(toDateTimeLocal(data.pickupAt));
+  }, [data]);
+
+  const handleStartEdit = () => {
+    if (!data) return;
+    if (data.status !== "Pending") {
+      toast.error("You can only edit a pending request.");
+      return;
+    }
+
+    setEditDraft({
+      numOfPeople: data.numOfPeople,
+      pickupAt: toDateTimeLocal(data.pickupAt),
+
+      rideProfileId: data.rideProfileId,
+      serviceTypeName: data.serviceTypeName,
+      rideTypeName: data.rideTypeName,
+      vehicleTypeName: data.vehicleTypeName,
+    });
+
+    setEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
+    setEditDraft(null);
+  };
+
+  const isChanged = (oldVal: any, newVal: any) => {
+    return String(oldVal) !== String(newVal);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!data || !editDraft) return;
+
+    // basic local validation
+    if (editDraft.numOfPeople <= 0) {
+      toast.error("Passengers must be at least 1.");
+      return;
+    }
+    if (!editDraft.pickupAt) {
+      toast.error("Pickup time is required.");
+      return;
+    }
+
+    // 🔹 Determine if the user is actually changing the ride config
+    const hasAnySelection =
+      !!selected.serviceType || !!selected.rideType || !!selected.vehicleType;
+
+    let rideProfileId: string | undefined;
+
+    if (hasAnySelection) {
+      if (!selected.serviceType || !selected.rideType || !selected.vehicleType) {
+        toast.error("Please select service, ride and vehicle type.");
+        return;
+      }
+
+      const profile = profiles.find(
+        (p) =>
+          String(p.service_type_id) === selected.serviceType &&
+          String(p.ride_type_id) === selected.rideType &&
+          String(p.vehicle_type_id) === selected.vehicleType
+      );
+
+      if (!profile) {
+        toast.error("Ride configuration not available for selected options.");
+        return;
+      }
+
+      rideProfileId =
+        profile.ride_profile_id ?? profile.profile_id ?? profile.id;
+
+      if (!rideProfileId) {
+        console.error("Profile object:", profile);
+        toast.error("Internal error: ride profile id not found for this combo.");
+        return;
+      }
+    }
+    // else: user didn't touch service/ride/vehicle → keep existing profile in DB
+
+    // 2) Build *diff* payload – only changed fields
+    const payload: {
+      numOfPeople?: number;
+      pickupAt?: string;
+      rideProfileId?: string;
+    } = {};
+
+    // numOfPeople
+    if (isChanged(data.numOfPeople, editDraft.numOfPeople)) {
+      payload.numOfPeople = editDraft.numOfPeople;
+    }
+
+    // pickupAt (compare using ISO)
+    const newPickupIso = new Date(editDraft.pickupAt).toISOString();
+    if (isChanged(data.pickupAt, newPickupIso)) {
+      payload.pickupAt = newPickupIso;
+    }
+
+    // ride profile: only if user selected a combo *and* it actually changed
+    if (rideProfileId && isChanged(data.rideProfileId, rideProfileId)) {
+      payload.rideProfileId = rideProfileId;
+    }
+
+    // If nothing changed at all, don't hit the API
+    if (Object.keys(payload).length === 0) {
+      toast.info("No changes to save.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const res = await updateRideRequest(data.requestId, payload);
+
+      if (!res.success) {
+        toast.error(res.error || "Failed to update ride request.");
+        return;
+      }
+
+      toast.success("Ride request updated.");
+      setEditMode(false);
+      setEditDraft(null);
+      await loadDetails(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   const [activeChat, setActiveChat] = useState<{
     rideId: number;
@@ -301,22 +644,171 @@ export default function RideRequestDetailsPage() {
                         <h1 className="text-lg font-semibold text-neutral-50">
                           Ride request #{data.requestId}
                         </h1>
-                        <p className="mt-1 text-xs text-neutral-400">
-                          {data.numOfPeople}{" "}
-                          {data.numOfPeople === 1 ? "person" : "people"}
-                        </p>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs border px-2 py-1 ${statusColor(
-                          data.status
-                        )}`}
-                      >
-                        {data.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {/* Status Badge */}
+                        <Badge
+                          variant="outline"
+                          className={`text-xs border px-2 py-1 ${statusColor(data.status)}`}
+                        >
+                          {data.status}
+                        </Badge>
+
+                        {/* Edit icon (Pending only) */}
+                        {data.status === "Pending" && (
+                          <button
+                            onClick={() => (editMode ? handleCancelEdit() : handleStartEdit())}
+                            className="p-1 rounded-md border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition"
+                            title={editMode ? "Cancel editing" : "Edit request"}
+                          >
+                            {editMode ? (
+                              <X className="h-4 w-4 text-red-400" />
+                            ) : (
+                              <Pencil className="h-4 w-4 text-neutral-300" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-2 space-y-3 text-sm">
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                          Current Ride configuration
+                        </div>
+
+                        {/* View badges */}
+                        <div className="flex flex-wrap gap-2">
+                          <Badge
+                            variant="outline"
+                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                          >
+                            <CarTaxiFront className="h-3 w-3 text-emerald-400" />
+                            <span>
+                              {formatName(
+                                (data as any).serviceTypeName ??
+                                services.find((s: any) => String(s.id) === selected.serviceType)?.name ??
+                                "Service type"
+                              )}
+                            </span>
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                          >
+                            <Bot className="h-3 w-3 text-emerald-400" />
+                            <span>
+                              {formatName(
+                                (data as any).rideTypeName ??
+                                rideTypes.find((rt: any) => String(rt.id) === selected.rideType)?.name ??
+                                "Ride type"
+                              )}
+                            </span>
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                          >
+                            <Car className="h-3 w-3 text-emerald-400" />
+                            <span>
+                              {formatName(
+                                (data as any).vehicleTypeName ??
+                                vehicleTypes.find((vt: any) => String(vt.id) === selected.vehicleType)?.name ??
+                                "Vehicle type"
+                              )}
+                            </span>
+                          </Badge>
+                        </div>
+
+                        {/* Edit controls (only visible in editMode) */}
+                        {editMode && (
+                          <div className="mt-3 space-y-2">
+                            <div>
+                              <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                Service type
+                              </label>
+                              <div className="relative">
+                                <select
+                                  className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                  value={selected.serviceType}
+                                  onChange={(e) => handleServiceChange(e.target.value)}
+                                >
+                                  <option value="">Choose service type</option>
+                                  {services.map((s: any) => (
+                                    <option key={s.id} value={String(s.id)}>
+                                      {s.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                    <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </span>
+                              </div>
+                            </div>
+
+                            {selected.serviceType && (
+                              <div>
+                                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                  Ride type
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                    value={selected.rideType}
+                                    onChange={(e) => handleRideTypeChange(e.target.value)}
+                                  >
+                                    <option value="">Select ride</option>
+                                    {filteredRideTypes.map((rt: any) => (
+                                      <option key={rt.id} value={String(rt.id)}>
+                                        {rt.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                      <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {selected.rideType && (
+                              <div>
+                                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                  Vehicle type
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                    value={selected.vehicleType}
+                                    onChange={(e) => handleVehicleTypeChange(e.target.value)}
+                                  >
+                                    <option value="">Select vehicle</option>
+                                    {filteredVehicleTypes.map((vt: any) => (
+                                      <option key={vt.id} value={String(vt.id)}>
+                                        {vt.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                      <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {comboError && (
+                              <p className="text-xs text-red-400">{comboError}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
                           From
@@ -355,14 +847,97 @@ export default function RideRequestDetailsPage() {
                         <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
                           Pickup time
                         </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                          <Clock className="h-4 w-4 text-emerald-500" />
-                          <span className="text-sm text-neutral-50">
-                            {formattedPickupTime}
-                          </span>
+
+                        {editMode ? (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-emerald-500" />
+                              <Input
+                                type="datetime-local"
+                                value={editPickupAt}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditPickupAt(value);
+                                  setEditDraft((prev) =>
+                                    prev ? { ...prev, pickupAt: value } : prev
+                                  );
+                                }}
+                                className="h-9 bg-neutral-900 border-neutral-700 text-neutral-50 text-sm"
+                              />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                            <Clock className="h-4 w-4 text-emerald-500" />
+                            <span className="text-sm text-neutral-50">
+                              {formattedPickupTime}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                          Passengers
                         </div>
+
+                        {editMode ? (
+                          <div className="flex items-center gap-2">
+                            <User2 className="h-4 w-4 text-emerald-500" />
+                              <Input
+                                type="number"
+                                min={1}
+                                value={editNumOfPeople}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditNumOfPeople(value);
+                                  setEditDraft((prev) =>
+                                    prev
+                                      ? { ...prev, numOfPeople: Number(value || 0) }
+                                      : prev
+                                  );
+                                }}
+                                className="h-9 bg-neutral-900 border-neutral-700 text-neutral-50 text-sm"
+                              />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
+                            <User2 className="h-4 w-4 text-emerald-500" />
+                            <span className="text-sm text-neutral-50">
+                              {data.numOfPeople}{" "}
+                              {data.numOfPeople === 1 ? "person" : "people"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                    {editMode && (
+                    <div className="mt-4 rounded-xl border border-emerald-600/40 bg-emerald-500/5 px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <p className="text-xs text-neutral-200">
+                        You are editing this ride request. Changes will apply only while the request remains pending.
+                      </p>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-neutral-600 text-xs bg-neutral-900 hover:bg-neutral-800 text-neutral-200"
+                          onClick={handleCancelEdit}
+                          disabled={saving}
+                        >
+                          Discard
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-xs text-white"
+                          onClick={handleSaveEdit}
+                          disabled={saving}
+                        >
+                          {saving ? "Saving…" : "Save changes"}
+                        </Button>
                       </div>
                     </div>
+                  )}
+
 
                     {/* Waiting-for-drivers block */}
                     <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
