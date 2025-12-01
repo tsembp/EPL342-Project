@@ -15,8 +15,36 @@ BEGIN
         RETURN;
     END;
 
+    DECLARE 
+        @CurrentType   NVARCHAR(100),
+        @CurrentStatus NVARCHAR(100);
+
+    SELECT 
+        @CurrentType   = [Type],
+        @CurrentStatus = [Status]
+    FROM dbo.GdprRequest
+    WHERE GdprId = @GdprId;
+
+    IF @CurrentType IS NULL
+    BEGIN
+        RAISERROR('GDPR request not found.', 16, 1);
+        RETURN;
+    END;
+
+    IF @CurrentType <> 'DataCorrection'
+    BEGIN
+        RAISERROR('GDPR request is not of type DataCorrection.', 16, 1);
+        RETURN;
+    END;
+
+    IF @CurrentStatus IN ('Denied','Completed')
+    BEGIN
+        RAISERROR('GDPR request already resolved.', 16, 1);
+        RETURN;
+    END;
+
     UPDATE dbo.GdprRequest
-    SET Status    = @NewStatus,
+    SET [Status]  = @NewStatus,
         DecidedAt = GETUTCDATE()
     WHERE GdprId  = @GdprId;
 

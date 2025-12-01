@@ -49,7 +49,6 @@ BEGIN
         ZP_To.Latitude     AS ToLat,
         ZP_To.Longitude    AS ToLng,
 
-        -- Original Ride Request
         RR.RequestId,
         RR.NumOfPeople,
         RR.PickupAt,

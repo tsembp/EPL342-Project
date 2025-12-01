@@ -66,6 +66,149 @@ def request_ride():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+# Edit request
+@passenger_bp.route("/ride-requests/<int:request_id>", methods=["PUT"])
+@require_auth
+@require_role("P")
+def update_ride_request(request_id: int):
+    """
+    Edit a ride request for the logged-in passenger.
+    Only allowed while the request is Pending / Edited.
+    """
+    user_id = session["user_id"]
+    data = request.json or {}
+
+    try:
+        num_of_people = data.get("numOfPeople")
+        pickup_at = data.get("pickupAt")
+        ride_profile_id = data.get("rideProfileId")
+
+        # Must provide at least one field to update
+        if (
+            num_of_people is None
+            and pickup_at is None
+            and ride_profile_id is None
+        ):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "No editable fields provided in request body.",
+                    }
+                ),
+                400,
+            )
+
+        # Type conversions / basic validation
+        if num_of_people is not None:
+            try:
+                num_of_people = int(num_of_people)
+            except (TypeError, ValueError):
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "numOfPeople must be a valid integer.",
+                        }
+                    ),
+                    400,
+                )
+            if num_of_people <= 0:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "numOfPeople must be greater than zero.",
+                        }
+                    ),
+                    400,
+                )
+
+        if ride_profile_id is not None and ride_profile_id == "":
+            ride_profile_id = None  # treat empty string as NULL
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1) Ownership + status check
+                cur.execute(
+                    """
+                    SELECT Status
+                    FROM dbo.RideRequest
+                    WHERE RequestId = ? AND PassengerId = ?
+                    """,
+                    request_id,
+                    user_id,
+                )
+                row = cur.fetchone()
+                if not row:
+                    return (
+                        jsonify(
+                            {"success": False, "error": "RideRequest not found"}
+                        ),
+                        404,
+                    )
+
+                current_status = row[0]
+                if current_status not in ("Pending", "Edited"):
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "RideRequest cannot be edited in its current status.",
+                            }
+                        ),
+                        400,
+                    )
+
+                # 2) Call the update sproc
+                cur.execute(
+                    """
+                    EXEC dbo.usp_RideRequest_Update
+                        @RequestId=?,
+                        @NumOfPeople=?,
+                        @PickupAt=?,
+                        @RideProfileId=?;
+                    """,
+                    request_id,
+                    num_of_people,
+                    pickup_at,
+                    ride_profile_id
+                )
+
+                # We don't need the row returned by the sproc right now
+                _ = cur.fetchone()
+                conn.commit()
+
+                # 3) Crerate new dispatch offers for the ride's legs now that it has been updated
+                cur.execute(
+                    """
+                    SELECT LegId
+                    FROM dbo.ItineraryLeg
+                    WHERE RideRequestId = ?
+                    """,
+                    request_id,
+                )
+                leg_ids = [r[0] for r in cur.fetchall()]
+
+                for leg_id in leg_ids:
+                    cur.execute(
+                        """
+                        EXEC dbo.usp_DispatchOfferCreation
+                            @ItineraryLegId=?,
+                            @SearchRadiusMeters=?;
+                        """,
+                        leg_id,
+                        5000.0,
+                    )
+
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 # Cancel ride request
 @passenger_bp.route("/ride-requests/<int:request_id>/cancel", methods=["POST"])
 @require_auth
@@ -269,29 +412,9 @@ def get_ride_request_details(request_id: int):
             with conn.cursor() as cur:
                 # 1) Basic request info + pickup/dropoff station names/zones + coords
                 cur.execute(
-                    """
-                    SELECT 
-                        RR.RequestId,
-                        RR.Status,
-                        RR.NumOfPeople,
-                        RR.PickupAt,
-                        zp_from.PointId   AS FromPointId,
-                        zp_from.ZoneId    AS FromZoneId,
-                        zp_from.Name      AS FromName,
-                        zp_from.Latitude  AS FromLatitude,
-                        zp_from.Longitude AS FromLongitude,
-                        zp_to.PointId     AS ToPointId,
-                        zp_to.ZoneId      AS ToZoneId,
-                        zp_to.Name        AS ToName,
-                        zp_to.Latitude    AS ToLatitude,
-                        zp_to.Longitude   AS ToLongitude
-                    FROM dbo.RideRequest RR
-                    JOIN dbo.ZonePoint zp_from ON zp_from.PointId = RR.PickUpPoint
-                    JOIN dbo.ZonePoint zp_to   ON zp_to.PointId   = RR.DropOffPoint
-                    WHERE RR.RequestId = ? AND RR.PassengerId = ?
-                    """,
+                    "EXEC dbo.usp_GetPassengerRideRequestDetails ?, ?",
                     request_id,
-                    user_id,
+                    user_id
                 )
                 row = cur.fetchone()
 
@@ -318,40 +441,8 @@ def get_ride_request_details(request_id: int):
 
                 # 3) If rides have been created/accepted, load them
                 rides: list[dict] = []
-
                 cur.execute(
-                    """
-                    SELECT
-                        R.RideId,
-                        IL.SeqNo            AS LegIndex,
-                        zp_leg_from.Name    AS FromName,
-                        zp_leg_to.Name      AS ToName,
-                        R.Status            AS RideStatus,
-                        U.FirstName + ' ' + U.LastName AS DriverName,
-                        V.PlateNumber       AS VehiclePlate,
-                        VT.Name             AS VehicleType,
-                        IL.ApproxStartTime AS PlannedStart,
-                        IL.ApproxEndTime   AS PlannedEnd,
-                        R.PriceFinal        AS PriceFinal
-                    FROM dbo.Ride R
-                    JOIN dbo.DispatchOffer DO
-                        ON DO.OfferId = R.OfferId
-                    JOIN dbo.ItineraryLeg IL
-                        ON IL.LegId = DO.LegId
-                    JOIN dbo.ZonePoint zp_leg_from
-                        ON zp_leg_from.PointId = IL.FromPointId
-                    JOIN dbo.ZonePoint zp_leg_to
-                        ON zp_leg_to.PointId = IL.ToPointId
-                    LEFT JOIN dbo.[User] U
-                        ON U.UserId = R.DriverUserId
-                    LEFT JOIN dbo.Vehicle V
-                        ON V.VehicleId = R.VehicleId
-                    LEFT JOIN dbo.VehicleType VT
-                        ON VT.VehicleTypeId = V.VehicleTypeId
-
-                    WHERE DO.Status = 'Accepted' AND IL.RideRequestId = ?
-                    ORDER BY IL.SeqNo
-                    """,
+                    "EXEC dbo.usp_GetRideLegsByRequestId ?",
                     request_id,
                 )
                 ride_rows = cur.fetchall()
@@ -413,8 +504,12 @@ def get_ride_request_details(request_id: int):
                             if row.ToLongitude is not None
                             else None,
                         },
+                        "rideProfileId" : row.RideProfileId,
+                        "serviceTypeName" : row.ServiceTypeName,
+                        "rideTypeName" : row.RideTypeName,
+                        "vehicleTypeName" : row.VehicleTypeName,
                         "progressStatus": progress_status,
-                        "rides": rides,  # 👈 NEW
+                        "rides": rides,
                     },
                 }
             ),
@@ -440,73 +535,12 @@ def get_ride_history():
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                sql = """
-                WITH ReqAgg AS (
-                    SELECT
-                        rr.RequestId,
-                        rr.Status AS RequestStatus,
-                        rr.PickupAt,
-                        zp_from.Name AS FromName,
-                        zp_to.Name   AS ToName,
-                        -- trip-level aggregates
-                        CASE WHEN COUNT(r.RideId) > 0 THEN 1 ELSE 0 END AS HasRides,
-                        COUNT(DISTINCT r.RideId)          AS RideCount,
-                        MIN(r.StartedAt)                  AS FirstRideStart,
-                        MAX(r.EndedAt)                    AS LastRideEnd,
-                        SUM(ISNULL(r.PriceFinal, 0))      AS TotalPrice,
-                        -- a simple "latest" ride status (for list display)
-                        MAX(r.Status)                     AS LatestRideStatus
-                    FROM dbo.RideRequest rr
-                    LEFT JOIN dbo.ItineraryLeg il
-                        ON rr.RequestId = il.RideRequestId
-                    LEFT JOIN dbo.DispatchOffer dof
-                        ON dof.LegId = il.LegId
-                    LEFT JOIN dbo.Ride r
-                        ON r.OfferId = dof.OfferId
-                    LEFT JOIN dbo.ZonePoint zp_from
-                        ON rr.PickUpPoint = zp_from.PointId
-                    LEFT JOIN dbo.ZonePoint zp_to
-                        ON rr.DropOffPoint = zp_to.PointId
-                    WHERE rr.PassengerId = ?
-                      AND (
-                            ? IS NULL
-                            OR ? = ''
-                            OR rr.Status = ?
-                          )
-                    GROUP BY
-                        rr.RequestId,
-                        rr.Status,
-                        rr.PickupAt,
-                        zp_from.Name,
-                        zp_to.Name
-                )
-                SELECT
-                    RequestId,
-                    RequestStatus,
-                    PickupAt,
-                    FromName,
-                    ToName,
-                    HasRides,
-                    RideCount,
-                    FirstRideStart,
-                    LastRideEnd,
-                    TotalPrice,
-                    LatestRideStatus,
-                    COUNT(*) OVER() AS TotalCount
-                FROM ReqAgg
-                ORDER BY PickupAt DESC
-                OFFSET (? - 1) * ? ROWS
-                FETCH NEXT ? ROWS ONLY;
-                """
-
+                sql = "EXEC dbo.usp_GetPassengerRideRequests ?, ?, ?, ?"
                 params = (
-                    user_id,
-                    status_filter,
-                    status_filter,
-                    status_filter,
-                    page,
-                    page_size,
-                    page_size,
+                    user_id,        # @PassengerId
+                    status_filter,  # @StatusFilter (can be None or '')
+                    page,           # @Page
+                    page_size,      # @PageSize
                 )
 
                 cur.execute(sql, params)
@@ -1034,4 +1068,92 @@ def upload_self_drive_license():
         return jsonify({"success": True}), 201
 
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+@passenger_bp.route("/preferences", methods=["GET"])
+@require_auth
+@require_role("P")
+def get_passenger_preferences():
+    """
+    Return notification + location prefs for logged-in passenger.
+    Wraps dbo.usp_UserPreferences_Get.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "EXEC dbo.usp_UserPreferences_Get @UserId = ?",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+
+                if not row:
+                    # No row yet → default values
+                    return jsonify({
+                        "success": True,
+                        "hasRow": False,
+                        "preferences": {
+                            "notificationsEnabled": False,
+                            "locEnabled": False,
+                        },
+                    }), 200
+
+                columns = [col[0] for col in cur.description]
+                data = dict(zip(columns, row))
+
+        return jsonify({
+            "success": True,
+            "hasRow": True,
+            "preferences": {
+                "notificationsEnabled": bool(data.get("NotificationsEnabled", False)),
+                "locEnabled": bool(data.get("LocEnabled", False)),
+            },
+        }), 200
+
+    except Exception as e:
+        print("Error in /api/passenger/preferences [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@passenger_bp.route("/preferences", methods=["PUT"])
+@require_auth
+@require_role("P")
+def set_passenger_preferences():
+    """
+    Update/create preferences row.
+    Body: { "notificationsEnabled": boolean, "locEnabled": boolean }
+    Wraps dbo.usp_UserPreferences_Set.
+    """
+    user_id = session["user_id"]
+    payload = request.get_json(silent=True) or {}
+
+    notifications_enabled = bool(payload.get("notificationsEnabled", False))
+    loc_enabled = bool(payload.get("locEnabled", False))
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_UserPreferences_Set
+                        @UserId = ?,
+                        @NotificationsEnabled = ?,
+                        @LocEnabled = ?
+                    """,
+                    (
+                        user_id,
+                        1 if notifications_enabled else 0,
+                        1 if loc_enabled else 0,
+                    ),
+                )
+                # sproc returns final row, but we don't need it here
+                cur.fetchone()
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("Error in /api/passenger/preferences [PUT]:", e)
         return jsonify({"success": False, "error": str(e)}), 400
