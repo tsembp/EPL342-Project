@@ -66,6 +66,149 @@ def request_ride():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+# Edit request
+@passenger_bp.route("/ride-requests/<int:request_id>", methods=["PUT"])
+@require_auth
+@require_role("P")
+def update_ride_request(request_id: int):
+    """
+    Edit a ride request for the logged-in passenger.
+    Only allowed while the request is Pending / Edited.
+    """
+    user_id = session["user_id"]
+    data = request.json or {}
+
+    try:
+        num_of_people = data.get("numOfPeople")
+        pickup_at = data.get("pickupAt")
+        ride_profile_id = data.get("rideProfileId")
+
+        # Must provide at least one field to update
+        if (
+            num_of_people is None
+            and pickup_at is None
+            and ride_profile_id is None
+        ):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "No editable fields provided in request body.",
+                    }
+                ),
+                400,
+            )
+
+        # Type conversions / basic validation
+        if num_of_people is not None:
+            try:
+                num_of_people = int(num_of_people)
+            except (TypeError, ValueError):
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "numOfPeople must be a valid integer.",
+                        }
+                    ),
+                    400,
+                )
+            if num_of_people <= 0:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "numOfPeople must be greater than zero.",
+                        }
+                    ),
+                    400,
+                )
+
+        if ride_profile_id is not None and ride_profile_id == "":
+            ride_profile_id = None  # treat empty string as NULL
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1) Ownership + status check
+                cur.execute(
+                    """
+                    SELECT Status
+                    FROM dbo.RideRequest
+                    WHERE RequestId = ? AND PassengerId = ?
+                    """,
+                    request_id,
+                    user_id,
+                )
+                row = cur.fetchone()
+                if not row:
+                    return (
+                        jsonify(
+                            {"success": False, "error": "RideRequest not found"}
+                        ),
+                        404,
+                    )
+
+                current_status = row[0]
+                if current_status not in ("Pending", "Edited"):
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "RideRequest cannot be edited in its current status.",
+                            }
+                        ),
+                        400,
+                    )
+
+                # 2) Call the update sproc
+                cur.execute(
+                    """
+                    EXEC dbo.usp_RideRequest_Update
+                        @RequestId=?,
+                        @NumOfPeople=?,
+                        @PickupAt=?,
+                        @RideProfileId=?;
+                    """,
+                    request_id,
+                    num_of_people,
+                    pickup_at,
+                    ride_profile_id
+                )
+
+                # We don't need the row returned by the sproc right now
+                _ = cur.fetchone()
+                conn.commit()
+
+                # 3) Crerate new dispatch offers for the ride's legs now that it has been updated
+                cur.execute(
+                    """
+                    SELECT LegId
+                    FROM dbo.ItineraryLeg
+                    WHERE RideRequestId = ?
+                    """,
+                    request_id,
+                )
+                leg_ids = [r[0] for r in cur.fetchall()]
+
+                for leg_id in leg_ids:
+                    cur.execute(
+                        """
+                        EXEC dbo.usp_DispatchOfferCreation
+                            @ItineraryLegId=?,
+                            @SearchRadiusMeters=?;
+                        """,
+                        leg_id,
+                        5000.0,
+                    )
+
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 # Cancel ride request
 @passenger_bp.route("/ride-requests/<int:request_id>/cancel", methods=["POST"])
 @require_auth
@@ -361,8 +504,12 @@ def get_ride_request_details(request_id: int):
                             if row.ToLongitude is not None
                             else None,
                         },
+                        "rideProfileId" : row.RideProfileId,
+                        "serviceTypeName" : row.ServiceTypeName,
+                        "rideTypeName" : row.RideTypeName,
+                        "vehicleTypeName" : row.VehicleTypeName,
                         "progressStatus": progress_status,
-                        "rides": rides,  # 👈 NEW
+                        "rides": rides,
                     },
                 }
             ),
