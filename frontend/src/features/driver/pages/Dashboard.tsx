@@ -23,6 +23,8 @@ import {
   Settings,
 } from "lucide-react";
 import { VehicleManagementSection } from "@/features/driver/components/VehicleManagementSection";
+import { DriverServicesSection } from "@/features/driver/pages/DriverServicesSection";
+
 
 
 import { DriverOffersSection } from "@/features/driver/pages/DriverOffersSection";
@@ -30,6 +32,7 @@ import DriverProfile from "@/features/driver/pages/DriverProfile";
 import { DriverScheduleSection } from "@/features/driver/pages/DriverScheduleSection";
 import { DriverHistorySection } from "@/features/driver/pages/DriverHistorySection";
 import { DriverAvailabilitySection } from "@/features/driver/pages/DriverAvailabilitySection";
+
 
 type TabKey =
   | "rides"
@@ -186,14 +189,13 @@ export default function Dashboard() {
             <DriverOffersSection />
           </TabsContent>
 
+          
           {/* SERVICES TAB */}
           <TabsContent value="services">
-            <PlaceholderSection
-              icon={<ClipboardList className="h-5 w-5 text-emerald-400" />}
-              title="My services"
-              description="This is where you’ll register for new services and see the status of each enrollment (pending, approved, rejected)."
-            />
+            <DriverServicesSection />
           </TabsContent>
+
+
 
           {/* VEHICLES TAB */}
           <TabsContent value="vehicles">

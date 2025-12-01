@@ -14,7 +14,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- 1) Validate owner is a Driver or Company Representative AND Validated
+    -- Validate owner is a Driver or Company Representative AND Verified
     IF NOT EXISTS (
         SELECT 1
         FROM [dbo].[User] U
@@ -27,7 +27,14 @@ BEGIN
         RETURN;
     END;
 
-    -- 2) Validate plate number uniqueness
+    -- Validate plate number format 
+    IF @PlateNumber NOT LIKE '[A-Z][A-Z][A-Z][0-9][0-9][0-9]'
+    BEGIN
+        RAISERROR('Plate number must be in the format ABC123 (three letters followed by three digits).', 16, 1);
+        RETURN;
+    END;
+
+    -- Validate plate number uniqueness
     IF EXISTS (
         SELECT 1
         FROM [dbo].[Vehicle]
@@ -38,25 +45,52 @@ BEGIN
         RETURN;
     END;
 
-    -- 3) Validate VehicleType exists (if you have a VehicleType table)
-    IF NOT EXISTS (
-        SELECT 1
-        FROM [dbo].[VehicleType] VT
-        WHERE VT.VehicleTypeId = @VehicleTypeId
-    )
+    -- Validate VehicleType exists and fetch constraints
+    DECLARE
+        @TypeSeats       INT,
+        @TypeMinVolume   DECIMAL(10,2),
+        @TypeMinWeight   DECIMAL(10,2);
+
+    SELECT
+        @TypeSeats     = VT.NumOfSeats,
+        @TypeMinVolume = VT.MinCargoVolume,
+        @TypeMinWeight = VT.MinCargoWeight
+    FROM dbo.VehicleType VT
+    WHERE VT.VehicleTypeId = @VehicleTypeId;
+
+    IF @TypeSeats IS NULL
     BEGIN
         RAISERROR('Invalid VehicleTypeId.', 16, 1);
         RETURN;
     END;
 
-    -- 4) Validate seats
+    -- Seats validation
     IF @Seats <= 0
     BEGIN
         RAISERROR('Seats must be greater than zero.', 16, 1);
         RETURN;
     END;
 
-    -- 5) Insert vehicle
+    IF @Seats > @TypeSeats
+    BEGIN
+        RAISERROR('Number of seats exeeds limit for the selected vehicle type.', 16, 1);
+        RETURN;
+    END;
+
+    -- Cargo capability validations
+    IF @CargoVolume < @TypeMinVolume
+    BEGIN
+        RAISERROR('Cargo volume is less than the minimum required for the selected vehicle type.', 16, 1);
+        RETURN;
+    END;
+
+    IF @CargoWeight < @TypeMinWeight
+    BEGIN
+        RAISERROR('Cargo weight capacity is less than the minimum required for the selected vehicle type.', 16, 1);
+        RETURN;
+    END;
+
+    -- Insert vehicle
     DECLARE @VehicleId UNIQUEIDENTIFIER = NEWID();
 
     INSERT INTO [dbo].[Vehicle]
@@ -71,8 +105,8 @@ BEGIN
         Seats,
         CargoVolume,
         CargoWeight,
-        Status,        -- start in Pending
-        Verified       -- not verified yet
+        Status,
+        Verified
     )
     VALUES
     (
