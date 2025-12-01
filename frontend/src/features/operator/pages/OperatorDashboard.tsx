@@ -27,6 +27,7 @@ const operatorSections = [
   { label: "Rides & Operations", path: "/operator/rides" },
   { label: "Reports & Analytics", path: "/operator/reports" },
   { label: "System & Audit Logs", path: "/operator/logs" },
+  { label: "GDPR Data Correction", path: "/operator/gdpr-data-correction" },
 ];
 
 export default function OperatorDashboard() {
