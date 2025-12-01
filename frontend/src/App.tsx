@@ -38,15 +38,19 @@ import RidesOperations from "@/features/operator/pages/RidesOperations";
 import ReportsAnalytics from "@/features/operator/pages/ReportsAnalytics";
 import SystemAuditLogs from "@/features/operator/pages/SystemAuditLogs";
 
+// ⭐ NEW IMPORT — GDPR Operator Page
+import { GDPRDataCorrection } from "@/features/operator/pages/GDPRDataCorrection";
+
 // INSPECTOR
 import { InspectorDashboard } from "@/features/inspector/pages/InspectorDashboard";
 
 // ADMIN
 import AdminPendingOperatorsPage from "@/features/admin/pages/AdminPendingOperators";
 
-// GDPR
+// GDPR (User side)
 import GDPRRequest from "@/features/gdpr/pages/GDPRRequest";
 import GDPRExport from "@/features/gdpr/pages/GDPRExport";
+
 import NotFound from "@/pages/NotFound";
 import RideRequestDetailsPage from "./features/passenger/pages/RideRequestDetails";
 
@@ -77,10 +81,25 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-            
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            
-            <Route path="/passenger/*" element={<ProtectedRoute><PassengerLayout /></ProtectedRoute>}>
+
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* PASSENGER */}
+            <Route
+              path="/passenger/*"
+              element={
+                <ProtectedRoute>
+                  <PassengerLayout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<PassengerHome />} />
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
@@ -91,6 +110,7 @@ function App() {
               <Route path="checkout" element={<CheckoutPage />} />
             </Route>
 
+            {/* GDPR User */}
             <Route
               path="/gdpr"
               element={
@@ -109,7 +129,6 @@ function App() {
             />
 
             {/* DRIVER */}
-            {/* main dashboard (tabs, including Vehicles tab) */}
             <Route
               path="/driver"
               element={
@@ -118,7 +137,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* driver personal docs */}
             <Route
               path="/driver/documents"
               element={
@@ -127,7 +145,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* vehicle docs for a specific vehicle (navigated with state.vehicleId) */}
             <Route
               path="/driver/VehicleDocuments"
               element={
@@ -136,7 +153,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* add vehicle page */}
             <Route
               path="/driver/add-vehicle"
               element={
@@ -145,7 +161,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* pending approval page */}
             <Route
               path="/driver/pending-approval"
               element={
@@ -174,14 +189,32 @@ function App() {
               <Route path="rides" element={<RidesOperations />} />
               <Route path="reports" element={<ReportsAnalytics />} />
               <Route path="logs" element={<SystemAuditLogs />} />
+
+              <Route
+                path="gdpr-data-correction"
+                element={<GDPRDataCorrection />}
+              />
             </Route>
 
             {/* INSPECTOR */}
-            <Route path="/inspector/*" element={<ProtectedRoute><InspectorDashboard /></ProtectedRoute>} />
+            <Route
+              path="/inspector/*"
+              element={
+                <ProtectedRoute>
+                  <InspectorDashboard />
+                </ProtectedRoute>
+              }
+            />
 
             {/* ADMIN */}
-            <Route path="/admin/*" element={<ProtectedRoute><AdminPendingOperatorsPage /></ProtectedRoute>} >
-            </Route>
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <AdminPendingOperatorsPage />
+                </ProtectedRoute>
+              }
+            ></Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>
