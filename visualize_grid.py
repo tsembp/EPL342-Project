@@ -10,9 +10,9 @@ import contextily as cx
 # Config
 # -------------------------------------------------
 CSV_DIR = Path("seed_data")
-ZONE_CSV = CSV_DIR / "Geofencezone.csv"
+ZONE_CSV = CSV_DIR / "GeofenceZone.csv"
 BRIDGE_CSV = CSV_DIR / "Bridge.csv"
-POINTS_CSV = CSV_DIR / "ZonePoint_land_only.csv"  # Updated points file
+POINTS_CSV = CSV_DIR / "ZonePoint.csv"  # Updated points file
 
 FIGSIZE = (14, 12)
 SHOW_LABELS = False  # set True if you want zone IDs at centers
