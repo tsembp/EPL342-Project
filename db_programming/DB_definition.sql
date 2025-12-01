@@ -173,7 +173,6 @@ CREATE TABLE [dbo].[UserPreferences] (
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp NULL,
     CONSTRAINT [PK_UserPreferences] PRIMARY KEY CLUSTERED ([UserPreferencesId]),
-    CONSTRAINT [CK_UserPreferences_Languages] CHECK ([Language] IN ('en','es','fr','de','it','el'))
 );
 
 CREATE TABLE [dbo].[Ride] (
@@ -711,7 +710,7 @@ ADD CONSTRAINT [FK_GdprLog_GdprRequest]
     ON DELETE NO ACTION,
     CONSTRAINT [FK_GdprLog_ActorOperator]
     FOREIGN KEY ([ActorAdminId]) REFERENCES [dbo].[Operator]([OperatorId])
-    
+
 COMMIT TRANSACTION;
 GO
 
