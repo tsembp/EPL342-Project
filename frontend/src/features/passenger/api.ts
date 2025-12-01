@@ -60,6 +60,21 @@ export type RideRequestDetails = {
     name: string;
   };
   progressStatus: string;
+
+  rideProfileId?: string;
+  serviceTypeName?: string;
+  rideTypeName?: string;
+  vehicleTypeName?: string;
+};
+
+export type RideRequestEditDraft = {
+  numOfPeople: number;
+  pickupAt: string;
+
+  rideProfileId?: string;
+  serviceTypeName?: string;
+  rideTypeName?: string;
+  vehicleTypeName?: string;
 };
 
 export interface RidePaymentSummary {
@@ -133,6 +148,24 @@ export const requestRide = (data: {
     }
   );
 };
+
+export const updateRideRequest = (
+  requestId: number,
+  payload: {
+    numOfPeople?: number;
+    pickupAt?: string;
+    pickupPointId?: number;
+    dropOffPointId?: number;
+    rideProfileId?: string;
+  }
+) =>
+  fetchAPI<{ success: boolean; error?: string }>(
+    `/passenger/ride-requests/${requestId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
+  );
 
 export const getRideLiveLocation = (rideId: number) =>
   fetchAPI<RideLiveLocation>(`/passenger/rides/${rideId}/vehicle-location-live`);

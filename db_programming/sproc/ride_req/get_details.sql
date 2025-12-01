@@ -19,8 +19,16 @@ BEGIN
         zp_to.ZoneId      AS ToZoneId,
         zp_to.Name        AS ToName,
         zp_to.Latitude    AS ToLatitude,
-        zp_to.Longitude   AS ToLongitude
+        zp_to.Longitude   AS ToLongitude,
+        RR.RideProfileId  AS RideProfileId,
+        st.Name           AS ServiceTypeName,
+        rt.Name           AS RideTypeName,
+        vt.Name           AS VehicleTypeName
     FROM dbo.RideRequest RR
+    JOIN dbo.AllowedRideProfile arp ON arp.RideProfileId = RR.RideProfileId
+    JOIN dbo.ServiceType st ON st.ServiceTypeId = arp.ServiceTypeId
+    JOIN dbo.RideType rt ON rt.RideTypeId = arp.RideTypeId
+    JOIN dbo.VehicleType vt ON vt.VehicleTypeId = arp.VehicleTypeId
     JOIN dbo.ZonePoint zp_from ON zp_from.PointId = RR.PickUpPoint
     JOIN dbo.ZonePoint zp_to   ON zp_to.PointId   = RR.DropOffPoint
     WHERE RR.RequestId = @RequestId
