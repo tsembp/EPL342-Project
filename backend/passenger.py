@@ -285,7 +285,6 @@ def get_ride_requests():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
-# Generate alternative routes for ride request
 @passenger_bp.route("/ride-requests/<int:request_id>/alternatives", methods=["GET"])
 @require_auth
 @require_role("P")
@@ -296,43 +295,108 @@ def get_ride_alternatives(request_id: int):
         with get_connection() as conn:
             with conn.cursor() as cur:
                 # 1) Get pickup & dropoff points for this ride
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT PickUpPoint, DropOffPoint
                     FROM dbo.RideRequest
                     WHERE RequestId = ? AND PassengerId = ?
-                """, request_id, user_id)
+                    """,
+                    request_id,
+                    user_id,
+                )
                 row = cur.fetchone()
                 if not row:
-                    return jsonify({"success": False, "error": "RideRequest not found"}), 404
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "RideRequest not found",
+                            }
+                        ),
+                        404,
+                    )
 
                 pickup_point_id, dropoff_point_id = row
 
                 if pickup_point_id is None or dropoff_point_id is None:
-                    return jsonify({"success": False, "error": "RideRequest has no pickup/dropoff points"}), 400
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "RideRequest has no pickup/dropoff points",
+                            }
+                        ),
+                        400,
+                    )
 
-                # 2) Call the route sproc to get all alternatives as JSON
-                cur.execute("""
+                # Optional: allow override via query param, else default 6
+                max_hops_param = request.args.get("maxHops", type=int)
+                max_hops = max_hops_param if max_hops_param is not None else 15
+
+                # 2) Call the route sproc to get all alternatives as rows
+                cur.execute(
+                    """
                     EXEC dbo.usp_Route_GetAllAlternatives
                         @PickUpPointId=?,
                         @DropOffPointId=?,
                         @MaxHops=?,
-                        @MaxAlternatives=?
-                """, pickup_point_id, dropoff_point_id, 6, 50)
+                        @MaxAlternatives=?;
+                    """,
+                    pickup_point_id,
+                    dropoff_point_id,
+                    max_hops,
+                    50,  # or make this configurable too
+                )
 
-                result = cur.fetchone()
-                if not result or result[0] is None:
-                    return jsonify({"success": False, "error": "No alternatives found"}), 400
+                rows = cur.fetchall()
+                if not rows:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "No alternatives found",
+                            }
+                        ),
+                        400,
+                    )
 
-                alternatives_json_str = result[0]
+                # 3) Group rows by AlternativeNo and shape into JSON-like structure
+                # rows: (AlternativeNo, SeqNo, FromZoneId, ToZoneId)
+                alternatives_dict: dict[int, list[dict]] = {}
 
-                # 3) Return as proper JSON
-                alternatives = json.loads(alternatives_json_str)
+                for alt_no, seq_no, from_zone_id, to_zone_id in rows:
+                    legs = alternatives_dict.setdefault(alt_no, [])
+                    legs.append(
+                        {
+                            "seqNo": int(seq_no),
+                            "fromZoneId": int(from_zone_id),
+                            "toZoneId": int(to_zone_id),
+                        }
+                    )
 
-                return jsonify({
-                    "success": True,
-                    "requestId": request_id,
-                    "alternatives": alternatives
-                }), 200
+                # 4) Convert dict -> sorted list for response
+                alternatives = []
+                for alt_no in sorted(alternatives_dict.keys()):
+                    legs = sorted(
+                        alternatives_dict[alt_no], key=lambda leg: leg["seqNo"]
+                    )
+                    alternatives.append(
+                        {
+                            "alternativeNo": int(alt_no),
+                            "legs": legs,
+                        }
+                    )
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "requestId": request_id,
+                            "alternatives": alternatives,
+                        }
+                    ),
+                    200,
+                )
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 400

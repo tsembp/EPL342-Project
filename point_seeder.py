@@ -3,9 +3,9 @@ import pandas as pd
 from pathlib import Path
 
 DB_HOST = "10.16.1.133"
-DB_NAME = "aevago03"
-DB_USER = "aevago03"
-DB_PASS = "b9gDPgKA"
+DB_NAME = "ptsemb01"
+DB_USER = "ptsemb01"
+DB_PASS = "jBrC2y6f"
 
 conn = pyodbc.connect(
     "DRIVER={ODBC Driver 18 for SQL Server};"
@@ -20,11 +20,11 @@ conn = pyodbc.connect(
 cursor = conn.cursor()
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "seed_data" / "cyprus-zones-final"
+DATA_DIR = BASE_DIR / "seed_data" / "27_zones"
 
-zones_path = DATA_DIR / "zones"
-zone_points_path = DATA_DIR / "zone_points"
-bridges_path = DATA_DIR / "bridges"
+zones_path = DATA_DIR / "GeofenceZone.csv"
+zone_points_path = DATA_DIR / "ZonePoint.csv"
+bridges_path = DATA_DIR / "Bridge.csv"
 
 print("Using paths:")
 print("  zones       ->", zones_path)

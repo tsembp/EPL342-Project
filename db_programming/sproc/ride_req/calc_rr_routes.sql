@@ -1,9 +1,10 @@
--- Note: Bridges are bidirectional, meaning that Bride(fromZone, toZone) can also be accessed Bridge(toZone, fromZone)
 CREATE OR ALTER PROCEDURE dbo.usp_Route_GetAllAlternatives
+(
     @PickUpPointId   INT,
     @DropOffPointId  INT,
     @MaxHops         INT = 6,
     @MaxAlternatives INT = 50
+)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -12,7 +13,9 @@ BEGIN
         DECLARE @StartZoneId INT,
                 @EndZoneId   INT;
 
+        ------------------------------------------------------------
         -- 1. Validate pickup / dropoff points and get their zones
+        ------------------------------------------------------------
         SELECT @StartZoneId = ZP.ZoneId
         FROM dbo.ZonePoint AS ZP
         WHERE ZP.PointId = @PickUpPointId;
@@ -26,133 +29,116 @@ BEGIN
             ;THROW 51001, 'Invalid pickup or dropoff point.', 1;
         END;
 
-        IF @MaxHops <= 0 SET @MaxHops = 6;
-        IF @MaxAlternatives <= 0 SET @MaxAlternatives = 50;
+        ------------------------------------------------------------
+        -- 2. Normalize / cap parameters
+        ------------------------------------------------------------
+        IF @MaxHops IS NULL OR @MaxHops <= 0
+            SET @MaxHops = 6;
 
-        -- 2. Easy case: same zone -> single direct leg
+        IF @MaxHops > 8
+            SET @MaxHops = 8;   -- hard safety cap
+
+        IF @MaxAlternatives IS NULL OR @MaxAlternatives <= 0
+            SET @MaxAlternatives = 50;
+
+        ------------------------------------------------------------
+        -- 3. Easy case: same zone -> single "leg" zone→zone
+        ------------------------------------------------------------
         IF @StartZoneId = @EndZoneId
         BEGIN
-            DECLARE @SingleJson nvarchar(max);
-
-            SET @SingleJson =
-            (
-                SELECT
-                    1          AS alternativeNo,
-                    JSON_QUERY(
-                        (
-                            SELECT
-                                1                AS seqNo,
-                                @StartZoneId     AS fromZoneId,
-                                @EndZoneId       AS toZoneId
-                            FOR JSON PATH
-                        )
-                    )          AS legs
-                FOR JSON PATH
-            );
-
-            SELECT @SingleJson AS AlternativesJson;
+            SELECT
+                AlternativeNo = 1,
+                SeqNo         = 1,
+                FromZoneId    = @StartZoneId,
+                ToZoneId      = @EndZoneId;
             RETURN;
         END;
 
-        ----------------------------------------------------------------
-        -- 3. Build the graph, enumerate paths, store in temp table
-        ----------------------------------------------------------------
-
-        IF OBJECT_ID('tempdb..#NumberedPaths') IS NOT NULL
-            DROP TABLE #NumberedPaths;
-
-        CREATE TABLE #NumberedPaths
-        (
-            AlternativeNo INT        NOT NULL,
-            ZonePath      nvarchar(max) NOT NULL    -- JSON array, e.g. [1,3,5]
-        );
-
+        ------------------------------------------------------------
+        -- 4. Build graph & enumerate paths with delimited strings
+        --    PathString format: ",3,7,12," (no JSON in recursion)
+        ------------------------------------------------------------
         ;WITH Edge AS (
-            SELECT B.FromZoneId AS FromZoneId,
-                   B.ToZoneId   AS ToZoneId
+            SELECT B.FromZoneId, B.ToZoneId
             FROM dbo.Bridge AS B
             UNION
-            SELECT B.ToZoneId   AS FromZoneId,
+            SELECT B.ToZoneId  AS FromZoneId,
                    B.FromZoneId AS ToZoneId
             FROM dbo.Bridge AS B
         ),
         Paths AS (
-            -- Anchor: path is a JSON array with a single zone, e.g. [3]
+            -- Anchor
             SELECT
-                CAST('[' + CAST(@StartZoneId AS varchar(20)) + ']' AS nvarchar(max)) AS ZonePath,
-                @StartZoneId AS CurrentZone,
-                0            AS Depth
+                PathString  = ',' + CAST(@StartZoneId AS varchar(20)) + ',',
+                CurrentZone = @StartZoneId,
+                Depth       = 0
             UNION ALL
-            -- Recursive: extend with neighbours, avoiding cycles
+            -- Recursive: extend to neighbours, avoid cycles via CHARINDEX
             SELECT
-                CAST(
-                    LEFT(p.ZonePath, LEN(p.ZonePath) - 1)
-                    + ',' + CAST(e.ToZoneId AS varchar(20)) + ']'
-                    AS nvarchar(max)
-                ) AS ZonePath,
-                e.ToZoneId AS CurrentZone,
-                p.Depth + 1 AS Depth
+                PathString  = p.PathString + CAST(e.ToZoneId AS varchar(20)) + ',',
+                CurrentZone = e.ToZoneId,
+                Depth       = p.Depth + 1
             FROM Paths AS p
             JOIN Edge  AS e
               ON e.FromZoneId = p.CurrentZone
             WHERE p.Depth < @MaxHops
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM OPENJSON(p.ZonePath) AS z
-                    WHERE CAST(z.value AS int) = e.ToZoneId   -- no cycles
-              )
+              AND CHARINDEX(',' + CAST(e.ToZoneId AS varchar(20)) + ',', p.PathString) = 0
         ),
         FinalPaths AS (
-            -- only those that end at the destination zone
-            SELECT DISTINCT
-                   ZonePath,
-                   Depth
+            -- Only paths that end at destination zone
+            SELECT
+                PathString,
+                Depth
             FROM Paths
             WHERE CurrentZone = @EndZoneId
-        )
-        INSERT INTO #NumberedPaths (AlternativeNo, ZonePath)
-        SELECT TOP (@MaxAlternatives)
-               ROW_NUMBER() OVER (ORDER BY Depth, ZonePath) AS AlternativeNo,
-               ZonePath
-        FROM FinalPaths
-        ORDER BY Depth, ZonePath
-        OPTION (MAXRECURSION 100);
-
-        ----------------------------------------------------------------
-        -- 4. Turn ZonePath JSON arrays into legs using OPENJSON
-        ----------------------------------------------------------------
-        ;WITH Legs AS (
+        ),
+        NumberedPaths AS (
+            -- Keep only top @MaxAlternatives, order by shortest paths first
+            SELECT TOP (@MaxAlternatives)
+                AlternativeNo = ROW_NUMBER() OVER (ORDER BY Depth, PathString),
+                PathString,
+                Depth
+            FROM FinalPaths
+            ORDER BY Depth, PathString
+        ),
+        LegNodes AS (
+            -- Split PathString into nodes with ordinals
+            -- PathString: ",3,7,12," → nodes 3,7,12 with ordinals
             SELECT
                 np.AlternativeNo,
-                CAST(z_prev.value AS int) AS FromZoneId,
-                CAST(z_next.value AS int) AS ToZoneId,
-                CAST(z_next.[key] AS int) AS SeqNo
-            FROM #NumberedPaths AS np
-            CROSS APPLY OPENJSON(np.ZonePath) AS z_prev
-            CROSS APPLY OPENJSON(np.ZonePath) AS z_next
-            WHERE CAST(z_next.[key] AS int) = CAST(z_prev.[key] AS int) + 1
+                ZoneId  = TRY_CAST(s.value AS int),
+                s.ordinal
+            FROM NumberedPaths AS np
+            CROSS APPLY STRING_SPLIT(np.PathString, ',', 1) AS s
+            WHERE s.value <> ''  -- skip empty tokens from leading/trailing commas
+        ),
+        RawLegs AS (
+            -- Build edges between consecutive nodes using LEAD
+            SELECT
+                AlternativeNo,
+                FromZoneId = ZoneId,
+                ToZoneId   = LEAD(ZoneId) OVER (PARTITION BY AlternativeNo ORDER BY ordinal),
+                ordinal
+            FROM LegNodes
+        ),
+        FinalLegs AS (
+            -- Filter out last node (no outgoing edge) and assign SeqNo
+            SELECT
+                AlternativeNo,
+                SeqNo      = ROW_NUMBER() OVER (PARTITION BY AlternativeNo ORDER BY ordinal),
+                FromZoneId,
+                ToZoneId
+            FROM RawLegs
+            WHERE ToZoneId IS NOT NULL
         )
-        -- 5. Build final JSON: one object per alternative, with legs
         SELECT
-            (
-                SELECT
-                    ap.AlternativeNo AS alternativeNo,
-                    JSON_QUERY(
-                        (
-                            SELECT
-                                l.SeqNo      AS seqNo,
-                                l.FromZoneId AS fromZoneId,
-                                l.ToZoneId   AS toZoneId
-                            FROM Legs AS l
-                            WHERE l.AlternativeNo = ap.AlternativeNo
-                            ORDER BY l.SeqNo
-                            FOR JSON PATH
-                        )
-                    ) AS legs
-                FROM (SELECT DISTINCT AlternativeNo FROM Legs) AS ap
-                ORDER BY ap.AlternativeNo
-                FOR JSON PATH
-            ) AS AlternativesJson;
+            AlternativeNo,
+            SeqNo,
+            FromZoneId,
+            ToZoneId
+        FROM FinalLegs
+        ORDER BY AlternativeNo, SeqNo
+        OPTION (MAXRECURSION 100);
 
     END TRY
     BEGIN CATCH
