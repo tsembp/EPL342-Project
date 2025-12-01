@@ -32,12 +32,12 @@ async function jsonRequest(path: string, options: RequestInit = {}) {
 
 export const getPendingPersonDocuments = async () => {
   const res = await fetchAPI<any[]>("/operator/pending-person-documents");
-  return Array.isArray(res) ? res : []; 
+  return Array.isArray(res) ? res : [];
 };
 
 export const getPendingVehicleDocuments = async () => {
   const res = await fetchAPI<any[]>("/operator/pending-vehicle-documents");
-  return Array.isArray(res) ? res : [];  
+  return Array.isArray(res) ? res : [];
 };
 
 export const getAcceptedPersonDocuments = async () => {
@@ -49,7 +49,6 @@ export const getRejectedPersonDocuments = async () => {
   const res = await fetchAPI<any[]>("/operator/rejected-person-documents");
   return Array.isArray(res) ? res : [];
 };
-
 
 export const reviewPersonDocument = (params: {
   docId: number;
@@ -71,8 +70,19 @@ export const reviewVehicleDocument = (params: {
     body: JSON.stringify(params),
   });
 
+export type OperatorGdprRequest = {
+  GdprId: number;
+  UserId: string;
+  Username: string;
+  Email: string;
+  Type: string;
+  RequestedAt: string;
+  Status: string;
+  Reason: string | null;
+};
+
 export const getGdprRequests = () =>
-  fetchAPI<any[]>("/operator/gdpr-requests");
+  fetchAPI<OperatorGdprRequest[]>("/operator/gdpr-requests");
 
 export const reviewGdprRequest = (params: {
   gdprId: number;
@@ -83,6 +93,8 @@ export const reviewGdprRequest = (params: {
     method: "POST",
     body: JSON.stringify(params),
   });
+
+/** ---------- Service enrollments ---------- **/
 
 export const getPendingServiceEnrollments = () =>
   fetchAPI<any[]>("/operator/service-enrollments");
@@ -97,7 +109,9 @@ export const reviewServiceEnrollment = (params: {
     body: JSON.stringify(params),
   });
 
-  export const getServiceTypes = async () => {
+/** ---------- Service types & allowed ride profiles ---------- **/
+
+export const getServiceTypes = async () => {
   const res = await fetchAPI<any[]>("/operator/service-types");
   return Array.isArray(res) ? res : [];
 };
@@ -123,7 +137,6 @@ export async function createServiceType(payload: {
   });
 }
 
-// api.ts
 export async function updateServiceType(
   id: string,
   payload: {
@@ -152,7 +165,6 @@ export async function createAllowedRideProfile(payload: {
     body: JSON.stringify(payload),
   });
 }
-
 
 export async function updateAllowedRideProfile(
   id: string,

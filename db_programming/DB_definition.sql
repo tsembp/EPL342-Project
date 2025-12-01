@@ -708,11 +708,8 @@ ADD CONSTRAINT [FK_GdprRequest_User]
 ALTER TABLE [dbo].[GdprLog]
 ADD CONSTRAINT [FK_GdprLog_GdprRequest]
     FOREIGN KEY ([GdprId]) REFERENCES [dbo].[GdprRequest]([GdprId])
-    ON DELETE NO ACTION,
-    CONSTRAINT [FK_GdprLog_ActorAdminUser]
-    FOREIGN KEY ([ActorAdminId]) REFERENCES [dbo].[Admin]([AdminId])
-    ON DELETE NO ACTION;
-
+    ON DELETE NO ACTION
+    
 COMMIT TRANSACTION;
 GO
 
