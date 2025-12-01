@@ -8,8 +8,8 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE 
-        @Reason NVARCHAR(MAX),
-        @Type   NVARCHAR(100),
+        @Reason    NVARCHAR(MAX),
+        @Type      NVARCHAR(100),
         @ReqUserId UNIQUEIDENTIFIER;
 
     -- Get the original request info
@@ -42,10 +42,14 @@ BEGIN
     IF @Reason IS NULL OR LTRIM(RTRIM(@Reason)) = N''
         SET @Reason = N'(no correction details provided)';
 
+    -- Mark request as Under-Review (optional but useful)
+    UPDATE dbo.GdprRequest
+    SET [Status] = 'Under-Review'
+    WHERE GdprId = @GdprId
+      AND [Status] = 'Pending';
+
     ---------------------------------------------------
     -- For this project we ONLY log the requested corrections.
-    -- The actual changes will be reviewed and applied manually
-    -- by an operator or via a separate "Edit profile" feature.
     ---------------------------------------------------
     INSERT INTO dbo.GdprLog (GdprId, ActorAdminId, LoggedAt, Note)
     VALUES (

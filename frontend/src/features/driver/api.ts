@@ -67,7 +67,7 @@ export const submitDriverVehicle = (data: {
   });
 
 // ---------------------------------------------
-// Driver availability (old simple online toggle)
+// Driver availability (legacy online/offline)
 // ---------------------------------------------
 
 export const setDriverAvailability = (is_online: boolean) =>
@@ -288,10 +288,6 @@ export const getVehicleDocumentStatus = (vehicleId: string) =>
     `/driver/vehicle-documents-status?vehicleId=${vehicleId}`
   );
 
-// ---------------------------------------------
-// Rides (upcoming + history)
-// ---------------------------------------------
-
 export type DriverRideRow = {
   RideId: number;
   RequestId: number;
@@ -393,6 +389,7 @@ export const getDriverRideHistory = () =>
 export type DriverDailyAvailability = {
   date: string; // "YYYY-MM-DD"
   enabled: boolean;
+  enrollId: number | null;
   startTime: string | null; // "HH:MM" or null
   endTime: string | null; // "HH:MM" or null
   locked?: boolean;
@@ -449,4 +446,54 @@ export const setDriverDailyAvailability = (
   }>("/driver/availability", {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+
+export async function uploadDriverPhoto(
+  file: File
+): Promise<{ photoUrl: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return fetchAPI<{ photoUrl: string }>("/driver/photo", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+// ---------------------------------------------
+// Driver user preferences
+// ---------------------------------------------
+
+export interface UserPreferences {
+  notificationsEnabled: boolean;
+  locEnabled: boolean;
+}
+
+export const getDriverPreferences = async (): Promise<UserPreferences> => {
+  const res = await fetchAPI<{
+    success: boolean;
+    preferences?: UserPreferences;
+    hasRow?: boolean;
+    error?: string;
+  }>("/driver/preferences");
+
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load preferences.");
+  }
+
+  return (
+    res.preferences ?? {
+      notificationsEnabled: false,
+      locEnabled: false,
+    }
+  );
+};
+
+export const updateDriverPreferences = (prefs: UserPreferences) =>
+  fetchAPI<{
+    success: boolean;
+    error?: string;
+  }>("/driver/preferences", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
   });

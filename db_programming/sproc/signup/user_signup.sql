@@ -2,7 +2,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_SignUpUser
 (
     @Role           CHAR(1),        -- 'P': Passenger, 'D': Driver, 'C': Company Representative
     @FirstName      NVARCHAR(50),
-    @LastName       NVARCHAR(50),
+    @LastName      NVARCHAR(50),
     @Dob            DATE,
     @Gender         CHAR(1),        -- 'M'/'F'
     @Email          NVARCHAR(MAX),
@@ -27,6 +27,13 @@ BEGIN
     OR @Dob <= DATEADD(YEAR, -100, CAST(GETUTCDATE() AS DATE))
     BEGIN
         RAISERROR('Invalid Date of Birth.', 16, 1);
+        RETURN;
+    END;
+
+    IF @Role IN ('D', 'C')
+       AND @Dob > DATEADD(YEAR, -18, CAST(GETUTCDATE() AS DATE))
+    BEGIN
+        RAISERROR('Drivers and Company Representatives must be at least 18 years old.', 16, 1);
         RETURN;
     END;
 

@@ -169,14 +169,10 @@ CREATE TABLE [dbo].[UserPreferences] (
     [UserPreferencesId] INT IDENTITY(1,1) NOT NULL,
     [UserId] UNIQUEIDENTIFIER NOT NULL UNIQUE,
     [NotificationsEnabled] BIT NOT NULL DEFAULT 0,
-    [Language] CHAR(2) NOT NULL DEFAULT 'en',
     [LocEnabled] BIT NOT NULL DEFAULT 0,
-    [Timezone] NVARCHAR(100),
-    [PreferredPaymentMethod] PaymentMethod,
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [UpdatedAt] UtcStamp NULL,
     CONSTRAINT [PK_UserPreferences] PRIMARY KEY CLUSTERED ([UserPreferencesId]),
-    CONSTRAINT [CK_UserPreferences_Languages] CHECK ([Language] IN ('en','es','fr','de','it','el'))
 );
 
 CREATE TABLE [dbo].[Ride] (
@@ -223,6 +219,7 @@ CREATE TABLE [dbo].[Bridge] (
 
 CREATE TABLE [dbo].[Driver] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
+    [PhotoUrl] NVARCHAR(MAX),
     CONSTRAINT [PK_Driver] PRIMARY KEY CLUSTERED ([UserId])
 );
 
@@ -442,6 +439,7 @@ CREATE TABLE [dbo].[DriverAvailability] (
     [EndsAt] TIME(0) NOT NULL,
     [IsRecurring] BIT NOT NULL DEFAULT 0,
     [UpdatedAt] UtcStamp DEFAULT GETUTCDATE(),
+    [IsLocked] BIT DEFAULT 0,
     CONSTRAINT CK_DriverAvailability_Time CHECK ([EndsAt] > [StartsAt]),
     CONSTRAINT PK_DriverAvailability PRIMARY KEY ([EnrollId], [AvailabilityDate], [StartsAt]) -- allow for multiple entries per day (8:00-12:00 and 14:00-18:00)
 );
@@ -710,9 +708,8 @@ ALTER TABLE [dbo].[GdprLog]
 ADD CONSTRAINT [FK_GdprLog_GdprRequest]
     FOREIGN KEY ([GdprId]) REFERENCES [dbo].[GdprRequest]([GdprId])
     ON DELETE NO ACTION,
-    CONSTRAINT [FK_GdprLog_ActorAdminUser]
-    FOREIGN KEY ([ActorAdminId]) REFERENCES [dbo].[Admin]([AdminId])
-    ON DELETE NO ACTION;
+    CONSTRAINT [FK_GdprLog_ActorOperator]
+    FOREIGN KEY ([ActorAdminId]) REFERENCES [dbo].[Operator]([OperatorId])
 
 COMMIT TRANSACTION;
 GO

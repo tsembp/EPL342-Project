@@ -1,7 +1,7 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Gdpr_SubmitRequest
 (
     @UserId      UNIQUEIDENTIFIER,
-    @RequestType NVARCHAR(500),
+    @RequestType NVARCHAR(100),
     @Reason      NVARCHAR(MAX) = NULL
 )
 AS
@@ -35,10 +35,21 @@ BEGIN
 
     SET @GdprId = SCOPE_IDENTITY();
 
-    -- 4. Execute immediately
-    EXEC dbo.usp_Gdpr_ExecuteRequest
-         @GdprId = @GdprId,
-         @Note   = 'Auto-executed on submit';
+    -- 4. Execute type-specific logic
+    IF @RequestType = 'DataCorrection'
+    BEGIN
+        -- Only log details + mark as Under-Review
+        EXEC dbo.usp_Gdpr_ExecuteDataCorrection
+             @UserId = @UserId,
+             @GdprId = @GdprId;
+    END
+    ELSE
+    BEGIN
+        -- Access/Deletion/Export: auto execute as before
+        EXEC dbo.usp_Gdpr_ExecuteRequest
+             @GdprId = @GdprId,
+             @Note   = 'Auto-executed on submit';
+    END;
 
     -- 5. Log creation
     INSERT INTO dbo.GdprLog (GdprId, ActorAdminId, LoggedAt, Note)
