@@ -114,14 +114,29 @@ export const getDriverEarnings = (params: { month: number; year: number }) => {
   return fetchAPI<DriverEarnings>(`/driver/earnings?${query}`);
 };
 
-// ---------------------------------------------
-// Service enrollment
-// ---------------------------------------------
+// Service types (from usp_GetActiveServiceTypesForDriver / /driver/service-types)
+export type ServiceTypeRow = {
+  ServiceTypeId: number;
+  Name: string;
+  Description: string;
+  BaseFare: number | string;
+  PerKm: number | string;
+  PerMin: number | string;
+};
 
+
+export const getDriverServiceTypes = () =>
+  fetchAPI<{
+    success: boolean;
+    serviceTypes: ServiceTypeRow[];
+    error?: string;
+  }>("/driver/service-types");
+
+// Optional: check endpoint if/when you use usp_Service_Enroll_Check
 export const checkServiceEnrollment = (params: {
-  userId: string;
-  vehicleId: number;
+  vehicleId: string;
   serviceTypeId: number;
+  rideTypeId?: number | null;
 }) =>
   fetchAPI("/driver/service-enroll/check", {
     method: "POST",
@@ -129,11 +144,15 @@ export const checkServiceEnrollment = (params: {
   });
 
 export const createServiceEnrollment = (params: {
-  userId: string;
-  vehicleId: number;
+  vehicleId: string;
   serviceTypeId: number;
+  rideTypeId?: number | null;
 }) =>
-  fetchAPI("/driver/service-enroll/create", {
+  fetchAPI<{
+    success: boolean;
+    enrollment?: { EnrollId: number };
+    error?: string;
+  }>("/driver/service-enroll/create", {
     method: "POST",
     body: JSON.stringify(params),
   });
@@ -142,9 +161,7 @@ export const createServiceEnrollment = (params: {
 // Document upload
 // ---------------------------------------------
 
-/**
- * Upload a single driver document for a given user.
- */
+// Upload a single driver document for a given user.
 export const uploadDriverDocument = (params: {
   userId: string;
   docType: string; // 'ID_OR_PASSPORT', etc.
@@ -176,16 +193,17 @@ export const uploadDriverDocument = (params: {
  */
 export const uploadVehicleDocument = (params: {
   vehicleId: string;
-  docType: string;      // e.g. 'VEHICLE_REGISTRATION'
-  docNumber?: string;   // Optional for document types like 'VEHICLE_IMAGE'
-  issueDate: string;    // ISO date string
-  expiryDate?: string;  // ISO date string, optional
+  docType: string; // e.g. 'VEHICLE_REGISTRATION'
+  docNumber?: string; // Optional for document types like 'VEHICLE_IMAGE'
+  issueDate: string; // ISO date string
+  expiryDate?: string; // ISO date string, optional
   file: File;
 }) => {
   const formData = new FormData();
   formData.append("vehicleId", params.vehicleId);
   formData.append("docType", params.docType);
-  if (params.docNumber) { // docNumber is optional
+  if (params.docNumber) {
+    // docNumber is optional
     formData.append("docNumber", params.docNumber);
   }
   formData.append("issueDate", params.issueDate);
@@ -199,6 +217,10 @@ export const uploadVehicleDocument = (params: {
     body: formData,
   });
 };
+
+// ---------------------------------------------
+// Vehicles
+// ---------------------------------------------
 
 export interface AddVehicleRequest {
   vehicleTypeId: number;
@@ -333,6 +355,26 @@ export type DriverHistoryRow = {
   PaymentDriverPayout: number | null;
 };
 
+// ---------------------------------------------
+// Vehicle type requirements (for Add Vehicle page)
+// ---------------------------------------------
+
+export type VehicleTypeRequirementRow = {
+  VehicleTypeId: number;
+  Name: string;
+  NumOfSeats: number;
+  MinCargoWeight: number;
+  MinCargoVolume: number;
+};
+
+export const getVehicleTypeRequirements = () =>
+  fetchAPI<{
+    success: boolean;
+    types: VehicleTypeRequirementRow[];
+    error?: string;
+  }>("/driver/vehicle-type-requirements");
+
+
 export const getDriverRideHistory = () =>
   fetchAPI<{
     success: boolean;
@@ -341,15 +383,15 @@ export const getDriverRideHistory = () =>
   }>("/driver/rides/history");
 
 // ---------------------------------------------
-// Driver daily availability
+// Driver daily availability (new detailed API)
 // ---------------------------------------------
 
 export type DriverDailyAvailability = {
-  date: string;           // "YYYY-MM-DD"
+  date: string; // "YYYY-MM-DD"
   enabled: boolean;
   enrollId: number | null;
   startTime: string | null; // "HH:MM" or null
-  endTime: string | null;   // "HH:MM" or null
+  endTime: string | null; // "HH:MM" or null
   locked?: boolean;
 };
 
@@ -375,7 +417,7 @@ export const cancelDriverServiceEnrollment = (enrollId: number) =>
     `/driver/service-enrollments/${enrollId}/cancel`,
     {
       method: "POST",
-    },
+    }
   );
 
 export const confirmDriverDailyAvailability = (date: string) =>
@@ -395,7 +437,9 @@ export const getDriverDailyAvailability = (date: string) =>
     error?: string;
   }>(`/driver/availability?date=${encodeURIComponent(date)}`);
 
-export const setDriverDailyAvailability = (payload: DriverDailyAvailability) =>
+export const setDriverDailyAvailability = (
+  payload: DriverDailyAvailability
+) =>
   fetchAPI<{
     success: boolean;
     error?: string;
