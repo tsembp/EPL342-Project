@@ -66,61 +66,40 @@ def check_service_enroll():
         print("Error in /service-enroll/check:", e)
         return jsonify({"error": str(e)}), 500
 
-
-@driver_bp.route("/service-enroll/create", methods=["POST"])
+@driver_bp.route("/vehicle-type-requirements", methods=["GET"])
 @require_auth
 @require_role("D")
-def create_service_enroll():
+def get_vehicle_type_requirements():
     """
-    Driver-side: actually create an enrollment.
-    Calls dbo.usp_Service_Enroll_Create.
+    Return the vehicle type constraints
     """
-    user_id = session["user_id"]
-    data = request.get_json() or {}
-
-    vehicle_id = data.get("vehicleId")
-    service_type_id = data.get("serviceTypeId")
-
-    if vehicle_id is None or service_type_id is None:
-        return jsonify({"error": "vehicleId and serviceTypeId are required"}), 400
-
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    EXEC dbo.usp_Service_Enroll_Create 
-                        @UserId = ?, 
-                        @VehicleId = ?, 
-                        @ServiceTypeId = ?
-                    """,
-                    user_id,
-                    vehicle_id,
-                    service_type_id,
-                )
-                # Return whatever the sproc outputs (e.g. new enrollment row)
-                if cur.description:
-                    columns = [col[0] for col in cur.description]
-                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-                else:
-                    rows = []
+                cur.execute("SELECT VTR.Name, VTR.NumOfSeats, VTR.MinCargoWeight, VTR.MinCargoVolume FROM dbo.vw_VehicleTypeRequirements VTR")
+                rows = cur.fetchall()
 
-        return jsonify({"success": True, "data": rows}), 200
+                if not rows:
+                    return jsonify({"success": True, "types": []}), 200
+
+                columns = [col[0] for col in cur.description]
+                types = [dict(zip(columns, row)) for row in rows]
+
+        return jsonify({"success": True, "types": types}), 200
+
     except Exception as e:
-        print("Error in /service-enroll/create:", e)
-        return jsonify({"error": str(e)}), 500
+        print("Error in /api/driver/vehicle-type-requirements:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @driver_bp.route("/vehicle-types", methods=["GET"])
 @require_auth
 @require_role("D")
 def get_vehicle_types():
-    """
-    Retrieve all available vehicle types.
-    """
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT VehicleTypeId, Type, Description FROM dbo.VehicleType")
+                cur.execute("SELECT VehicleTypeId, Type, Description FROM dbo.vw_VehicleTyperrEQUIREMENTS")
                 rows = cur.fetchall()
                 if rows:
                     columns = [column[0] for column in cur.description]
@@ -129,6 +108,38 @@ def get_vehicle_types():
                 return jsonify([]), 200 # Return empty array if no vehicle types found
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@driver_bp.route("/service-types", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_driver_service_types():
+    """
+    List active service types the driver can enroll in.
+    Wraps dbo.usp_GetActiveServiceTypesForDriver.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetActiveServiceTypesForDriver
+                        @UserId = ?
+                    """,
+                    user_id,
+                )
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+
+        return jsonify({"success": True, "serviceTypes": rows}), 200
+    except Exception as e:
+        print("Error in /api/driver/service-types:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @driver_bp.route("/add-vehicle", methods=["POST"])
@@ -187,6 +198,59 @@ def add_vehicle():
                     return jsonify({"success": False, "error": "Failed to add vehicle"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@driver_bp.route("/service-enroll/create", methods=["POST"])
+@require_auth
+@require_role("D")
+def create_service_enroll():
+    """
+    Driver-side: create a service enrollment request.
+    Wraps dbo.usp_UserServiceEnrollment_Enroll.
+    """
+    user_id = session["user_id"]
+    data = request.get_json() or {}
+
+    vehicle_id = data.get("vehicleId")
+    service_type_id = data.get("serviceTypeId")
+    # If you later expose rideTypeId in the UI, pass it and read it here.
+    ride_type_id = data.get("rideTypeId", 1)
+
+    if not vehicle_id or not service_type_id:
+        return jsonify({
+            "success": False,
+            "error": "vehicleId and serviceTypeId are required",
+        }), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_UserServiceEnrollment_Enroll 
+                        @UserId        = ?, 
+                        @VehicleId     = ?, 
+                        @ServiceTypeId = ?, 
+                        @RideTypeId    = ?
+                    """,
+                    user_id,
+                    vehicle_id,
+                    service_type_id,
+                    ride_type_id,
+                )
+
+                result = None
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    row = cur.fetchone()
+                    if row:
+                        result = dict(zip(columns, row))
+
+        return jsonify({"success": True, "enrollment": result}), 201
+
+    except Exception as e:
+        print("Error in /api/driver/service-enroll/create:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
+
 
 # NOTE: This endpoint is unauthenticated on purpose to allow newly
 # registered users to upload their documents before their account is verified or active.
@@ -250,6 +314,42 @@ def upload_document():
         print(f"Error in /documents endpoint: {e}")
         # Return a generic error to the client
         return jsonify({"error": "An internal error occurred.", "details": str(e)}), 500
+
+
+@driver_bp.route("/service-types", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_active_service_types_for_driver():
+    """
+    List active service types the driver can enroll in.
+    (For now: simply all active ServiceType rows.)
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        ST.ServiceTypeId,
+                        ST.Name,
+                        ST.Description,
+                        ST.BaseFare,
+                        ST.PerKm,
+                        ST.PerMin
+                    FROM dbo.ServiceType AS ST
+                    WHERE ST.Active = 1
+                    ORDER BY ST.Name
+                    """
+                )
+                rows = cur.fetchall()
+                columns = [col[0] for col in cur.description]
+                service_types = [dict(zip(columns, row)) for row in rows]
+
+        return jsonify({"success": True, "serviceTypes": service_types}), 200
+    except Exception as e:
+        print("Error in /api/driver/service-types:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @driver_bp.route("/vehicle-documents", methods=["POST"])
 @require_auth
@@ -429,6 +529,41 @@ def get_vehicle_documents_status():
     except Exception as e:
         print(f"Error in /vehicle-documents-status endpoint: {e}")
         return jsonify({"error": str(e)}), 500
+    
+    
+@driver_bp.route("/service-enrollments", methods=["GET"])
+@require_auth
+@require_role("D")
+def get_driver_service_enrollments():
+    """
+    Driver-side: list this driver's service enrollments (all statuses).
+    Wraps dbo.usp_GetServiceEnrollmentsForDriver.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetServiceEnrollmentsForDriver
+                        @DriverUserId = ?
+                    """,
+                    user_id,
+                )
+
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+
+        return jsonify({"success": True, "enrollments": rows}), 200
+    except Exception as e:
+        print("Error in /api/driver/service-enrollments:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    
     
 @driver_bp.route("/vehicles", methods=["GET"])
 @require_auth

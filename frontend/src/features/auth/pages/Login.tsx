@@ -26,13 +26,12 @@ export default function Login() {
       if (response.success) {
         toast.success("Logged in successfully");
 
-        // Redirect based on verificationStatus first, then role
         if (response.verificationStatus === "DOCS_PENDING") {
           navigate("/driver/documents");
         } else if (response.verificationStatus === "PENDING_APPROVAL") {
           navigate("/driver/pending-approval");
-        } else { // VERIFIED or any other status that implies full access
-          const role = useAuthStore.getState().userRole; // Get role from store for final redirection
+        } else { 
+          const role = useAuthStore.getState().userRole;
           if (role === "operator") {
             navigate("/operator/overview");
           } else if (role === "inspector") {
@@ -41,7 +40,7 @@ export default function Login() {
             navigate("/admin");
           } else if (role === "driver") {
             navigate("/driver"); 
-          } else { // Default for passenger or fully verified company representative
+          } else { 
             navigate("/passenger/ride");;
           }
         }
