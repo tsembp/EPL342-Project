@@ -196,16 +196,22 @@ export default function DriverProfile() {
       </Card>
 
       {/* SIGN OUT FULL-WIDTH BAR */}
-      <Card className="w-full border border-neutral-800 bg-neutral-900/80 px-5 py-3 sm:px-6">
-        <Button
-          variant="ghost"
-          className="w-full justify-center gap-2 text-sm font-medium text-neutral-50 hover:bg-neutral-800"
+      <div className="flex justify-center">
+        <button
           onClick={handleLogout}
+          className="
+        flex items-center gap-2 rounded-lg px-4 py-2 text-sm
+        font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300
+        transition-colors group-data-[collapsible=icon]:justify-center
+        w-auto
+          "
         >
           <LogOut className="h-4 w-4" />
-          Sign out
-        </Button>
-      </Card>
+          <span className="truncate group-data-[collapsible=icon]:hidden">
+        Logout
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
