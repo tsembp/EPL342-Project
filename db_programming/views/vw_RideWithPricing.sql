@@ -39,14 +39,13 @@ SELECT
     v.Model AS VehicleModel,
     v.Color AS VehicleColor,
     v.Seats,
+    v.PricePerKm AS VehiclePricePerKm,
     vt.Name AS VehicleTypeName,
     
     -- Service type and pricing
     st.ServiceTypeId,
     st.Name AS ServiceTypeName,
     st.BaseFare,
-    st.PerKm,
-    st.PerMin,
     rt.RideTypeId,
     rt.Name AS RideTypeName,
     

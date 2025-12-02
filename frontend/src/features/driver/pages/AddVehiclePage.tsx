@@ -84,6 +84,7 @@ export default function AddVehiclePage() {
   const [seats, setSeats] = useState<number | string>("");
   const [cargoVolume, setCargoVolume] = useState<number | string>("");
   const [cargoWeight, setCargoWeight] = useState<number | string>("");
+  const [pricePerKm, setPricePerKm] = useState<number | string>("");
   const [vehicleTypeId, setVehicleTypeId] = useState<number | string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,7 +111,7 @@ export default function AddVehiclePage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!vehicleTypeId || !plateNumber || !brand || !model || !color || !seats) {
+    if (!vehicleTypeId || !plateNumber || !brand || !model || !color || !seats || !pricePerKm) {
       toast.error("Please fill in all required vehicle details.");
       setIsSubmitting(false);
       return;
@@ -126,6 +127,7 @@ export default function AddVehiclePage() {
         seats: Number(seats),
         cargoVolume: cargoVolume ? Number(cargoVolume) : undefined,
         cargoWeight: cargoWeight ? Number(cargoWeight) : undefined,
+        pricePerKm: Number(pricePerKm),
       });
 
       if (response.success && response.vehicleId) {
@@ -344,6 +346,30 @@ export default function AddVehiclePage() {
                 className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
                 placeholder="Optional"
               />
+            </div>
+
+            {/* Price Per Km */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="pricePerKm"
+                className="text-xs font-medium text-neutral-300"
+              >
+                Price per km (€)
+              </Label>
+              <Input
+                id="pricePerKm"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={pricePerKm}
+                onChange={(e) => setPricePerKm(e.target.value)}
+                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                placeholder="e.g. 2.50"
+                required
+              />
+              <p className="text-[11px] text-neutral-500">
+                Your rate per kilometer for this vehicle.
+              </p>
             </div>
 
             {/* Submit */}

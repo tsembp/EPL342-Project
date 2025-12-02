@@ -322,8 +322,6 @@ def create_service_type():
     name = data.get("name")
     description = data.get("description")
     base_fare = data.get("baseFare")
-    per_km = data.get("perKm")
-    per_min = data.get("perMin")
     valid_from = data.get("validFrom")  # optional, ISO string ή None
     valid_to = data.get("validTo")      # optional
     active = data.get("active", True)
@@ -333,9 +331,9 @@ def create_service_type():
         return jsonify({"error": "Name is required"}), 400
     if not description:
         return jsonify({"error": "Description is required"}), 400
-    if base_fare is None or per_km is None or per_min is None:
+    if base_fare is None:
         return jsonify(
-            {"error": "BaseFare, PerKm and PerMin are required"}
+            {"error": "BaseFare is required"}
         ), 400
 
     try:
@@ -347,8 +345,6 @@ def create_service_type():
                         @Name=?,
                         @Description=?,
                         @BaseFare=?,
-                        @PerKm=?,
-                        @PerMin=?,
                         @ValidFrom=?,
                         @ValidTo=?,
                         @Active=?;
@@ -357,8 +353,6 @@ def create_service_type():
                         name,
                         description,
                         base_fare,
-                        per_km,
-                        per_min,
                         valid_from,
                         valid_to,
                         1 if active else 0,
@@ -382,16 +376,14 @@ def update_service_type(service_type_id):
     active = data.get("active", True)
 
     base_fare = data.get("baseFare")
-    per_km = data.get("perKm")
-    per_min = data.get("perMin")
 
     if not name:
         return jsonify({"error": "Name is required"}), 400
     if not description:
         return jsonify({"error": "Description is required"}), 400
-    if base_fare is None or per_km is None or per_min is None:
+    if base_fare is None:
         return jsonify(
-            {"error": "BaseFare, PerKm and PerMin are required"}
+            {"error": "BaseFare is required"}
         ), 400
 
     try:
@@ -404,8 +396,6 @@ def update_service_type(service_type_id):
                         @Name=?,
                         @Description=?,
                         @BaseFare=?,
-                        @PerKm=?,
-                        @PerMin=?,
                         @Active=?;
                     """,
                     (
@@ -413,8 +403,6 @@ def update_service_type(service_type_id):
                         name,
                         description,
                         base_fare,
-                        per_km,
-                        per_min,
                         1 if active else 0,
                     ),
                 )

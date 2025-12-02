@@ -444,19 +444,17 @@ def seed_service_ride_vehicle_types_from_combos(cursor):
     for name in service_names:
         desc = f"Service route type: {name}"
         base_fare = random_money(3, 8)
-        per_km = random_money(0.5, 2)
-        per_min = random_money(0.1, 0.5)
         valid_from = datetime.utcnow() - timedelta(days=30)
         sid = insert_and_return_identity(
             cursor,
             """
             INSERT INTO [dbo].[Servicetype] (
-                Name, Description, BaseFare, PerKm, PerMin, ValidFrom, Active
+                Name, Description, BaseFare, ValidFrom, Active
             )
             OUTPUT INSERTED.ServiceTypeId
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            VALUES (?, ?, ?, ?, 1)
             """,
-            (name, desc, base_fare, per_km, per_min, valid_from),
+            (name, desc, base_fare, valid_from),
         )
         service_type_ids[name] = sid
 
@@ -799,6 +797,9 @@ def seed_vehicles(cursor, num_vehicles, vehicle_type_ids, owner_user_ids):
         seats = random.randint(2, 7)
         cargo_volume = round(random.uniform(0.0, 5.0), 2)
         cargo_weight = round(random.uniform(0.0, 500.0), 2)
+        
+        # Generate random PricePerKm for each vehicle (between 1.00 and 5.00)
+        price_per_km = round(random.uniform(1.00, 5.00), 2)
 
         verified = 1 if random.random() < 0.7 else 0
         status = "Active" if verified else "Pending"
@@ -807,9 +808,9 @@ def seed_vehicles(cursor, num_vehicles, vehicle_type_ids, owner_user_ids):
             """
             INSERT INTO [dbo].[Vehicle] (
                 VehicleId, VehicleTypeId, OwnerUserId, PlateNumber, Brand, Model, Color, 
-                Verified, Seats, CargoVolume, CargoWeight, Status
+                Verified, Seats, CargoVolume, CargoWeight, Status, PricePerKm
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             vid,
             vtype_id,
@@ -823,6 +824,7 @@ def seed_vehicles(cursor, num_vehicles, vehicle_type_ids, owner_user_ids):
             cargo_volume,
             cargo_weight,
             status,
+            price_per_km,
         )
         vehicle_ids.append((vid, verified))
     return vehicle_ids

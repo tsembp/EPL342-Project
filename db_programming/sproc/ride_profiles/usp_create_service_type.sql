@@ -2,8 +2,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_Operator_CreateServiceType
     @Name        NVARCHAR(100),
     @Description NVARCHAR(MAX),
     @BaseFare    MoneyAmount,
-    @PerKm       MoneyAmount,
-    @PerMin      MoneyAmount,
     @ValidFrom   UtcStamp = NULL,
     @ValidTo     UtcStamp = NULL,
     @Active      BIT = 1
@@ -18,8 +16,6 @@ BEGIN
         Name,
         [Description],
         BaseFare,
-        PerKm,
-        PerMin,
         ValidFrom,
         ValidTo,
         Active
@@ -28,8 +24,6 @@ BEGIN
         @Name,
         @Description,
         @BaseFare,
-        @PerKm,
-        @PerMin,
         @ValidFrom,
         @ValidTo,
         @Active
@@ -40,8 +34,6 @@ BEGIN
         ST.Name,
         ST.[Description],
         ST.BaseFare,
-        ST.PerKm,
-        ST.PerMin,
         ST.ValidFrom,
         ST.ValidTo,
         ST.Active
