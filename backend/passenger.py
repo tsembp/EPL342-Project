@@ -329,10 +329,6 @@ def get_ride_alternatives(request_id: int):
                         400,
                     )
 
-                # Optional: allow override via query param, else default 6
-                max_hops_param = request.args.get("maxHops", type=int)
-                max_hops = max_hops_param if max_hops_param is not None else 15
-
                 # 2) Call the route sproc to get all alternatives as rows
                 cur.execute(
                     """
@@ -344,8 +340,8 @@ def get_ride_alternatives(request_id: int):
                     """,
                     pickup_point_id,
                     dropoff_point_id,
-                    max_hops,
-                    50,  # or make this configurable too
+                    100,
+                    3000,
                 )
 
                 rows = cur.fetchall()
