@@ -50,6 +50,21 @@ for _, zone in zones.iterrows():
     )
     ax.add_patch(rect)
 
+    # Compute center of the zone
+    center_x = (zone['MinLng'] + zone['MaxLng']) / 2
+    center_y = (zone['MinLat'] + zone['MaxLat']) / 2
+
+    # Add zone ID label inside the box
+    ax.text(
+        center_x, center_y,
+        str(zone['ZoneId']),
+        ha='center', va='center',
+        fontsize=8, fontweight='bold',
+        color='blue',
+        zorder=6,
+        bbox=dict(facecolor='white', edgecolor='none', alpha=0.6)
+    )
+
 # Plot stations (green circles)
 print("Plotting stations...")
 ax.scatter(stations['Longitude'], stations['Latitude'], 
