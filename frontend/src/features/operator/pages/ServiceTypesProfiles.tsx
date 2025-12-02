@@ -16,6 +16,10 @@ import {
   createServiceType,
   updateServiceType,
   createAllowedRideProfile,
+  getRideTypes,
+  getVehicleTypes,
+  type RideType,
+  type VehicleType,
 } from "@/features/operator/api";
 import { useToast } from "@/hooks/use-toast";
 import ServiceTypeDialog from "./ServiceTypeDialog";
@@ -349,6 +353,32 @@ function AllowedProfileDialog({
   const [vehicleTypeId, setVehicleTypeId] = useState<number | "">("");
   const [profileName, setProfileName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
+  const [rideTypes, setRideTypes] = useState<RideType[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Load ride types and vehicle types when dialog opens
+  useEffect(() => {
+    if (open) {
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const [rideTypesData, vehicleTypesData] = await Promise.all([
+            getRideTypes(),
+            getVehicleTypes(),
+          ]);
+          setRideTypes(rideTypesData);
+          setVehicleTypes(vehicleTypesData);
+        } catch (error) {
+          console.error("Failed to load ride types or vehicle types", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadData();
+    }
+  }, [open]);
 
   const handleClose = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -421,42 +451,52 @@ function AllowedProfileDialog({
                 htmlFor="ap-ride-type"
                 className="text-neutral-200"
               >
-                Ride Type ID
+                Ride Type
               </Label>
-              <Input
+              <select
                 id="ap-ride-type"
-                type="number"
-                min={1}
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
                 value={rideTypeId}
                 onChange={(e) =>
                   setRideTypeId(
                     e.target.value ? Number(e.target.value) : "",
                   )
                 }
-                placeholder="e.g. 1"
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 focus-visible:ring-emerald-500/40"
-              />
+                disabled={loading}
+              >
+                <option value="">Select ride type</option>
+                {rideTypes.map((rt) => (
+                  <option key={rt.RideTypeId} value={rt.RideTypeId}>
+                    {rt.Name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
               <Label
                 htmlFor="ap-vehicle-type"
                 className="text-neutral-200"
               >
-                Vehicle Type ID
+                Vehicle Type
               </Label>
-              <Input
+              <select
                 id="ap-vehicle-type"
-                type="number"
-                min={1}
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
                 value={vehicleTypeId}
                 onChange={(e) =>
                   setVehicleTypeId(
                     e.target.value ? Number(e.target.value) : "",
                   )
                 }
-                placeholder="e.g. 3"
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 focus-visible:ring-emerald-500/40"
-              />
+                disabled={loading}
+              >
+                <option value="">Select vehicle type</option>
+                {vehicleTypes.map((vt) => (
+                  <option key={vt.VehicleTypeId} value={vt.VehicleTypeId}>
+                    {vt.Name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

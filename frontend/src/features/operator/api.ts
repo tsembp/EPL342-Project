@@ -181,3 +181,25 @@ export async function updateAllowedRideProfile(
     body: JSON.stringify(payload),
   });
 }
+
+export interface RideType {
+  RideTypeId: number;
+  Name: string;
+  Description?: string;
+}
+
+export interface VehicleType {
+  VehicleTypeId: number;
+  Name: string;
+  NumOfSeats: number;
+  MinCargoVolume: number;
+  MinCargoWeight: number;
+}
+
+export async function getRideTypes(): Promise<RideType[]> {
+  return jsonRequest("/api/operator/ride-types");
+}
+
+export async function getVehicleTypes(): Promise<VehicleType[]> {
+  return jsonRequest("/api/operator/vehicle-types");
+}
