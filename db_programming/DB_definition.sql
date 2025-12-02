@@ -312,6 +312,7 @@ CREATE TABLE [dbo].[GdprLog] (
 CREATE TABLE [dbo].[CompanyRepresentative] (
     [UserId] UNIQUEIDENTIFIER NOT NULL,
     [Company] NVARCHAR(100),
+    [PhotoUrl] NVARCHAR(MAX),
     CONSTRAINT [PK_CompanyRepresentative] PRIMARY KEY CLUSTERED ([UserId])
 );
 
@@ -349,7 +350,7 @@ CREATE TABLE [dbo].[PersonDocument] (
     [IssueDate] UtcStamp NOT NULL ,
     [UploadedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ExpiryDate] UtcStamp DEFAULT NULL,
-    [Status] NVARCHAR(20) NOT NULL DEFAULT 'Pending ',
+    [Status] NVARCHAR(20) NOT NULL DEFAULT 'Pending',
     [ReviewedByOperatorId] UNIQUEIDENTIFIER,
     [ReviewedAt] UtcStamp,
     [ReviewComments] NVARCHAR(1000),

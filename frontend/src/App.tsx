@@ -63,6 +63,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+function DriverPendingGuard({ children }: { children: React.ReactNode }) {
+  const userRole = useAuthStore((state) => state.userRole);
+  const verificationStatus = useAuthStore((state) => state.verificationStatus);
+
+  const isDriverOrCompany =
+    userRole === "driver" || userRole === "company_representative";
+
+  // Treat anything that's not VERIFIED as "blocked" (PENDING, REJECTED, unknown, null)
+  if (isDriverOrCompany && verificationStatus !== "VERIFIED") {
+    return <Navigate to="/driver/pending-approval" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
@@ -128,12 +144,15 @@ function App() {
               }
             />
 
+            {/* DRIVER / COMPANY REPRESENTATIVE*/}
             {/* DRIVER */}
             <Route
               path="/driver"
               element={
                 <ProtectedRoute>
-                  <DriverDashboard />
+                  <DriverPendingGuard>
+                    <DriverDashboard />
+                  </DriverPendingGuard>
                 </ProtectedRoute>
               }
             />
@@ -141,7 +160,7 @@ function App() {
               path="/driver/documents"
               element={
                 <ProtectedRoute>
-                  <DriverDocuments />
+                    <DriverDocuments />
                 </ProtectedRoute>
               }
             />
@@ -149,7 +168,9 @@ function App() {
               path="/driver/VehicleDocuments"
               element={
                 <ProtectedRoute>
-                  <VehicleDocuments />
+                  <DriverPendingGuard>
+                    <VehicleDocuments />
+                  </DriverPendingGuard>
                 </ProtectedRoute>
               }
             />
@@ -157,7 +178,9 @@ function App() {
               path="/driver/add-vehicle"
               element={
                 <ProtectedRoute>
-                  <AddVehiclePage />
+                  <DriverPendingGuard>
+                    <AddVehiclePage />
+                  </DriverPendingGuard>
                 </ProtectedRoute>
               }
             />
@@ -165,6 +188,8 @@ function App() {
               path="/driver/pending-approval"
               element={
                 <ProtectedRoute>
+                  {/* IMPORTANT: no DriverPendingGuard here,
+                      or it would redirect to itself and loop */}
                   <PendingApproval />
                 </ProtectedRoute>
               }

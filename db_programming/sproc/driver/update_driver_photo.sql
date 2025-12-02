@@ -7,25 +7,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Validate that the user exists and is a Driver
+    DECLARE @Role NVARCHAR(1);
+    SELECT @Role = [Role] FROM dbo.[User] WHERE UserId = @UserId;
+
+    -- Validate that the user exists and is a Driver/CR
     IF NOT EXISTS (
         SELECT 1
         FROM dbo.[User] U
         WHERE U.UserId = @UserId
-          AND U.Role = 'D'
+          AND U.Role = @Role
     )
     BEGIN
-        RAISERROR('User does not exist or is not a Driver.', 16, 1);
-        RETURN;
-    END;
-
-    IF NOT EXISTS (
-        SELECT 1
-        FROM dbo.Driver D
-        WHERE D.UserId = @UserId
-    )
-    BEGIN
-        RAISERROR('Driver record not found for this user.', 16, 1);
+        RAISERROR('User does not exist or is not a Driver/CR.', 16, 1);
         RETURN;
     END;
 
@@ -36,9 +29,21 @@ BEGIN
     END;
 
     BEGIN TRY
-        UPDATE dbo.Driver
-        SET PhotoUrl = @PhotoUrl
-        WHERE UserId = @UserId;
+        IF @Role = 'D'
+        BEGIN
+            UPDATE dbo.Driver
+            SET PhotoUrl = @PhotoUrl
+            WHERE UserId = @UserId;
+
+            SELECT @PhotoUrl AS PhotoUrl;
+            RETURN;
+        END;
+        ELSE IF @Role = 'C'
+        BEGIN
+            UPDATE dbo.CompanyRepresentative
+            SET PhotoUrl = @PhotoUrl
+            WHERE UserId = @UserId;
+        END;
 
         SELECT @PhotoUrl AS PhotoUrl;
     END TRY

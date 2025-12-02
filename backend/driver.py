@@ -2,12 +2,14 @@ from datetime import date, datetime
 from flask import Blueprint, jsonify, session, request
 from db import get_connection
 from decorators import require_auth, require_role
+import os
+import uuid
 
 driver_bp = Blueprint("driver", __name__, url_prefix="/api/driver")
 
 @driver_bp.route("/profile", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_profile():
     """Get driver profile - requires driver role"""
     user_id = session["user_id"]
@@ -25,7 +27,7 @@ def get_driver_profile():
 
 @driver_bp.route("/service-enroll/check", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def check_service_enroll():
     """
     Driver-side: check if a given vehicle + service type can be enrolled.
@@ -68,7 +70,7 @@ def check_service_enroll():
 
 @driver_bp.route("/vehicle-type-requirements", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_vehicle_type_requirements():
     """
     Return the vehicle type constraints
@@ -94,7 +96,7 @@ def get_vehicle_type_requirements():
 
 @driver_bp.route("/vehicle-types", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_vehicle_types():
     try:
         with get_connection() as conn:
@@ -112,7 +114,7 @@ def get_vehicle_types():
 
 @driver_bp.route("/service-types", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_service_types():
     """
     List active service types the driver can enroll in.
@@ -144,7 +146,7 @@ def get_driver_service_types():
 
 @driver_bp.route("/add-vehicle", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def add_vehicle():
     """
     Driver-side: add a new vehicle.
@@ -245,7 +247,7 @@ def update_vehicle_price():
     
 @driver_bp.route("/service-enroll/create", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def create_service_enroll():
     """
     Driver-side: create a service enrollment request.
@@ -360,9 +362,96 @@ def upload_document():
         return jsonify({"error": "An internal error occurred.", "details": str(e)}), 500
 
 
+@driver_bp.route("/person-documents-status", methods=["GET"])
+@require_auth
+@require_role("D", "C")
+def get_person_documents_status():
+    """
+    Retrieve the status of all personal documents for the logged-in user.
+    Calls dbo.usp_GetPersonDocumentStatus.
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        PD.DocId,
+                        PD.DocType,
+                        PD.IssueDate,
+                        PD.ExpiryDate,
+                        PD.Status,
+                        ReviewComments = PD.ReviewComments,
+                        FileUrl      = PD.FileUrl
+                    FROM dbo.PersonDocument AS PD
+                    WHERE PD.UserId = ?;
+                    """,
+                    user_id,
+                )
+                rows = cur.fetchall()
+                if rows:
+                    columns = [column[0] for column in cur.description]
+                    documents = [dict(zip(columns, row)) for row in rows]
+                    return jsonify(documents), 200
+
+                # No documents yet
+                return jsonify([]), 200
+
+    except Exception as e:
+        print("Error in /person-documents-status endpoint:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@driver_bp.route("/photo", methods=["GET"])
+@require_auth
+@require_role("D", "C")
+def get_driver_photo_status():
+    """
+    Get current photo URL + simple status for the logged-in user (Driver or Company Rep).
+    Status:
+      - 'Submitted' if PhotoUrl exists in Driver or CompanyRepresentative
+      - 'Not submitted' otherwise
+    """
+    user_id = session["user_id"]
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # 1) Check Driver table
+                cur.execute(
+                    "SELECT PhotoUrl FROM dbo.Driver WHERE UserId = ?",
+                    user_id,
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    return jsonify(
+                        {"photoUrl": row[0], "status": "Submitted"}
+                    ), 200
+
+                # 2) Check CompanyRepresentative table
+                cur.execute(
+                    "SELECT PhotoUrl FROM dbo.CompanyRepresentative WHERE UserId = ?",
+                    user_id,
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    return jsonify(
+                        {"photoUrl": row[0], "status": "Submitted"}
+                    ), 200
+
+        # No photo anywhere
+        return jsonify({"photoUrl": None, "status": "Not submitted"}), 200
+
+    except Exception as e:
+        print("Error in GET /api/driver/photo:", e)
+        return jsonify({"error": str(e)}), 500
+
+
 @driver_bp.route("/service-types", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_active_service_types_for_driver():
     """
     List active service types the driver can enroll in.
@@ -395,7 +484,7 @@ def get_active_service_types_for_driver():
 
 @driver_bp.route("/vehicle-documents", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def upload_vehicle_document():
     """
     Handles vehicle document uploads for a given vehicle owned by the driver.
@@ -458,7 +547,7 @@ def upload_vehicle_document():
 
 @driver_bp.route("/offers", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_dispatch_offers_for_driver():
     """
     Return dispatch offers for the logged-in driver.
@@ -490,7 +579,7 @@ def get_dispatch_offers_for_driver():
 
 @driver_bp.route("/offers/<int:offer_id>/respond", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def respond_to_dispatch_offer(offer_id: int):
     """
     Driver accepts or rejects a dispatch offer.
@@ -536,7 +625,7 @@ def respond_to_dispatch_offer(offer_id: int):
 
 @driver_bp.route("/vehicle-documents-status", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_vehicle_documents_status():
     """
     Retrieve the status of all documents for a given vehicle.
@@ -574,7 +663,7 @@ def get_vehicle_documents_status():
     
 @driver_bp.route("/service-enrollments", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_service_enrollments():
     """
     Driver-side: list this driver's APPROVED service enrollments.
@@ -624,7 +713,7 @@ def get_driver_service_enrollments():
     
 @driver_bp.route("/vehicles", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_vehicles():
     """
     Retrieve all vehicles for the authenticated driver.
@@ -654,7 +743,7 @@ def get_driver_vehicles():
 
 @driver_bp.route("/rides/upcoming", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_upcoming_rides():
     driver_id = session["user_id"]
 
@@ -686,7 +775,7 @@ def get_upcoming_rides():
 
 @driver_bp.route("/rides/<int:ride_id>/start", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def start_ride(ride_id: int):
     driver_id = session["user_id"]
 
@@ -706,7 +795,7 @@ def start_ride(ride_id: int):
 
 @driver_bp.route("/rides/<int:ride_id>/end", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def end_ride(ride_id: int):
     driver_id = session["user_id"]
     data = request.get_json(silent=True) or {}
@@ -732,7 +821,7 @@ def end_ride(ride_id: int):
 
 @driver_bp.route("/rides/history", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_ride_history():
     """
     Return past rides for the logged-in driver.
@@ -807,7 +896,7 @@ def get_ride_history():
 
 @driver_bp.route("/photo", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def upload_driver_photo():
     """
     Upload / update driver's profile photo.
@@ -858,7 +947,7 @@ def upload_driver_photo():
 
 @driver_bp.route("/availability", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_daily_availability():
     """
     Get daily availability for the logged-in driver.
@@ -935,7 +1024,7 @@ def get_driver_daily_availability():
 
 @driver_bp.route("/availability", methods=["PUT"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def set_driver_daily_availability():
     """
     Set daily availability for the logged-in driver.
@@ -1023,7 +1112,7 @@ def set_driver_daily_availability():
 
 @driver_bp.route("/service-enrollments/<int:enroll_id>/cancel", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def cancel_driver_service_enrollment(enroll_id: int):
   """
   Driver cancels (withdraws) their own service enrollment.
@@ -1095,7 +1184,7 @@ def cancel_driver_service_enrollment(enroll_id: int):
   
 @driver_bp.route("/availability/confirm", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def confirm_driver_daily_availability():
     """
     Confirm today's (or given date's) availability for the logged-in driver.
@@ -1159,7 +1248,7 @@ def get_ride_participants(cur, ride_id: int):
 
 @driver_bp.route("/rides/<int:ride_id>/messages", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_ride_messages_for_driver(ride_id: int):
     """
     Get in-app chat messages for a ride (driver view).
@@ -1206,7 +1295,7 @@ def get_ride_messages_for_driver(ride_id: int):
 
 @driver_bp.route("/rides/<int:ride_id>/messages", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def send_ride_message_for_driver(ride_id: int):
     """
     Send a new in-app message from the driver (or passenger if ever reused).
@@ -1270,7 +1359,7 @@ def send_ride_message_for_driver(ride_id: int):
 # Get driver's vehicle location for ride
 @driver_bp.route("/vehicle/location", methods=["POST"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def update_vehicle_location():
     """
     Driver pushes their current vehicle location.
@@ -1325,7 +1414,7 @@ def update_vehicle_location():
 
 @driver_bp.route("/preferences", methods=["GET"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def get_driver_preferences():
     """
     Get user preferences (notifications + location) for the logged-in driver.
@@ -1384,7 +1473,7 @@ def get_driver_preferences():
 
 @driver_bp.route("/preferences", methods=["PUT"])
 @require_auth
-@require_role("D")
+@require_role("D", "C")
 def set_driver_preferences():
     """
     Update/create driver user preferences.
