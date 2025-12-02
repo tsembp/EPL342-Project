@@ -112,6 +112,196 @@ def get_vehicle_types():
         return jsonify({"error": str(e)}), 500
 
 
+@driver_bp.route("/allowed-ride-profiles", methods=["GET"])
+@require_auth
+@require_role("D", "C")
+def get_allowed_ride_profiles_by_role():
+    """
+    Get allowed ride profiles filtered by user role.
+    Company Representatives (C): only teledriving and fully_autonomous
+    Drivers (D): all except teledriving and fully_autonomous
+    """
+    user_role = session.get("role")
+    
+    if not user_role or user_role not in ("D", "C"):
+        return jsonify({"success": False, "error": "Invalid user role"}), 403
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_GetAllowedRideProfilesByRole
+                        @UserRole = ?
+                    """,
+                    user_role,
+                )
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+
+        return jsonify({"success": True, "profiles": rows}), 200
+    except Exception as e:
+        print("Error in /api/driver/allowed-ride-profiles:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@driver_bp.route("/valid-combinations", methods=["GET"])
+@require_auth
+@require_role("D", "C")
+def get_valid_combinations():
+    """
+    Get valid (ServiceType, RideType) combinations for a specific vehicle
+    based on the vehicle's VehicleType and the user's role.
+    Query params: vehicleId (required)
+    Returns: { serviceTypes: [...], rideTypes: [...], validCombinations: [{serviceTypeId, rideTypeId}, ...] }
+    """
+    user_role = session.get("role")
+    vehicle_id = request.args.get("vehicleId")
+    
+    if not vehicle_id:
+        return jsonify({"success": False, "error": "vehicleId is required"}), 400
+    
+    if not user_role or user_role not in ("D", "C"):
+        return jsonify({"success": False, "error": "Invalid user role"}), 403
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get vehicle's VehicleTypeId
+                cur.execute("""
+                    SELECT VehicleTypeId 
+                    FROM dbo.Vehicle 
+                    WHERE VehicleId = ?
+                """, vehicle_id)
+                vehicle_row = cur.fetchone()
+                
+                if not vehicle_row:
+                    return jsonify({"success": False, "error": "Vehicle not found"}), 404
+                
+                vehicle_type_id = vehicle_row[0]
+                
+                # Build role-based ride type filter
+                if user_role == 'C':
+                    ride_type_filter = "RT.Name IN ('teledriving', 'fully_autonomous')"
+                else:
+                    ride_type_filter = "RT.Name NOT IN ('teledriving', 'fully_autonomous')"
+                
+                # Get valid combinations from AllowedRideProfile
+                query = f"""
+                    SELECT DISTINCT
+                        ST.ServiceTypeId,
+                        ST.Name AS ServiceTypeName,
+                        ST.BaseFare,
+                        RT.RideTypeId,
+                        RT.Name AS RideTypeName,
+                        RT.Description AS RideTypeDescription
+                    FROM dbo.AllowedRideProfile ARP
+                    INNER JOIN dbo.ServiceType ST ON ARP.ServiceTypeId = ST.ServiceTypeId
+                    INNER JOIN dbo.RideType RT ON ARP.RideTypeId = RT.RideTypeId
+                    WHERE ARP.VehicleTypeId = ?
+                      AND ST.Active = 1
+                      AND {ride_type_filter}
+                    ORDER BY ST.Name, RT.Name
+                """
+                
+                cur.execute(query, vehicle_type_id)
+                
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+                
+                # Extract unique service types and ride types
+                service_types = {}
+                ride_types = {}
+                valid_combinations = []
+                
+                for row in rows:
+                    st_id = row["ServiceTypeId"]
+                    rt_id = row["RideTypeId"]
+                    
+                    if st_id not in service_types:
+                        service_types[st_id] = {
+                            "ServiceTypeId": st_id,
+                            "Name": row["ServiceTypeName"],
+                            "BaseFare": float(row["BaseFare"]) if row["BaseFare"] else 0
+                        }
+                    
+                    if rt_id not in ride_types:
+                        ride_types[rt_id] = {
+                            "RideTypeId": rt_id,
+                            "Name": row["RideTypeName"],
+                            "Description": row["RideTypeDescription"]
+                        }
+                    
+                    valid_combinations.append({
+                        "serviceTypeId": st_id,
+                        "rideTypeId": rt_id
+                    })
+                
+                return jsonify({
+                    "success": True,
+                    "serviceTypes": list(service_types.values()),
+                    "rideTypes": list(ride_types.values()),
+                    "validCombinations": valid_combinations
+                }), 200
+                
+    except Exception as e:
+        print("Error in /api/driver/valid-combinations:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@driver_bp.route("/ride-types", methods=["GET"])
+@require_auth
+@require_role("D", "C")
+def get_allowed_ride_types_by_role():
+    """
+    Get unique ride types filtered by user role.
+    Company Representatives (C): only teledriving and fully_autonomous
+    Drivers (D): all except teledriving and fully_autonomous
+    """
+    user_role = session.get("role")
+    
+    if not user_role or user_role not in ("D", "C"):
+        return jsonify({"success": False, "error": "Invalid user role"}), 403
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get distinct ride types based on role
+                if user_role == 'C':
+                    # Company Representatives: only teledriving and fully_autonomous
+                    cur.execute("""
+                        SELECT DISTINCT RT.RideTypeId, RT.Name, RT.Description
+                        FROM dbo.RideType RT
+                        WHERE RT.Name IN ('teledriving', 'fully_autonomous')
+                        ORDER BY RT.Name
+                    """)
+                else:
+                    # Drivers: all except teledriving and fully_autonomous
+                    cur.execute("""
+                        SELECT DISTINCT RT.RideTypeId, RT.Name, RT.Description
+                        FROM dbo.RideType RT
+                        WHERE RT.Name NOT IN ('teledriving', 'fully_autonomous')
+                        ORDER BY RT.Name
+                    """)
+                
+                if cur.description:
+                    columns = [col[0] for col in cur.description]
+                    rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+                else:
+                    rows = []
+
+        return jsonify({"success": True, "rideTypes": rows}), 200
+    except Exception as e:
+        print("Error in /api/driver/ride-types:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @driver_bp.route("/service-types", methods=["GET"])
 @require_auth
 @require_role("D", "C")
@@ -258,13 +448,12 @@ def create_service_enroll():
 
     vehicle_id = data.get("vehicleId")
     service_type_id = data.get("serviceTypeId")
-    # If you later expose rideTypeId in the UI, pass it and read it here.
-    ride_type_id = data.get("rideTypeId", 1)
+    ride_type_id = data.get("rideTypeId")
 
-    if not vehicle_id or not service_type_id:
+    if not vehicle_id or not service_type_id or not ride_type_id:
         return jsonify({
             "success": False,
-            "error": "vehicleId and serviceTypeId are required",
+            "error": "vehicleId, serviceTypeId, and rideTypeId are required",
         }), 400
 
     try:
