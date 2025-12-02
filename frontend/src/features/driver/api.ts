@@ -158,7 +158,7 @@ export const createServiceEnrollment = (params: {
   });
 
 // ---------------------------------------------
-// Document upload
+// Documents
 // ---------------------------------------------
 
 // Upload a single driver document for a given user.
@@ -187,6 +187,20 @@ export const uploadDriverDocument = (params: {
     body: formData,
   });
 };
+
+export interface PersonDocumentStatus {
+  PersonDocId: number;
+  DocType: string;   // 'ID_OR_PASSPORT', 'DRIVING_LICENSE', ...
+  IssueDate?: string;
+  ExpiryDate?: string;
+  Status: string;    // 'Pending', 'Accepted', 'Rejected'
+  ReviewComments?: string;
+  FileUrl?: string;
+}
+
+export const getPersonDocumentStatus = () =>
+  fetchAPI<PersonDocumentStatus[]>("/driver/person-documents-status");
+
 
 /**
  * Upload a single vehicle document for a given vehicle.
@@ -448,6 +462,10 @@ export const setDriverDailyAvailability = (
     body: JSON.stringify(payload),
   });
 
+// ---------------------------------------------
+// Driver photo
+// ---------------------------------------------
+
 export async function uploadDriverPhoto(
   file: File
 ): Promise<{ photoUrl: string }> {
@@ -459,6 +477,16 @@ export async function uploadDriverPhoto(
     body: formData,
   });
 }
+
+export type DriverPhotoStatus = {
+  photoUrl: string | null;
+  status: "Submitted" | "Not submitted";
+};
+
+export const getDriverPhotoStatus = () =>
+  fetchAPI<DriverPhotoStatus>("/driver/photo", {
+    method: "GET",
+  });
 
 // ---------------------------------------------
 // Driver user preferences

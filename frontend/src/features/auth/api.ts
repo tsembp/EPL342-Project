@@ -39,7 +39,8 @@ export interface AuthCheckResponse {
   role?: string;
   accountType?: 'USER' | 'STAFF';
   email?: string;
-  username?: string; // New field
+  username?: string;
+  verificationStatus: string | null;
 }
 
 export const login = (data: LoginRequest) =>

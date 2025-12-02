@@ -10,6 +10,7 @@ interface AuthState {
   email: string | null;
   accountType: 'USER' | 'STAFF' | null;
   username: string | null;
+  verificationStatus: string | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
   signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => Promise<void>;
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       email: null,
       username: null,
       accountType: null,
+      verificationStatus: null,
       
       login: async (email, password) => {
         try {
@@ -54,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
               username: responseWithVerification.username,
               accountType: responseWithVerification.accountType === 'STAFF' ? 'STAFF' : 'USER',
               userRole: mapRoleToUserRole(responseWithVerification.role),
+              verificationStatus: responseWithVerification.verificationStatus
             });
             return responseWithVerification; // Return the full response
           } else {
@@ -88,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
           username: null,
           accountType: null,
           userRole: 'passenger',
+          verificationStatus: null,
         });
       },
       
@@ -102,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
               username: data.username,
               accountType: data.accountType,
               userRole: mapRoleToUserRole(data.role!),
+              verificationStatus: data.verificationStatus ?? 'unknown',
             });
           } else {
             set({
@@ -110,6 +115,7 @@ export const useAuthStore = create<AuthState>()(
               email: null,
               accountType: null,
               userRole: 'passenger',
+              verificationStatus: null,
             });
           }
         } catch (error) {
@@ -120,6 +126,7 @@ export const useAuthStore = create<AuthState>()(
             email: null,
             accountType: null,
             userRole: 'passenger',
+            verificationStatus: null,
           });
         }
       },
