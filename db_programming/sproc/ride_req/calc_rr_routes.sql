@@ -35,9 +35,6 @@ BEGIN
         IF @MaxHops IS NULL OR @MaxHops <= 0
             SET @MaxHops = 6;
 
-        IF @MaxHops > 8
-            SET @MaxHops = 8;   -- hard safety cap
-
         IF @MaxAlternatives IS NULL OR @MaxAlternatives <= 0
             SET @MaxAlternatives = 50;
 
@@ -58,31 +55,42 @@ BEGIN
         -- 4. Build graph & enumerate paths with delimited strings
         --    PathString format: ",3,7,12," (no JSON in recursion)
         ------------------------------------------------------------
-        ;WITH Edge AS (
-            SELECT B.FromZoneId, B.ToZoneId
-            FROM dbo.Bridge AS B
-            UNION
-            SELECT B.ToZoneId  AS FromZoneId,
-                   B.FromZoneId AS ToZoneId
-            FROM dbo.Bridge AS B
-        ),
-        Paths AS (
+
+        -- Build temp Edge table, seed it and apply index to it
+        IF OBJECT_ID('tempdb..#Edge') IS NOT NULL
+            DROP TABLE #Edge;
+
+        CREATE TABLE #Edge
+        (
+            FromZoneId int NOT NULL,
+            ToZoneId   int NOT NULL
+        );
+
+        INSERT INTO #Edge(FromZoneId, ToZoneId)
+        SELECT B.FromZoneId, B.ToZoneId
+        FROM dbo.Bridge AS B
+        UNION ALL
+        SELECT B.ToZoneId, B.FromZoneId
+        FROM dbo.Bridge AS B;
+
+        CREATE INDEX IX_Edge_FromZoneId ON #Edge(FromZoneId, ToZoneId);
+
+        WITH Paths AS (
             -- Anchor
             SELECT
-                PathString  = ',' + CAST(@StartZoneId AS varchar(20)) + ',',
+                PathString  = CONVERT(varchar(400), ',' + CAST(@StartZoneId AS varchar(20)) + ','),
                 CurrentZone = @StartZoneId,
                 Depth       = 0
             UNION ALL
-            -- Recursive: extend to neighbours, avoid cycles via CHARINDEX
             SELECT
-                PathString  = p.PathString + CAST(e.ToZoneId AS varchar(20)) + ',',
+                PathString  = CONVERT(varchar(400), p.PathString + CAST(e.ToZoneId AS varchar(20)) + ','),
                 CurrentZone = e.ToZoneId,
                 Depth       = p.Depth + 1
             FROM Paths AS p
-            JOIN Edge  AS e
-              ON e.FromZoneId = p.CurrentZone
+            JOIN #Edge AS e
+            ON e.FromZoneId = p.CurrentZone
             WHERE p.Depth < @MaxHops
-              AND CHARINDEX(',' + CAST(e.ToZoneId AS varchar(20)) + ',', p.PathString) = 0
+            AND CHARINDEX(',' + CAST(e.ToZoneId AS varchar(20)) + ',', p.PathString) = 0
         ),
         FinalPaths AS (
             -- Only paths that end at destination zone

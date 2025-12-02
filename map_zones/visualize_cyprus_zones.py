@@ -10,7 +10,7 @@ from matplotlib.patches import Rectangle
 import contextily as cx
 
 # Paths
-DATA_DIR = Path("/output")
+DATA_DIR = Path(".")
 zones_file = DATA_DIR / "zones"
 points_file = DATA_DIR / "zone_points"
 bridges_file = DATA_DIR / "bridges"
