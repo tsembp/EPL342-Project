@@ -120,8 +120,6 @@ export type ServiceTypeRow = {
   Name: string;
   Description: string;
   BaseFare: number | string;
-  PerKm: number | string;
-  PerMin: number | string;
 };
 
 
@@ -231,6 +229,7 @@ export interface AddVehicleRequest {
   seats: number;
   cargoVolume?: number;
   cargoWeight?: number;
+  pricePerKm: number;
 }
 
 export interface AddVehicleResponse {
@@ -257,6 +256,7 @@ export interface Vehicle {
   Seats: number;
   CargoVolume: number;
   CargoWeight: number;
+  PricePerKm: number;
   VehicleStatus: string;
   VehicleType: string;
   IsApproved: boolean;

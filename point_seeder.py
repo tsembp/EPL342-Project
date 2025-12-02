@@ -3,9 +3,9 @@ import pandas as pd
 from pathlib import Path
 
 DB_HOST = "10.16.1.133"
-DB_NAME = "ptsemb01"
-DB_USER = "ptsemb01"
-DB_PASS = "jBrC2y6f"
+DB_NAME = "sgavri03"
+DB_USER = "sgavri03"
+DB_PASS = "Rk7d3be2"
 
 conn = pyodbc.connect(
     "DRIVER={ODBC Driver 18 for SQL Server};"

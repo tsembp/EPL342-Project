@@ -39,14 +39,13 @@ SELECT
     v.Seats,
     v.CargoVolume,
     v.CargoWeight,
+    v.PricePerKm AS VehiclePricePerKm,
     vt.Name AS VehicleTypeName,
     
     -- Service capabilities
     st.ServiceTypeId,
     st.Name AS ServiceTypeName,
     st.BaseFare,
-    st.PerKm,
-    st.PerMin,
     rt.RideTypeId,
     rt.Name AS RideTypeName,
     
