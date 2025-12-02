@@ -8,8 +8,6 @@ BEGIN
         ST.Name,
         ST.[Description],
         ST.BaseFare,
-        ST.PerKm,
-        ST.PerMin,
         ST.ValidFrom,
         ST.ValidTo,
         ST.Active

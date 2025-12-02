@@ -3,8 +3,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_Operator_UpdateServiceType
     @Name          NVARCHAR(100),
     @Description   NVARCHAR(MAX),
     @BaseFare      MoneyAmount,
-    @PerKm         MoneyAmount,
-    @PerMin        MoneyAmount,
     @Active        BIT
 AS
 BEGIN
@@ -27,8 +25,6 @@ BEGIN
         Name        = @Name,
         [Description] = @Description,
         BaseFare    = @BaseFare,
-        PerKm       = @PerKm,
-        PerMin      = @PerMin,
         Active      = @Active,
         UpdatedAt   = GETUTCDATE()
     WHERE ServiceTypeId = @ServiceTypeId;
@@ -38,8 +34,6 @@ BEGIN
         ST.Name,
         ST.[Description],
         ST.BaseFare,
-        ST.PerKm,
-        ST.PerMin,
         ST.ValidFrom,
         ST.ValidTo,
         ST.Active

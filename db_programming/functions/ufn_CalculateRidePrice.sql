@@ -18,10 +18,8 @@ AS
 BEGIN
     DECLARE @FinalPrice DECIMAL(12,2) = 0;
     DECLARE @BaseFare DECIMAL(10,2);
-    DECLARE @PerKm DECIMAL(10,2);
-    DECLARE @PerMin DECIMAL(10,2);
+    DECLARE @VehiclePricePerKm DECIMAL(10,2);
     DECLARE @DistanceKm DECIMAL(10,2);
-    DECLARE @DurationMinutes INT;
     DECLARE @BasePrice DECIMAL(12,2);
     DECLARE @SurgeMultiplier DECIMAL(5,2) = 1.0;
     
@@ -34,18 +32,17 @@ BEGIN
     DECLARE @AvailableDriverCount INT;
     DECLARE @DemandRatio DECIMAL(10,2);
 
-    -- Get ride details and trace back to ServiceType pricing
+    -- Get ride details and trace back to ServiceType pricing + Vehicle pricing
     SELECT 
         @DistanceKm = r.DistanceKm,
-        @DurationMinutes = r.DurationMinutes,
         @ZoneId = il.ZoneId,
         @PickupTime = rr.PickupAt,
         @ServiceTypeId = arp.ServiceTypeId,
         @RideTypeId = arp.RideTypeId,
         @BaseFare = st.BaseFare,
-        @PerKm = st.PerKm,
-        @PerMin = st.PerMin
+        @VehiclePricePerKm = v.PricePerKm
     FROM dbo.[Ride] r
+    INNER JOIN dbo.Vehicle v ON r.VehicleId = v.VehicleId
     INNER JOIN dbo.DispatchOffer do_offer ON r.OfferId = do_offer.OfferId
     INNER JOIN dbo.ItineraryLeg il ON do_offer.LegId = il.LegId
     INNER JOIN dbo.RideRequest rr ON il.RideRequestId = rr.RequestId
@@ -57,11 +54,11 @@ BEGIN
         AND st.ValidFrom <= rr.PickupAt;
 
     -- If no pricing found, return 0
-    IF @BaseFare IS NULL OR @DistanceKm IS NULL OR @DurationMinutes IS NULL
+    IF @BaseFare IS NULL OR @DistanceKm IS NULL OR @VehiclePricePerKm IS NULL
         RETURN 0;
 
-    -- Calculate base price (before surge)
-    SET @BasePrice = @BaseFare + (@PerKm * @DistanceKm) + (@PerMin * @DurationMinutes);
+    -- Calculate base price (before surge): BaseFare + (VehiclePricePerKm * Distance)
+    SET @BasePrice = @BaseFare + (@VehiclePricePerKm * @DistanceKm);
 
     -- === DYNAMIC PRICING: Surge Multiplier Calculation ===
     
