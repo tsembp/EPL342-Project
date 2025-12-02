@@ -29,7 +29,7 @@ from shapely.geometry import Point, Polygon, box, shape
 CONFIG = {
     # Input/Output
     'LAND_BOUNDARY_FILE': 'seed_data/cyprus_boundary.geojson',
-    'OUTPUT_DIR': 'seed_data/cyprus-zones-final',
+    'OUTPUT_DIR': './output',
     
     # Grid Configuration
     'MIN_LAT': 34.56,
