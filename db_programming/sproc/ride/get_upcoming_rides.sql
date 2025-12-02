@@ -6,6 +6,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- Company Reps and Drivers both operate vehicles, so both are in DriverUserId
+    -- No need to check role - just filter by DriverUserId
     SELECT
         r.RideId,
         rr.RequestId,

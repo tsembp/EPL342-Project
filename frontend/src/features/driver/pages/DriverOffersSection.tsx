@@ -1,5 +1,6 @@
 // src/features/driver/pages/DriverOffersSection.tsx
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ function getOfferMinutesToPickup(offer: DispatchOfferRow): number | null {
 }
 
 export function DriverOffersSection() {
+  const queryClient = useQueryClient();
   const [offers, setOffers] = useState<DispatchOfferRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +201,11 @@ export function DriverOffersSection() {
       toast.success(
         action === "accept" ? "Offer accepted." : "Offer rejected."
       );
+
+      // Invalidate rides query so the Rides tab shows the newly created ride
+      if (action === "accept") {
+        queryClient.invalidateQueries({ queryKey: ["driver", "rides"] });
+      }
     } catch (err: any) {
       console.error(`Error trying to ${action} offer:`, err);
       toast.error(

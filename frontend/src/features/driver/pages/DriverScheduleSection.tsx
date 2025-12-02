@@ -1,5 +1,6 @@
 // src/features/driver/pages/DriverScheduleSection.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,40 +114,36 @@ function getRideMinutesToPickup(ride: DriverRideRow): number | null {
 // --------------- component ----------------
 
 export function DriverScheduleSection() {
-  const [rides, setRides] = useState<DriverRideRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [actionRideId, setActionRideId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [activeChat, setActiveChat] = useState<ActiveChatState | null>(null);
   const [mapRide, setMapRide] = useState<DriverRideRow | null>(null);
 
-  async function loadRides() {
-    setLoading(true);
-    setError(null);
-    try {
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["driver", "rides"],
+    queryFn: async () => {
       const res = await getDriverUpcomingRides();
       if (!res.success) {
-        setError(
+        throw new Error(
           "error" in res && typeof res.error === "string"
             ? res.error
             : "Failed to load rides."
         );
-        setRides([]);
-      } else {
-        setRides(res.rides ?? []);
       }
-    } catch (err: any) {
-      console.error("Error loading driver rides:", err);
-      setError(err?.message || "Failed to load rides.");
-      setRides([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+      return res.rides ?? [];
+    },
+  });
 
-  useEffect(() => {
-    loadRides();
-  }, []);
+  const rides = data ?? [];
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load rides."
+    : null;
 
   async function handleStart(rideId: number) {
     setActionRideId(rideId);
@@ -161,11 +158,7 @@ export function DriverScheduleSection() {
         return;
       }
 
-      setRides((prev) =>
-        prev.map((r) =>
-          r.RideId === rideId ? { ...r, Status: "InProgress" } : r
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ["driver", "rides"] });
       toast.success("Ride started.");
     } catch (err: any) {
       console.error("Error starting ride:", err);
@@ -188,11 +181,7 @@ export function DriverScheduleSection() {
         return;
       }
 
-      setRides((prev) =>
-        prev.map((r) =>
-          r.RideId === rideId ? { ...r, Status: "Completed" } : r
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ["driver", "rides"] });
       toast.success("Ride completed.");
     } catch (err: any) {
       console.error("Error ending ride:", err);
@@ -220,7 +209,7 @@ export function DriverScheduleSection() {
             variant="ghost"
             size="sm"
             className="rounded-full bg-neutral-50 px-4 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-200 disabled:opacity-60 disabled:hover:bg-neutral-50"
-            onClick={loadRides}
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["driver", "rides"] })}
             disabled={loading}
           >
             {loading ? (

@@ -22,11 +22,14 @@ import {
 
 type ActiveRideDetails = DriverHistoryRow | null;
 
+const PAGE_SIZE = 5;
+
 export function DriverHistorySection() {
   const [rides, setRides] = useState<DriverHistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detailsRide, setDetailsRide] = useState<ActiveRideDetails>(null);
+  const [page, setPage] = useState(1);
 
   const hasHistory = rides.length > 0;
 
@@ -42,14 +45,17 @@ export function DriverHistorySection() {
             : "Failed to load ride history."
         );
         setRides([]);
+        setPage(1);
         return;
       }
 
       setRides(res.rides ?? []);
+      setPage(1); // reset to first page on refresh/load
     } catch (err: any) {
       console.error("Error loading driver history:", err);
       setError(err?.message || "Failed to load ride history.");
       setRides([]);
+      setPage(1);
     } finally {
       setLoading(false);
     }
@@ -58,6 +64,13 @@ export function DriverHistorySection() {
   useEffect(() => {
     loadHistory();
   }, []);
+
+  const totalRides = rides.length;
+  const totalPages = totalRides === 0 ? 1 : Math.ceil(totalRides / PAGE_SIZE);
+  const clampedPage = Math.min(page, totalPages);
+  const startIndex = (clampedPage - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalRides);
+  const paginatedRides = rides.slice(startIndex, endIndex);
 
   function formatDateTime(value: string | null | undefined) {
     if (!value) return "—";
@@ -120,74 +133,125 @@ export function DriverHistorySection() {
 
         {/* Ride list */}
         {hasHistory && (
-          <div className="space-y-3">
-            {rides.map((ride) => {
-              const isCancelled = ride.Status === "Cancelled";
+          <>
+            <div className="space-y-3">
+              {paginatedRides.map((ride) => {
+                const isCancelled = ride.Status === "Cancelled";
 
-              return (
-                <Card
-                  key={ride.RideId}
-                  className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    {/* Left: route & meta */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-neutral-50">
-                        <MapPin className="h-4 w-4 text-emerald-400" />
-                        <span>{ride.FromName}</span>
-                        <ArrowRight className="h-4 w-4 text-neutral-500" />
-                        <span>{ride.ToName}</span>
+                return (
+                  <Card
+                    key={ride.RideId}
+                    className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      {/* Left: route & meta */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-50">
+                          <MapPin className="h-4 w-4 text-emerald-400" />
+                          <span>{ride.FromName}</span>
+                          <ArrowRight className="h-4 w-4 text-neutral-500" />
+                          <span>{ride.ToName}</span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 text-xs text-neutral-400">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDateTime(ride.EndedAt ?? ride.StartedAt)}
+                          </span>
+
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {ride.NumOfPeople ?? "—"} passenger
+                            {ride.NumOfPeople && ride.NumOfPeople !== 1 && "s"}
+                          </span>
+
+                          <span className="inline-flex items-center gap-1">
+                            <CreditCard className="h-3 w-3" />
+                            {ride.PaymentMethod ?? "—"}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3 text-xs text-neutral-400">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDateTime(ride.EndedAt ?? ride.StartedAt)}
-                        </span>
+                      {/* Right: status + “View details” */}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={`border-neutral-700 bg-neutral-900/70 text-[11px] font-normal ${
+                              isCancelled
+                                ? "text-red-300"
+                                : "text-neutral-200"
+                            }`}
+                          >
+                            {ride.Status}
+                          </Badge>
+                        </div>
 
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {ride.NumOfPeople ?? "—"} passenger
-                          {ride.NumOfPeople && ride.NumOfPeople !== 1 && "s"}
-                        </span>
-
-                        <span className="inline-flex items-center gap-1">
-                          <CreditCard className="h-3 w-3" />
-                          {ride.PaymentMethod ?? "—"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right: status + “View details” */}
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-2">
-                        <Badge
+                        {/* Instead of showing price, show a details button */}
+                        <Button
+                          size="sm"
                           variant="outline"
-                          className={`border-neutral-700 bg-neutral-900/70 text-[11px] font-normal ${
-                            isCancelled
-                              ? "text-red-300"
-                              : "text-neutral-200"
-                          }`}
+                          className="rounded-full border-emerald-500/70 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10"
+                          onClick={() => setDetailsRide(ride)}
                         >
-                          {ride.Status}
-                        </Badge>
+                          View details
+                        </Button>
                       </div>
-
-                      {/* Instead of showing price, show a details button */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full border-emerald-500/70 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10"
-                        onClick={() => setDetailsRide(ride)}
-                      >
-                        View details
-                      </Button>
                     </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Pagination controls (same style as DriverOffersSection) */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between text-xs text-neutral-400">
+                <span>
+                  Showing{" "}
+                  <span className="text-neutral-100">
+                    {startIndex + 1}–{endIndex}
+                  </span>{" "}
+                  of{" "}
+                  <span className="text-neutral-100">
+                    {totalRides}
+                  </span>{" "}
+                  rides
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                    disabled={clampedPage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-[11px] text-neutral-400">
+                    Page{" "}
+                    <span className="text-neutral-100">
+                      {clampedPage}
+                    </span>{" "}
+                    of{" "}
+                    <span className="text-neutral-100">
+                      {totalPages}
+                    </span>
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                    disabled={clampedPage >= totalPages}
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages, p + 1))
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 
