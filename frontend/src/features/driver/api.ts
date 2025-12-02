@@ -144,7 +144,7 @@ export const checkServiceEnrollment = (params: {
 export const createServiceEnrollment = (params: {
   vehicleId: string;
   serviceTypeId: number;
-  rideTypeId?: number | null;
+  rideTypeId: number;
 }) =>
   fetchAPI<{
     success: boolean;
@@ -387,6 +387,65 @@ export const getVehicleTypeRequirements = () =>
     types: VehicleTypeRequirementRow[];
     error?: string;
   }>("/driver/vehicle-type-requirements");
+
+// ---------------------------------------------
+// Allowed Ride Profiles (filtered by role)
+// ---------------------------------------------
+
+export type AllowedRideProfileRow = {
+  RideProfileId: string;
+  ServiceTypeId: number;
+  ServiceTypeName: string;
+  RideTypeId: number;
+  RideTypeName: string;
+  VehicleTypeId: number;
+  VehicleTypeName: string;
+  ProfileName: string | null;
+};
+
+export const getAllowedRideProfilesByRole = () =>
+  fetchAPI<{
+    success: boolean;
+    profiles: AllowedRideProfileRow[];
+    error?: string;
+  }>("/driver/allowed-ride-profiles");
+
+// ---------------------------------------------
+// Ride Types (filtered by role)
+// ---------------------------------------------
+
+export type RideTypeRow = {
+  RideTypeId: number;
+  Name: string;
+  Description: string | null;
+};
+
+export const getAllowedRideTypesByRole = () =>
+  fetchAPI<{
+    success: boolean;
+    rideTypes: RideTypeRow[];
+    error?: string;
+  }>("/driver/ride-types");
+
+// ---------------------------------------------
+// Valid Combinations (based on vehicle + role)
+// ---------------------------------------------
+
+export type ValidCombinationsResponse = {
+  success: boolean;
+  serviceTypes: ServiceTypeRow[];
+  rideTypes: RideTypeRow[];
+  validCombinations: Array<{
+    serviceTypeId: number;
+    rideTypeId: number;
+  }>;
+  error?: string;
+};
+
+export const getValidCombinationsByVehicle = (vehicleId: string) =>
+  fetchAPI<ValidCombinationsResponse>(
+    `/driver/valid-combinations?vehicleId=${encodeURIComponent(vehicleId)}`
+  );
 
 
 export const getDriverRideHistory = () =>

@@ -39,7 +39,7 @@ export default function Login() {
           } else if (role === "admin") {
             navigate("/admin");
           }
-          else if (role === "driver") {
+          else if (role === "driver" || role === "company_representative") {
             navigate("/driver"); 
           } else { // Default for passenger or fully verified company representative
             navigate("/passenger/ride");;

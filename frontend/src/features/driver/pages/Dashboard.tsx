@@ -46,6 +46,7 @@ type TabKey =
 export default function Dashboard() {
 
   const username = useAuthStore((state) => state.username);
+  const userRole = useAuthStore((state) => state.userRole);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabKey) || "rides";
@@ -54,6 +55,8 @@ export default function Dashboard() {
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingOnline, setIsTogglingOnline] = useState(false);
   const userName = useAuthStore((state) => state.username);
+
+  const roleLabel = userRole === "company_representative" ? "Company Representative" : "Driver";
 
   async function handleToggleOnline(next: boolean) {
     setIsTogglingOnline(true);
@@ -85,10 +88,10 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
-                  Driver mode
+                  {roleLabel} mode
                 </p>
                 <h1 className="text-xl font-semibold text-neutral-50 sm:text-2xl">
-                  Welcome back, {username || "Driver"}
+                  Welcome back, {username || roleLabel}
                 </h1>
                 <div className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
                   <Badge
@@ -96,7 +99,7 @@ export default function Dashboard() {
                     className="border-neutral-700 bg-neutral-900/60 text-[11px] font-normal text-neutral-300"
                   >
                     <Car className="mr-1 h-3 w-3" />
-                    Ride &amp; cargo services
+                    {userRole === "company_representative" ? "Teledriving & Autonomous" : "Ride & cargo services"}
                   </Badge>
                 </div>
               </div>

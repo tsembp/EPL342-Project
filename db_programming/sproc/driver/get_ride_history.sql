@@ -4,6 +4,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- No need to check role - just filter by DriverUserId
     SELECT 
         R.RideId,
         IL.LegId,

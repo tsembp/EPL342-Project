@@ -467,8 +467,11 @@ def create_allowed_ride_profile():
                 row = dict(zip(cols, cur.fetchone()))
         return jsonify(row), 201
     except Exception as e:
-        print("Error in create_allowed_ride_profile:", e)
-        return jsonify({"error": "Failed to create allowed ride profile"}), 500
+        print(f"Error in create_allowed_ride_profile: {e}")
+        print(f"Data received: serviceTypeId={service_type_id}, rideTypeId={ride_type_id}, vehicleTypeId={vehicle_type_id}, profileName={profile_name}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to create allowed ride profile: {str(e)}"}), 500
 
 
 @operator_bp.route("/allowed-ride-profiles/<ride_profile_id>", methods=["PUT"])
@@ -515,6 +518,42 @@ def update_allowed_ride_profile(ride_profile_id):
         return jsonify(
             {"error": "Failed to update allowed ride profile"}
         ), 500
+
+@operator_bp.route("/ride-types", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_ride_types():
+    """
+    Returns all ride types.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_GetRideTypes")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /ride-types:", e)
+        return jsonify({"error": str(e)}), 500
+
+@operator_bp.route("/vehicle-types", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def get_vehicle_types():
+    """
+    Returns all vehicle types.
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("EXEC dbo.usp_GetVehicleTypes")
+                columns = [col[0] for col in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error in /vehicle-types:", e)
+        return jsonify({"error": str(e)}), 500
 
 @operator_bp.route("/gdpr-requests", methods=["GET"])
 @require_auth

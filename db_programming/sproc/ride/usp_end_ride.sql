@@ -28,9 +28,14 @@ BEGIN
         RETURN;
     END;
 
+    -- First complete the ride (calculate price, set status, etc.)
     EXEC dbo.usp_CompleteRide
-         @RideId             = @RideId,
-         @PaymentMethod      = @PaymentMethod,
+         @RideId = @RideId;
+
+    -- Then create the payment record with breakdown
+    EXEC dbo.usp_CompleteRidePayment
+         @RideId = @RideId,
+         @PaymentMethod = @PaymentMethod,
          @PlatformFeePercent = @PlatformFeePercent;
 END;
 GO
