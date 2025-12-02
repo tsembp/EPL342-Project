@@ -1,1 +1,1 @@
-SELECT * FROM UserPreferences
+SELECT * FROM dbo.Servicetyp
