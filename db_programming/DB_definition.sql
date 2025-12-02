@@ -51,8 +51,6 @@ CREATE TABLE [dbo].[Servicetype] (
     [Name] NVARCHAR(100) NOT NULL,
     [Description] LongText NOT NULL,
     [BaseFare] MoneyAmount NOT NULL,
-    [PerKm] MoneyAmount NOT NULL,
-    [PerMin] MoneyAmount NOT NULL,
     [ValidFrom] UtcStamp NOT NULL,
     [ValidTo] UtcStamp,
     [Active] BIT NOT NULL DEFAULT 1,
@@ -329,6 +327,7 @@ CREATE TABLE [dbo].[Vehicle] (
     [Seats] INT DEFAULT 0 NOT NULL,
     [CargoVolume] DECIMAL(10,2) DEFAULT 0,
     [CargoWeight] DECIMAL(10,2) DEFAULT 0,
+    [PricePerKm] MoneyAmount NOT NULL,
     [Status] NVARCHAR(100) DEFAULT 'Pending',
     [CreatedAt] UtcStamp NOT NULL DEFAULT GETUTCDATE(),
     [ReviewedByOperatorId] UNIQUEIDENTIFIER,
@@ -338,6 +337,7 @@ CREATE TABLE [dbo].[Vehicle] (
     CONSTRAINT [CK_Seats_Positive] CHECK ([Seats] > 0),
     CONSTRAINT [CK_CargoWeight_Positive] CHECK ([CargoWeight] >= 0),
     CONSTRAINT [CK_CargoVolume_Positive] CHECK ([CargoVolume] >= 0),
+    CONSTRAINT [CK_PricePerKm_Positive] CHECK ([PricePerKm] > 0),
     CONSTRAINT [CK_Vehicle_Status] CHECK ([Status] IN ('Pending','Active','Inactive', 'Rejected'))
 );
 

@@ -42,9 +42,7 @@ BEGIN
         ST.ServiceTypeId,
         ST.Name,
         ST.Description,
-        ST.BaseFare,
-        ST.PerKm,
-        ST.PerMin
+        ST.BaseFare
     FROM dbo.ServiceType AS ST
     WHERE ST.Active = 1
       AND (ST.ValidFrom IS NULL OR ST.ValidFrom <= SYSUTCDATETIME())

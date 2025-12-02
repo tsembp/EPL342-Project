@@ -161,9 +161,10 @@ def add_vehicle():
     seats = data.get("seats")
     cargo_volume = data.get("cargoVolume", 0)
     cargo_weight = data.get("cargoWeight", 0)
+    price_per_km = data.get("pricePerKm")
 
-    if not all([vehicle_type_id, plate_number, brand, model, color, seats]):
-        return jsonify({"error": "Missing required vehicle fields"}), 400
+    if not all([vehicle_type_id, plate_number, brand, model, color, seats, price_per_km]):
+        return jsonify({"error": "Missing required vehicle fields (including pricePerKm)"}), 400
 
     try:
         with get_connection() as conn:
@@ -179,7 +180,8 @@ def add_vehicle():
                         @Color = ?,
                         @Seats = ?,
                         @CargoVolume = ?,
-                        @CargoWeight = ?
+                        @CargoWeight = ?,
+                        @PricePerKm = ?
                     """,
                     user_id,
                     vehicle_type_id,
@@ -190,12 +192,54 @@ def add_vehicle():
                     seats,
                     cargo_volume,
                     cargo_weight,
+                    price_per_km,
                 )
                 row = cur.fetchone()
                 if row:
                     return jsonify({"success": True, "vehicleId": str(row[0])}), 201
                 else:
                     return jsonify({"success": False, "error": "Failed to add vehicle"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@driver_bp.route("/update-vehicle-price", methods=["PUT"])
+@require_auth
+@require_role("D")
+def update_vehicle_price():
+    """
+    Driver-side: update vehicle price per km.
+    Calls dbo.usp_UpdateVehiclePricePerKm.
+    """
+    user_id = session["user_id"]
+    data = request.get_json() or {}
+
+    vehicle_id = data.get("vehicleId")
+    price_per_km = data.get("pricePerKm")
+
+    if not vehicle_id or price_per_km is None:
+        return jsonify({"error": "vehicleId and pricePerKm are required"}), 400
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_UpdateVehiclePricePerKm
+                        @VehicleId = ?,
+                        @OwnerUserId = ?,
+                        @PricePerKm = ?
+                    """,
+                    vehicle_id,
+                    user_id,
+                    price_per_km,
+                )
+                row = cur.fetchone()
+                if row:
+                    columns = [col[0] for col in cur.description]
+                    result = dict(zip(columns, row))
+                    return jsonify({"success": True, "vehicle": result}), 200
+                else:
+                    return jsonify({"success": False, "error": "Failed to update price"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
@@ -333,9 +377,7 @@ def get_active_service_types_for_driver():
                         ST.ServiceTypeId,
                         ST.Name,
                         ST.Description,
-                        ST.BaseFare,
-                        ST.PerKm,
-                        ST.PerMin
+                        ST.BaseFare
                     FROM dbo.ServiceType AS ST
                     WHERE ST.Active = 1
                     ORDER BY ST.Name

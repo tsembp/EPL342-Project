@@ -8,7 +8,8 @@ CREATE OR ALTER PROCEDURE [dbo].[usp_AddVehicle]
     @Color          NVARCHAR(30),
     @Seats          INT,
     @CargoVolume    DECIMAL(10,2) = 0,
-    @CargoWeight    DECIMAL(10,2) = 0
+    @CargoWeight    DECIMAL(10,2) = 0,
+    @PricePerKm     DECIMAL(10,2)
 )
 AS
 BEGIN
@@ -90,6 +91,13 @@ BEGIN
         RETURN;
     END;
 
+    -- Validate PricePerKm
+    IF @PricePerKm IS NULL OR @PricePerKm <= 0
+    BEGIN
+        RAISERROR('PricePerKm must be greater than zero.', 16, 1);
+        RETURN;
+    END;
+
     -- Insert vehicle
     DECLARE @VehicleId UNIQUEIDENTIFIER = NEWID();
 
@@ -105,6 +113,7 @@ BEGIN
         Seats,
         CargoVolume,
         CargoWeight,
+        PricePerKm,
         Status,
         Verified
     )
@@ -120,6 +129,7 @@ BEGIN
         @Seats,
         @CargoVolume,
         @CargoWeight,
+        @PricePerKm,
         'Pending',
         0
     );
