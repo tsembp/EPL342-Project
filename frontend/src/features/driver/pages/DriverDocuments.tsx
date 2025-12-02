@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,13 @@ import {
   Loader2,
   Car,
 } from "lucide-react";
-import { uploadDriverDocument, uploadDriverPhoto } from "@/features/driver/api";
+import { 
+  uploadDriverDocument, 
+  uploadDriverPhoto,
+  getPersonDocumentStatus,
+  type PersonDocumentStatus,
+  getDriverPhotoStatus
+} from "@/features/driver/api";
 import { useAuthStore } from "@/lib/store";
 
 type DocumentType = {
@@ -32,53 +38,53 @@ type DocumentType = {
 const REQUIRED_DOCUMENTS: DocumentType[] = [
   {
     id: "identity",
-    label: "Ταυτότητα ή διαβατήριο (Identity or Passport)",
+    label: "Identity or Passport",
     hasExpiry: true,
     backendType: "ID_OR_PASSPORT",
   },
   {
     id: "residence",
     label:
-      "Άδεια παραμονής (Residence Permit) – μόνο για μη μόνιμους κατοίκους (Optional)",
+      "Residence Permit – only for non-permanent residents",
     hasExpiry: true,
     backendType: "RESIDENCE_PERMIT",
     optional: true, // Optional
   },
   {
     id: "driving_license",
-    label: "Άδεια οδήγησης (Driving License)",
+    label: "Driving License",
     hasExpiry: true,
     backendType: "DRIVING_LICENSE",
   },
   {
     id: "vehicle_license",
-    label: "Άδεια κυκλοφορίας οχήματος (Vehicle License)",
+    label: "Vehicle License",
     hasExpiry: true,
     backendType: "VEHICLE_REG",
   },
   {
     id: "mot",
-    label: "Πιστοποιητικό ΜΟΤ (MOT Certificate)",
+    label: "MOT Certificate",
     hasExpiry: true,
     backendType: "MOT_CERT",
   },
   {
     id: "criminal_record",
     label:
-      "Πιστοποιητικό λευκού ποινικού μητρώου (Criminal Record – Optional, όχι παλαιότερο του ενός μήνα)",
+      "Criminal Record Certificate (not older than one month)",
     hasExpiry: false,
     backendType: "CRIMINAL_RECORD",
     optional: true, // Optional
   },
   {
     id: "medical",
-    label: "Ιατρικό πιστοποιητικό (Medical Certificate)",
+    label: "Medical Certificate",
     hasExpiry: true,
     backendType: "MEDICAL_CERT",
   },
   {
     id: "psychological",
-    label: "Ψυχολογικό πιστοποιητικό (Psychological Certificate)",
+    label: "Psychological Certificate",
     hasExpiry: true,
     backendType: "PSYCHOLOGICAL_CERT",
   },
@@ -122,10 +128,17 @@ export default function DriverDocuments() {
 
   const [documents, setDocuments] =
     useState<Record<string, DocumentData>>(getInitialState());
+  
+  const [personDocStatuses, setPersonDocStatuses] = useState<PersonDocumentStatus[]>([]);
+  const [statusesLoading, setStatusesLoading] = useState(false);
+  const [statusesError, setStatusesError] = useState<string | null>(null);
 
-  // Driver photo state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<"Submitted" | "Not submitted">(
+    "Not submitted"
+  );
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   const handleFileChange = (docId: string, file: File | null) => {
     setDocuments((prev) => ({
@@ -186,6 +199,7 @@ export default function DriverDocuments() {
         file: data.file!,
       });
       toast.success(`${doc.label} submitted successfully!`);
+      await fetchStatuses();
       setDocuments((prev) => ({
         ...prev,
         [docId]: { ...prev[docId], status: "success" },
@@ -216,9 +230,13 @@ export default function DriverDocuments() {
 
     try {
       setPhotoUploading(true);
+
       await uploadDriverPhoto(photoFile);
       toast.success("Driver photo uploaded successfully.");
-      // Optionally clear the file after upload:
+
+      await fetchPhotoStatus();
+
+      // Optionally clear the file:
       // setPhotoFile(null);
     } catch (err) {
       const errorMessage =
@@ -227,30 +245,6 @@ export default function DriverDocuments() {
       toast.error(`Failed to upload driver photo: ${errorMessage}`);
     } finally {
       setPhotoUploading(false);
-    }
-  };
-
-  const handleSubmitAll = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // ✅ Only required docs are considered for "Submit All"
-    const remainingRequiredDocs = REQUIRED_DOCUMENTS.filter(
-      (doc) =>
-        !doc.optional &&
-        (documents[doc.id].status === "pending" ||
-          documents[doc.id].status === "error")
-    );
-
-    if (remainingRequiredDocs.some((doc) => !isDocumentSubmittable(doc.id))) {
-      toast.error(
-        "Please fill in all fields for all remaining required documents before submitting."
-      );
-      return;
-    }
-
-    toast.info(`Submitting ${remainingRequiredDocs.length} remaining document(s)...`);
-    for (const doc of remainingRequiredDocs) {
-      await handleIndividualSubmit(doc.id);
     }
   };
 
@@ -268,32 +262,86 @@ export default function DriverDocuments() {
     );
   }, [documents]);
 
-  const allSubmitted = remainingRequiredDocuments.length === 0;
+  const fetchStatuses = async () => {
+    try {
+      setStatusesLoading(true);
+      setStatusesError(null);
+      const data = await getPersonDocumentStatus();
+      setPersonDocStatuses(data);
+    } catch (err) {
+      console.error("Error fetching person document status:", err);
+      setStatusesError(
+        err instanceof Error ? err.message : "Failed to load document status."
+      );
+    } finally {
+      setStatusesLoading(false);
+    }
+  };
 
-  if (allSubmitted) {
-    return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-50 flex items-center justify-center px-4">
-        <Card className="w-full max-w-lg p-8 border border-neutral-800 bg-neutral-900/80 shadow-xl backdrop-blur">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <CheckCircle2 className="h-16 w-16 text-emerald-500" />
-            <h1 className="text-2xl font-semibold tracking-tight">
-              All Required Documents Submitted
-            </h1>
-            <p className="text-sm text-neutral-400">
-              Your required documents have been submitted for review. You can
-              still upload optional documents later if needed.
-            </p>
-            <Button
-              onClick={() => navigate("/login")}
-              className="mt-2 w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 text-sm font-medium hover:bg-emerald-400"
-            >
-              Go to Login
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  const fetchPhotoStatus = async () => {
+    if (!userId) return;
+    try {
+      const res = await getDriverPhotoStatus();
+      setPhotoStatus(res.status);
+      setPhotoUrl(res.photoUrl);
+    } catch (err) {
+      console.error("Error fetching driver photo status:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!userId) return;
+    fetchPhotoStatus();
+  }, [userId]);
+
+  useEffect(() => {
+    if (storeUserId) fetchStatuses();
+  }, [storeUserId]);
+
+  const statusByDocType = useMemo(() => {
+    const map: Record<string, PersonDocumentStatus> = {};
+    for (const s of personDocStatuses) {
+      map[s.DocType] = s;
+    }
+    return map;
+  }, [personDocStatuses]);
+
+  type DisplayStatus = "Not submitted" | "Submitted" | "Accepted" | "Rejected";
+
+  const statusPriority: Record<DisplayStatus, number> = {
+    "Submitted": 1,
+    "Rejected": 2,
+    "Accepted": 3,
+    "Not submitted": 4,
+  };
+
+  const getStatusInfo = (
+    doc: DocumentType
+  ): { displayStatus: DisplayStatus; reviewComments: string | null } => {
+    const statusInfo = statusByDocType[doc.backendType];
+    const dbStatus = statusInfo?.Status ?? null;
+
+    const reviewComments =
+      (statusInfo as any)?.ReviewComments ??
+      (statusInfo as any)?.ReviewComment ??
+      null;
+
+    let displayStatus: DisplayStatus;
+
+    if (!dbStatus) {
+      displayStatus = "Not submitted";
+    } else if (dbStatus === "Pending") {
+      displayStatus = "Submitted"; // uploaded & waiting review
+    } else if (dbStatus === "Accepted") {
+      displayStatus = "Accepted"; // uploaded & approved
+    } else if (dbStatus === "Rejected") {
+      displayStatus = "Rejected"; // uploaded & rejected
+    } else {
+      displayStatus = "Not submitted";
+    }
+
+    return { displayStatus, reviewComments };
+  };
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex items-start justify-center px-4 py-8">
@@ -312,7 +360,7 @@ export default function DriverDocuments() {
           </p>
         </div>
 
-        {/* Driver Photo */}
+        {/* Driver Photo*/}
         <Card className="border border-neutral-800 bg-neutral-900/80 shadow-xl backdrop-blur">
           <CardHeader className="pb-3 border-b border-neutral-800">
             <div className="flex items-center justify-between gap-2">
@@ -322,10 +370,22 @@ export default function DriverDocuments() {
                   Driver Profile Photo
                 </CardTitle>
                 <CardDescription className="text-xs text-neutral-500">
-                  Upload a clear, recent photo. This will appear on your
-                  profile.
+                  Upload a clear, recent photo. This will appear on your profile.
                 </CardDescription>
               </div>
+
+              <span
+                className={`
+                  text-xs font-medium px-2 py-1 rounded-full border
+                  ${
+                    photoStatus === "Submitted"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
+                      : "bg-neutral-900 text-neutral-400 border-neutral-700"
+                  }
+                `}
+              >
+                {photoStatus}
+              </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
@@ -380,12 +440,82 @@ export default function DriverDocuments() {
         </Card>
 
         {/* Documents form */}
-        <form onSubmit={handleSubmitAll} className="space-y-4 text-sm">
-          {remainingDocuments.map((doc) => {
+                {/* Documents form */}
+        {[...remainingDocuments]
+          .sort((a, b) => {
+            const aStatus = getStatusInfo(a).displayStatus;
+            const bStatus = getStatusInfo(b).displayStatus;
+            return statusPriority[aStatus] - statusPriority[bStatus];
+          })
+          .map((doc) => {
             const data = documents[doc.id];
             const isSubmittable = isDocumentSubmittable(doc.id);
             const isLoading = data.status === "uploading";
 
+            const { displayStatus, reviewComments } = getStatusInfo(doc);
+
+            // 🔒 Submitted (Pending) + Accepted -> read-only
+            if (displayStatus === "Submitted" || displayStatus === "Accepted") {
+              const isPending = displayStatus === "Submitted";
+              const badgeText = isPending ? "Pending approval" : "Approved";
+
+              return (
+                <Card
+                  key={doc.id}
+                  className={
+                    isPending
+                      ? "border bg-neutral-900/80 shadow-xl backdrop-blur border-amber-500/40"
+                      : "border bg-neutral-900/80 shadow-xl backdrop-blur border-emerald-500/40"
+                  }
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-1">
+                        <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
+                          <FileText className="h-4 w-4 text-emerald-500" />
+                          {doc.label}
+                        </CardTitle>
+                        {doc.optional && (
+                          <span className="text-[11px] font-medium px-2 py-0.5 w-fit rounded-full bg-neutral-900 text-neutral-400 border border-neutral-700">
+                            Optional
+                          </span>
+                        )}
+                      </div>
+
+                      <span
+                        className={
+                          isPending
+                            ? "text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40"
+                            : "text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40"
+                        }
+                      >
+                        {badgeText}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-1 space-y-2">
+                    <p className="text-xs text-neutral-400">
+                      {isPending
+                        ? "This document has been submitted and is currently pending approval. You won't be able to upload a new file until it is reviewed."
+                        : "This document has been reviewed and accepted. You cannot upload another file unless an operator changes its status."}
+                    </p>
+
+                    {reviewComments && (
+                      <div className="mt-1 rounded-lg border border-neutral-700 bg-neutral-900/70 px-3 py-2">
+                        <p className="text-[11px] font-semibold text-neutral-300">
+                          Review comment
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-neutral-400">
+                          {reviewComments}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            // 🟠 Not submitted + 🔴 Rejected -> editable card
             return (
               <Card
                 key={doc.id}
@@ -408,12 +538,26 @@ export default function DriverDocuments() {
                         </span>
                       )}
                     </div>
-
-                    {data.status === "success" && (
-                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40">
-                        Submitted
+                      <span
+                        className={`
+                          text-xs font-medium px-2 py-1 rounded-full border
+                          ${
+                            (() => {
+                              switch (displayStatus) {
+                                case "Not submitted":
+                                  return "bg-amber-500/10 text-amber-400 border-amber-500/60";
+                                case "Rejected":
+                                  return "bg-red-500/10 text-red-400 border-red-500/60";
+                                default:
+                                  // just in case, but shouldn't be hit
+                                  return "bg-neutral-700/30 text-neutral-300 border-neutral-600";
+                              }
+                            })()
+                          }
+                        `}
+                      >
+                        {displayStatus}
                       </span>
-                    )}
                   </div>
 
                   {data.status === "error" && (
@@ -428,6 +572,18 @@ export default function DriverDocuments() {
                       ? "Include issue and expiry dates"
                       : "No expiry date required"}
                   </CardDescription>
+
+                  {/* 🔴 Rejected: show review comment but keep editable */}
+                  {displayStatus === "Rejected" && reviewComments && (
+                    <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2">
+                      <p className="text-[11px] font-semibold text-red-300">
+                        Review comment
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-red-200">
+                        {reviewComments}
+                      </p>
+                    </div>
+                  )}
                 </CardHeader>
 
                 <CardContent className="space-y-4 pt-4">
@@ -557,23 +713,6 @@ export default function DriverDocuments() {
               </Card>
             );
           })}
-
-          {/* Submit all required */}
-          <div className="pt-4">
-            <Button
-              type="submit"
-              className="w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 text-sm font-medium hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
-              disabled={REQUIRED_DOCUMENTS.some(
-                (doc) =>
-                  !doc.optional &&
-                  documents[doc.id].status !== "success" &&
-                  !isDocumentSubmittable(doc.id)
-              )}
-            >
-              Submit All Remaining Required Documents
-            </Button>
-          </div>
-        </form>
       </div>
     </div>
   );

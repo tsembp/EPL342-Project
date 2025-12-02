@@ -70,6 +70,12 @@ BEGIN
         RETURN;
     END;
 
+    IF @DocType = 'CRIMINAL_RECORD' AND @IssueDate < DATEADD(MONTH, -1, GETUTCDATE())
+    BEGIN
+        RAISERROR('Issue date for Criminal Record Certificate must be within the last month.', 16, 1);
+        RETURN;
+    END;
+
     -- Validate uniqueness
     IF EXISTS (
         SELECT 1

@@ -138,8 +138,17 @@ def logout():
 
 @auth_bp.route("/me", methods=["GET"])
 def get_current_user():
-    """Get current session user"""
     if "user_id" in session:
+        # Fetch latest verification status from DB
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT Verified FROM dbo.[User] WHERE UserId = ?", session["user_id"])
+                row = cur.fetchone()
+                if row:
+                    verification_status = "VERIFIED" if row[0] else "PENDING_APPROVAL"
+                    session["verification_status"] = verification_status  # update session
+                else:
+                    verification_status = session.get("verification_status", "unknown")
         return jsonify({
             "authenticated": True,
             "userId": session["user_id"],
@@ -147,5 +156,6 @@ def get_current_user():
             "accountType": session["account_type"],
             "email": session["email"],
             "username": session["username"],
+            "verificationStatus": session["verification_status"],
         }), 200
     return jsonify({"authenticated": False}), 401

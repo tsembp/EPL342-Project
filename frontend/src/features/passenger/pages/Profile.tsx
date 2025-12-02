@@ -29,11 +29,7 @@ import {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { email, userRole, switchRole, logout } = useAuthStore();
-
-  const handleSwitchRole = () => {
-    switchRole(userRole === "passenger" ? "driver" : "passenger");
-  };
+  const { email, userRole, logout } = useAuthStore();
 
   const handleLogout = async () => {
     await logout();
