@@ -8,6 +8,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { formatLabel } from "@/lib/formatLabel";
 
 export type AllowedProfileRow = {
   id: string;
@@ -21,16 +22,6 @@ export type AllowedProfileRow = {
   minPrice: number;
   notes?: string;
 };
-
-function formatLabel(value: string): string {
-  if (!value) return "";
-  return value
-    .replace(/_/g, " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 export default function AllowedProfilesTable({
   data,
@@ -108,7 +99,7 @@ export default function AllowedProfilesTable({
                   {formatLabel(row.rideType)}
                 </TableCell>
                 <TableCell className="whitespace-nowrap px-4 py-3 text-gray-900">
-                  {row.vehicleType}
+                  {formatLabel(row.vehicleType)}
                 </TableCell>
                 {onEdit && (
                   <TableCell className="px-4 py-3 text-right">

@@ -298,7 +298,7 @@ export default function Profile() {
                   </p>
                   <Button
                     variant="outline"
-                    className="border-gray-300 hover:bg-gray-50"
+                    className="bg-black text-white hover:bg-black/80"
                     onClick={() => navigate("/gdpr")}
                   >
                     <Download className="h-4 w-4 mr-2" />

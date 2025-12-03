@@ -25,7 +25,8 @@ def admin_login():
 
                 row = cur.fetchone()
 
-                if row:
+                if row and len(row) >= 6:
+                    # Success case - has all 6 columns
                     session["user_id"] = str(row[0])
                     session["role"] = row[1]
                     session["account_type"] = row[2]
@@ -42,6 +43,12 @@ def admin_login():
                         "email": row[3],
                         "verificationStatus": row[4],
                     }), 200
+                elif row and len(row) == 1:
+                    # Failure case - stored proc returned error message
+                    return jsonify({
+                        "success": False,
+                        "error": str(row[0]),
+                    }), 401
 
                 return jsonify({
                     "success": False,

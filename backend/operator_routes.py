@@ -17,8 +17,8 @@ def get_operator_dashboard():
                 cur.execute(
                     """
                     SELECT COUNT(*) 
-                    FROM dbo.UserDocumentVerification 
-                    WHERE VerificationStatusId = 1
+                    FROM dbo.PersonDocument 
+                    WHERE Status = 'Pending'
                     """
                 )
                 pending_person_docs = cur.fetchone()[0] or 0
@@ -27,8 +27,8 @@ def get_operator_dashboard():
                 cur.execute(
                     """
                     SELECT COUNT(*) 
-                    FROM dbo.VehicleDocumentVerification 
-                    WHERE VerificationStatusId = 1
+                    FROM dbo.VehicleDocument 
+                    WHERE Status = 'Pending'
                     """
                 )
                 pending_vehicle_docs = cur.fetchone()[0] or 0
@@ -37,8 +37,8 @@ def get_operator_dashboard():
                 cur.execute(
                     """
                     SELECT COUNT(*) 
-                    FROM dbo.ServiceEnrollment 
-                    WHERE VerificationStatusId = 1
+                    FROM dbo.UserServiceEnrollment 
+                    WHERE Status = 'Pending'
                     """
                 )
                 pending_enrollments = cur.fetchone()[0] or 0
@@ -47,8 +47,8 @@ def get_operator_dashboard():
                 cur.execute(
                     """
                     SELECT COUNT(*) 
-                    FROM dbo.Gdpr_DataCorrectionRequest 
-                    WHERE RequestStatus IN ('Pending', 'UnderReview')
+                    FROM dbo.GdprRequest 
+                    WHERE Status IN ('Pending', 'Under-Review')
                     """
                 )
                 pending_gdpr = cur.fetchone()[0] or 0
@@ -58,28 +58,22 @@ def get_operator_dashboard():
                     """
                     SELECT COUNT(*) 
                     FROM dbo.Ride 
-                    WHERE RideStatusId = 2
+                    WHERE Status = 'InProgress'
                     """
                 )
                 active_rides = cur.fetchone()[0] or 0
                 
-                # Recent activity (last 10 verification actions)
+                # Recent activity (last 10 verification actions from person documents)
                 cur.execute(
                     """
                     SELECT TOP 10 
-                        'Document ' + 
-                        CASE 
-                            WHEN vs.VerificationStatusName = 'Approved' THEN 'Approved'
-                            WHEN vs.VerificationStatusName = 'Rejected' THEN 'Rejected'
-                            ELSE 'Updated'
-                        END as ActionType,
-                        COALESCE(p.FirstName + ' ' + p.LastName, 'Unknown User') as UserName,
-                        DATEDIFF(MINUTE, COALESCE(udv.ReviewedAt, udv.UploadedAt), GETDATE()) as MinutesAgo
-                    FROM dbo.UserDocumentVerification udv
-                    INNER JOIN dbo.VerificationStatus vs ON udv.VerificationStatusId = vs.VerificationStatusId
-                    LEFT JOIN dbo.Person p ON udv.PersonId = p.PersonId
-                    WHERE udv.ReviewedAt IS NOT NULL
-                    ORDER BY udv.ReviewedAt DESC
+                        'Document ' + pd.Status as ActionType,
+                        COALESCE(u.FirstName + ' ' + u.LastName, 'Unknown User') as UserName,
+                        DATEDIFF(MINUTE, COALESCE(pd.ReviewedAt, pd.UploadedAt), GETUTCDATE()) as MinutesAgo
+                    FROM dbo.PersonDocument pd
+                    LEFT JOIN dbo.[User] u ON pd.UserId = u.UserId
+                    WHERE pd.ReviewedAt IS NOT NULL
+                    ORDER BY pd.ReviewedAt DESC
                     """
                 )
                 activities = []

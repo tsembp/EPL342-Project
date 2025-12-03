@@ -1193,6 +1193,7 @@ def get_driver_daily_availability():
                 "startTime": None,
                 "endTime": None,
                 "locked": False,
+                "zoneId": None,
             }
         else:
             availability = {
@@ -1202,6 +1203,7 @@ def get_driver_daily_availability():
                 "startTime": row.StartsAt.strftime("%H:%M"),
                 "endTime": row.EndsAt.strftime("%H:%M"),
                 "locked": bool(row.IsLocked),
+                "zoneId": row.GeofencezoneId,
             }
 
         return jsonify({"success": True, "availability": availability}), 200
@@ -1224,7 +1226,8 @@ def set_driver_daily_availability():
       "enabled": true/false,
       "enrollId": 123 | null,
       "startTime": "08:00" | null,
-      "endTime": "18:00" | null
+      "endTime": "18:00" | null,
+      "zoneId": 1 | null
     }
     """
     user_id = session["user_id"]
@@ -1235,6 +1238,7 @@ def set_driver_daily_availability():
     enroll_id = payload.get("enrollId")
     start_time = payload.get("startTime")
     end_time = payload.get("endTime")
+    zone_id = payload.get("zoneId")
 
     if not date_str:
         return jsonify({"success": False, "error": "date is required"}), 400
@@ -1251,6 +1255,11 @@ def set_driver_daily_availability():
     starts_at = None
     ends_at = None
     if enabled:
+        if not zone_id:
+            return (
+                jsonify({"success": False, "error": "zoneId is required when enabled is true."}),
+                400,
+            )
         if start_time:
             try:
                 starts_at = datetime.strptime(start_time, "%H:%M").time().replace(microsecond=0)
@@ -1274,12 +1283,13 @@ def set_driver_daily_availability():
                 cur.execute(
                     """
                     EXEC dbo.usp_Driver_SetDailyAvailability
-                        @DriverUserId = ?,
-                        @Date         = ?,
-                        @Enabled      = ?,
-                        @EnrollId     = ?,
-                        @StartsAt     = ?,
-                        @EndsAt       = ?
+                        @DriverUserId     = ?,
+                        @Date             = ?,
+                        @Enabled          = ?,
+                        @EnrollId         = ?,
+                        @StartsAt         = ?,
+                        @EndsAt           = ?,
+                        @GeofencezoneId   = ?
                     """,
                     (
                         user_id,
@@ -1288,6 +1298,7 @@ def set_driver_daily_availability():
                         enroll_id,
                         starts_at,
                         ends_at,
+                        zone_id,
                     ),
                 )
                 conn.commit()
@@ -1298,6 +1309,63 @@ def set_driver_daily_availability():
         print("Error in /api/driver/availability [PUT]:", e)
         # THROW from SQL will come through here as an error message
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+@driver_bp.route("/zones", methods=["GET"])
+def get_available_zones():
+    """
+    Get all available geofence zones for driver selection.
+    
+    Response:
+    {
+      "success": true,
+      "zones": [
+        {
+          "zoneId": 1,
+          "name": "Zone 1",
+          "minLat": 34.5,
+          "minLng": 32.5,
+          "maxLat": 35.5,
+          "maxLng": 33.5
+        },
+        ...
+      ]
+    }
+    """
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        ZoneId,
+                        Name,
+                        MinLat,
+                        MinLng,
+                        MaxLat,
+                        MaxLng
+                    FROM dbo.Geofencezone
+                    ORDER BY ZoneId
+                    """
+                )
+                
+                zones = []
+                for row in cur.fetchall():
+                    zones.append({
+                        "zoneId": row.ZoneId,
+                        "name": row.Name or f"Zone {row.ZoneId}",
+                        "minLat": float(row.MinLat) if row.MinLat else None,
+                        "minLng": float(row.MinLng) if row.MinLng else None,
+                        "maxLat": float(row.MaxLat) if row.MaxLat else None,
+                        "maxLng": float(row.MaxLng) if row.MaxLng else None,
+                    })
+                
+                return jsonify({"success": True, "zones": zones}), 200
+    
+    except Exception as e:
+        print("Error in /api/driver/zones [GET]:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @driver_bp.route("/service-enrollments/<int:enroll_id>/cancel", methods=["POST"])
 @require_auth

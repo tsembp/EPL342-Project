@@ -21,8 +21,6 @@ type Props = {
     name: string;
     description: string;
     baseFare: number;
-    perKm: number;
-    perMin: number;
     active: boolean;
   }) => Promise<void>;
 };
@@ -36,8 +34,6 @@ export default function ServiceTypeDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [baseFare, setBaseFare] = useState<number>(0);
-  const [perKm, setPerKm] = useState<number>(0);
-  const [perMin, setPerMin] = useState<number>(0);
   const [active, setActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,15 +42,11 @@ export default function ServiceTypeDialog({
       setName(initial.name);
       setDescription(initial.description ?? "");
       setBaseFare(initial.baseFare ?? 0);
-      setPerKm(initial.perKm ?? 0);
-      setPerMin(initial.perMin ?? 0);
       setActive(initial.active);
     } else {
       setName("");
       setDescription("");
       setBaseFare(0);
-      setPerKm(0);
-      setPerMin(0);
       setActive(true);
     }
   }, [initial, open]);
@@ -63,9 +55,7 @@ export default function ServiceTypeDialog({
     if (
       !name.trim() ||
       !description.trim() ||
-      baseFare <= 0 ||
-      perKm < 0 ||
-      perMin < 0
+      baseFare <= 0
     ) {
       return;
     }
@@ -77,8 +67,6 @@ export default function ServiceTypeDialog({
         name,
         description,
         baseFare,
-        perKm,
-        perMin,
         active,
       });
       onOpenChange(false);
@@ -123,49 +111,19 @@ export default function ServiceTypeDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="st-basefare" className="text-gray-800">
-                Base Fare
-              </Label>
-              <Input
-                id="st-basefare"
-                type="number"
-                min={0}
-                step="0.01"
-                value={baseFare}
-                onChange={(e) => setBaseFare(Number(e.target.value))}
-                className="border-gray-300 bg-white text-gray-900 focus-visible:ring-gray-500/40"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="st-perkm" className="text-gray-800">
-                Per Km
-              </Label>
-              <Input
-                id="st-perkm"
-                type="number"
-                min={0}
-                step="0.01"
-                value={perKm}
-                onChange={(e) => setPerKm(Number(e.target.value))}
-                className="border-gray-300 bg-white text-gray-900 focus-visible:ring-gray-500/40"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="st-permin" className="text-gray-800">
-                Per Min
-              </Label>
-              <Input
-                id="st-permin"
-                type="number"
-                min={0}
-                step="0.01"
-                value={perMin}
-                onChange={(e) => setPerMin(Number(e.target.value))}
-                className="border-gray-300 bg-white text-gray-900 focus-visible:ring-gray-500/40"
-              />
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="st-basefare" className="text-gray-800">
+              Base Fare
+            </Label>
+            <Input
+              id="st-basefare"
+              type="number"
+              min={0}
+              step="0.01"
+              value={baseFare}
+              onChange={(e) => setBaseFare(Number(e.target.value))}
+              className="border-gray-300 bg-white text-gray-900 focus-visible:ring-gray-500/40"
+            />
           </div>
 
           <div className="flex items-center justify-between">
@@ -195,9 +153,7 @@ export default function ServiceTypeDialog({
               submitting ||
               !name.trim() ||
               !description.trim() ||
-              baseFare <= 0 ||
-              perKm < 0 ||
-              perMin < 0
+              baseFare <= 0
             }
             className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2"
           >

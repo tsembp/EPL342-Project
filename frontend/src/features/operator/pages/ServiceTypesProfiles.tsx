@@ -66,8 +66,6 @@ export default function ServiceTypesProfiles() {
         name: row.Name ?? row.name ?? "",
         description: row.Description ?? row.description ?? "",
         baseFare: Number(row.BaseFare ?? row.baseFare ?? 0),
-        perKm: Number(row.PerKm ?? row.perKm ?? 0),
-        perMin: Number(row.PerMin ?? row.perMin ?? 0),
         active:
           row.IsActive === true ||
           row.IsActive === 1 ||
@@ -178,8 +176,6 @@ export default function ServiceTypesProfiles() {
     name: string;
     description: string;
     baseFare: number;
-    perKm: number;
-    perMin: number;
     active: boolean;
   }) => {
     if (values.id) {
@@ -189,8 +185,6 @@ export default function ServiceTypesProfiles() {
           name: values.name,
           description: values.description,
           baseFare: values.baseFare,
-          perKm: values.perKm,
-          perMin: values.perMin,
           active: values.active,
         }
       );
@@ -200,8 +194,6 @@ export default function ServiceTypesProfiles() {
         name: values.name,
         description: values.description,
         baseFare: values.baseFare,
-        perKm: values.perKm,
-        perMin: values.perMin,
         active: values.active,
         validFrom: null,
         validTo: null,

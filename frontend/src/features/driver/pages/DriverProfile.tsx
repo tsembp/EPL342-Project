@@ -113,7 +113,7 @@ export default function DriverProfile() {
           <div className="flex justify-end pt-1">
             <Button
               size="sm"
-              className="bg-gray-600 hover:bg-gray-700 text-gray-900 border-none"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-900 border-none"
               disabled={prefsLoading || prefsSaving}
               onClick={async () => {
                 try {

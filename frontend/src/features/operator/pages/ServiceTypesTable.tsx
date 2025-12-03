@@ -7,6 +7,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatLabel } from "@/lib/formatLabel";
 
 // ServiceTypesTable.tsx
 
@@ -15,8 +16,6 @@ export type ServiceTypeRow = {
   name: string;
   description: string;
   baseFare: number;
-  perKm: number;
-  perMin: number;
   active: boolean;
 };
 
@@ -41,12 +40,6 @@ export default function ServiceTypesTable({
             Base Fare
           </TableHead>
           <TableHead className="text-xs font-medium text-gray-600">
-            Per Km
-          </TableHead>
-          <TableHead className="text-xs font-medium text-gray-600">
-            Per Min
-          </TableHead>
-          <TableHead className="text-xs font-medium text-gray-600">
             Status
           </TableHead>
           <TableHead />
@@ -59,19 +52,13 @@ export default function ServiceTypesTable({
             className="border-b border-gray-200/60 last:border-b-0 hover:bg-gray-100/60"
           >
             <TableCell className="text-sm text-gray-900">
-              {row.name}
+              {formatLabel(row.name)}
             </TableCell>
             <TableCell className="text-sm text-gray-700">
               {row.description}
             </TableCell>
             <TableCell className="text-sm text-gray-900">
               {row.baseFare.toFixed(2)}
-            </TableCell>
-            <TableCell className="text-sm text-gray-900">
-              {row.perKm.toFixed(2)}
-            </TableCell>
-            <TableCell className="text-sm text-gray-900">
-              {row.perMin.toFixed(2)}
             </TableCell>
             <TableCell>
               <Badge

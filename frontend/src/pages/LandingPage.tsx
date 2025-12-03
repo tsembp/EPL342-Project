@@ -101,7 +101,7 @@ export default function LandingPage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-14 px-8 text-base font-medium border-2 border-gray-300 hover:bg-gray-50"
+                  className="h-14 px-8 text-base font-medium border-2 border-gray-300 hover:bg-gray-200 hover:text-black"
                   onClick={() => navigate("/login")}
                 >
                   Already have an account?
@@ -109,11 +109,13 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right Image Placeholder */}
-            <div className="relative h-[500px] bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Car className="h-32 w-32 text-gray-400" />
-              </div>
+            {/* Right side - Hero illustration */}
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+              <img 
+                src="/images/hero-illustration.svg" 
+                alt="People using ride sharing service" 
+                className="w-full h-auto"
+              />
             </div>
           </div>
         </div>
@@ -178,11 +180,13 @@ export default function LandingPage() {
       <section className="py-20 bg-black text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Image Placeholder */}
-            <div className="relative h-[400px] bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Users className="h-32 w-32 text-gray-600" />
-              </div>
+            {/* Left Image */}
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl h-full flex items-center">
+              <img 
+                src="/images/watch-hand.jpg" 
+                alt="Drive on your schedule" 
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Right Content */}

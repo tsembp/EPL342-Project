@@ -13,7 +13,10 @@ import {
   type DriverServiceEnrollment,
   cancelDriverServiceEnrollment,
   confirmDriverDailyAvailability,
+  getAvailableZones,
+  type GeofenceZone,
 } from "@/features/driver/api";
+import { ZoneSelector } from "@/features/driver/components/ZoneSelector";
 import { CalendarClock, Loader2, Lock } from "lucide-react";
 
 function getTodayISODate(): string {
@@ -35,6 +38,9 @@ export function DriverAvailabilitySection() {
   const [endTime, setEndTime] = useState<string>("18:00");
   const [locked, setLocked] = useState(false);
 
+  const [zones, setZones] = useState<GeofenceZone[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +56,10 @@ export function DriverAvailabilitySection() {
     setLoading(true);
     setError(null);
     try {
-      const [enrollRes, availRes] = await Promise.all([
+      const [enrollRes, availRes, zonesRes] = await Promise.all([
         getDriverServiceEnrollments(),
         getDriverDailyAvailability(today),
+        getAvailableZones(),
       ]);
 
       // Enrollments
@@ -65,12 +72,23 @@ export function DriverAvailabilitySection() {
         setEnrollments(enrollRes.enrollments ?? []);
       }
 
+      // Zones
+      if (!zonesRes.success) {
+        setZones([]);
+        if (zonesRes.error) {
+          setError((prev) => prev ?? zonesRes.error);
+        }
+      } else {
+        setZones(zonesRes.zones ?? []);
+      }
+
       // Availability
       if (!availRes.success || !availRes.availability) {
         setEnabled(false);
         setStartTime("08:00");
         setEndTime("18:00");
         setSelectedEnrollId(null);
+        setSelectedZoneId(null);
         setLocked(false);
         if (availRes.error) {
           setError((prev) => prev ?? availRes.error);
@@ -81,6 +99,7 @@ export function DriverAvailabilitySection() {
         setStartTime(av.startTime ?? "08:00");
         setEndTime(av.endTime ?? "18:00");
         setSelectedEnrollId(av.enrollId ?? null);
+        setSelectedZoneId(av.zoneId ?? null);
         setLocked(Boolean(av.locked));
       }
     } catch (err: any) {
@@ -89,6 +108,7 @@ export function DriverAvailabilitySection() {
       setStartTime("08:00");
       setEndTime("18:00");
       setSelectedEnrollId(null);
+      setSelectedZoneId(null);
       setLocked(false);
       setError(err?.message || "Failed to load availability.");
     } finally {
@@ -129,6 +149,14 @@ export function DriverAvailabilitySection() {
           setSaving(false);
           return;
         }
+
+        if (!selectedZoneId) {
+          const msg = "Please select a zone where you'll be working.";
+          setError(msg);
+          toast.error(msg);
+          setSaving(false);
+          return;
+        }
       }
 
       // 1) Save / update the availability
@@ -138,6 +166,7 @@ export function DriverAvailabilitySection() {
         enrollId: enabled ? selectedEnrollId : null,
         startTime: enabled ? startTime : null,
         endTime: enabled ? endTime : null,
+        zoneId: enabled ? selectedZoneId : null,
       };
 
       const saveRes = await setDriverDailyAvailability(payload);
@@ -299,6 +328,21 @@ export function DriverAvailabilitySection() {
         )}
       </div>
 
+      {/* Zone selector */}
+      {enabled && (
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium text-gray-700">
+            Working zone
+          </p>
+          <ZoneSelector
+            zones={zones}
+            selectedZoneId={selectedZoneId}
+            onZoneSelect={setSelectedZoneId}
+            disabled={controlsDisabled}
+          />
+        </div>
+      )}
+
       {/* Pending enrollments with cancel option */}
       {pendingEnrollments.length > 0 && (
         <div className="mb-4 rounded-lg border border-gray-300 bg-gray-50 p-3">
@@ -376,6 +420,7 @@ export function DriverAvailabilitySection() {
             setStartTime("08:00");
             setEndTime("18:00");
             setSelectedEnrollId(null);
+            setSelectedZoneId(null);
           }}
         >
           Clear

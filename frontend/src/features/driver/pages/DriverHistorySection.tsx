@@ -260,9 +260,9 @@ export function DriverHistorySection() {
         open={detailsRide != null}
         onOpenChange={(open) => !open && setDetailsRide(null)}
       >
-        <DialogContent className="max-w-md border border-gray-200 bg-gray-900 text-gray-900">
+        <DialogContent className="max-w-md border border-gray-200 bg-white text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">
+            <DialogTitle className="text-base font-semibold text-gray-900">
               Ride transaction details
             </DialogTitle>
           </DialogHeader>

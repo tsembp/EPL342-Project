@@ -61,7 +61,7 @@ export default function Dashboard() {
               variant="ghost"
               size="sm"
               onClick={() => navigate("profile")}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-600 hover:text-gray-200"
             >
               <Settings className="h-5 w-5" />
             </Button>
@@ -70,57 +70,8 @@ export default function Dashboard() {
       </div>
 
       <main className="w-full px-4 pb-20 pt-6 space-y-4">
-        {/* Online/Offline Toggle - Prominent like Uber */}
-        <Card className="border-0 shadow-lg bg-white overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {isOnline ? "You're online" : "You're offline"}
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {isOnline 
-                    ? "You'll receive ride requests" 
-                    : "Go online to start receiving requests"}
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={isOnline}
-                  disabled={isTogglingOnline}
-                  onCheckedChange={handleToggleOnline}
-                  className="data-[state=checked]:bg-black scale-125"
-                />
-                {isTogglingOnline && (
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                )}
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Today</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">0</p>
-                <p className="text-xs text-gray-600">trips</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Earnings</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">€0</p>
-                <p className="text-xs text-gray-600">today</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Rating</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">5.0</p>
-                <p className="text-xs text-gray-600">★★★★★</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
         {/* Active Rides Section */}
-        {showRidesSection && (
+        {showRidesSection ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900">Your Rides</h3>
@@ -128,17 +79,26 @@ export default function Dashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowRidesSection(false)}
-                className="text-xs text-gray-500 hover:text-gray-900"
+                className="text-xs text-gray-500 hover:text-gray-200"
               >
                 Hide
               </Button>
             </div>
             <DriverScheduleSection />
           </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRidesSection(true)}
+            className="w-full border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-black"
+          >
+            Show Your Rides
+          </Button>
         )}
 
         {/* Available Offers Section */}
-        {showOffersSection && (
+        {showOffersSection ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900">Available Offers</h3>
@@ -146,19 +106,28 @@ export default function Dashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowOffersSection(false)}
-                className="text-xs text-gray-500 hover:text-gray-900"
+                className="text-xs text-gray-500 hover:text-gray-200"
               >
                 Hide
               </Button>
             </div>
             <DriverOffersSection />
           </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOffersSection(true)}
+            className="w-full border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-black"
+          >
+            Show Available Offers
+          </Button>
         )}
 
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-2 gap-3 mt-6">
           <Card 
-            className="border border-gray-200 bg-white hover:border-gray-300 cursor-pointer transition-all"
+            className="border border-gray-200 bg-white hover:border-black hover:shadow-md cursor-pointer transition-all"
             onClick={() => navigate("vehicles")}
           >
             <div className="p-4">
@@ -178,7 +147,7 @@ export default function Dashboard() {
           </Card>
 
           <Card 
-            className="border border-gray-200 bg-white hover:border-gray-300 cursor-pointer transition-all"
+            className="border border-gray-200 bg-white hover:border-black hover:shadow-md cursor-pointer transition-all"
             onClick={() => navigate("services")}
           >
             <div className="p-4">
@@ -198,7 +167,7 @@ export default function Dashboard() {
           </Card>
 
           <Card 
-            className="border border-gray-200 bg-white hover:border-gray-300 cursor-pointer transition-all"
+            className="border border-gray-200 bg-white hover:border-black hover:shadow-md cursor-pointer transition-all"
             onClick={() => navigate("availability")}
           >
             <div className="p-4">
@@ -218,7 +187,7 @@ export default function Dashboard() {
           </Card>
 
           <Card 
-            className="border border-gray-200 bg-white hover:border-gray-300 cursor-pointer transition-all"
+            className="border border-gray-200 bg-white hover:border-black hover:shadow-md cursor-pointer transition-all"
             onClick={() => navigate("history")}
           >
             <div className="p-4">

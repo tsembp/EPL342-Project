@@ -7,6 +7,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { formatLabel } from "@/lib/formatLabel";
 
 export type EnrollmentRow = {
   id: string;
@@ -66,10 +67,10 @@ export default function EnrollmentsTable({
                   {row.vehicle}
                 </TableCell>
                 <TableCell className="text-gray-700">
-                  {row.serviceType}
+                  {formatLabel(row.serviceType)}
                 </TableCell>
                 <TableCell className="text-gray-700">
-                  {row.rideType}
+                  {formatLabel(row.rideType)}
                 </TableCell>
                 <TableCell className="text-gray-600 text-sm">
                   {row.requestedAt}

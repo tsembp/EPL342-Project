@@ -266,7 +266,7 @@ export function DriverScheduleSection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-full border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          className="rounded-full border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100"
                           onClick={() => setMapRide(ride)}
                         >
                           <Eye className="mr-1 h-3 w-3" />
@@ -278,7 +278,7 @@ export function DriverScheduleSection() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="rounded-full border-black bg-white px-4 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                            className="rounded-full border-black bg-white px-4 text-xs font-semibold text-gray-900 hover:bg-gray-100"
                             onClick={() =>
                               setActiveChat({
                                 rideId: ride.RideId,

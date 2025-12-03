@@ -4,6 +4,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BottomNav } from "@/components/BottomNav";
 import { MapView } from "@/components/MapView";
 import { DEFAULT_MAP_CENTER } from "@/lib/constants";
 import { toast } from "sonner";

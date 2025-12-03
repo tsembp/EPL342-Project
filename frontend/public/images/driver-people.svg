@@ -1,0 +1,14 @@
+<svg width="760" height="540" viewBox="0 0 760 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="540" fill="#1C1C1C"/>
+  <g transform="translate(150, 150)">
+    <!-- People icons -->
+    <g>
+      <circle cx="150" cy="80" r="40" fill="#4A5568"/>
+      <ellipse cx="150" cy="170" rx="60" ry="70" fill="#4A5568"/>
+    </g>
+    <g transform="translate(200, 0)">
+      <circle cx="150" cy="80" r="40" fill="#4A5568"/>
+      <ellipse cx="150" cy="170" rx="60" ry="70" fill="#4A5568"/>
+    </g>
+  </g>
+</svg>

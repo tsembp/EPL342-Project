@@ -205,7 +205,7 @@ export function DriverServicesSection() {
           <Button
             variant="outline"
             size="sm"
-            className="hidden rounded-xl border-gray-300 bg-white text-xs font-semibold text-gray-900 hover:bg-gray-50 sm:inline-flex"
+            className="hidden rounded-xl border-gray-300 bg-white text-xs font-semibold text-gray-900 hover:bg-gray-50 hover:text-black sm:inline-flex"
             onClick={() => setShowForm((s) => !s)}
           >
             <PlusCircle className="mr-1.5 h-4 w-4" />
@@ -420,7 +420,7 @@ export function DriverServicesSection() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 rounded-lg border-gray-300 bg-gray-100 px-2 text-[11px] text-gray-800 hover:bg-gray-200"
+                      className="h-7 rounded-lg border-gray-300 bg-gray-100 px-2 text-[11px] text-gray-800 hover:bg-gray-200 hover:text-black"
                       onClick={() => cancelMutation.mutate(e.EnrollId)}
                     >
                       Cancel

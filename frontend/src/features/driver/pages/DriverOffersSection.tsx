@@ -284,7 +284,7 @@ export function DriverOffersSection() {
               return (
                 <Card
                   key={`${offer.OfferId}-${offer.LegId}-${offer.SeqNo}`}
-                  className="cursor-pointer border border-gray-200 bg-gray-50 p-3 transition-colors hover:border-black"
+                  className="cursor-pointer border border-gray-200 bg-white p-3 transition-all hover:border-gray-400 hover:shadow-md"
                 >
                   {/* card header */}
                   <div className="mb-1.5 flex items-center justify-between">
@@ -386,7 +386,7 @@ export function DriverOffersSection() {
                           size="sm"
                           variant="outline"
                           disabled={isActing}
-                          className="border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          className="border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRespond(offer.OfferId, "reject");
@@ -439,7 +439,7 @@ export function DriverOffersSection() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-100"
                   disabled={clampedPage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
@@ -458,7 +458,7 @@ export function DriverOffersSection() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-100"
                   disabled={clampedPage >= totalPages}
                   onClick={() =>
                     setPage((p) => Math.min(totalPages, p + 1))

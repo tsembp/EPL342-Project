@@ -92,10 +92,10 @@ export default function Overview() {
               </span>
               <Badge
                 className={[
-                  "mt-3 px-2.5 py-0.5 text-[11px] font-medium border",
+                  "mt-3 px-2.5 py-0.5 text-[11px] font-medium border transition-colors",
                   kpi.status === "success"
-                    ? "bg-gray-50 text-gray-900 border-gray-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200",
+                    ? "bg-gray-50 text-gray-900 border-gray-200 hover:bg-gray-100"
+                    : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
                 ].join(" ")}
               >
                 {kpi.status === "success" ? "Active" : "Pending"}
@@ -116,21 +116,21 @@ export default function Overview() {
           <Button
             onClick={() => navigate("/operator/enrollments")}
             variant="outline"
-            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
             Review pending enrollments
           </Button>
           <Button
-            onClick={() => navigate("/operator/gdpr")}
+            onClick={() => navigate("/operator/gdpr-data-correction")}
             variant="outline"
-            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
             View GDPR queue
           </Button>
           <Button
             onClick={() => navigate("/operator/reports")}
             variant="outline"
-            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
             View reports
           </Button>

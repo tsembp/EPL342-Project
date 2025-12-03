@@ -335,7 +335,7 @@ export default function Signup() {
             <span className="text-gray-600">Already have an account? </span>
             <Button
               variant="link"
-              className="p-0 h-auto text-black hover:text-gray-700 font-medium"
+              className="p-0 h-auto text-black hover:text-black-700 font-medium"
               onClick={() => navigate("/login")}
             >
               Log in

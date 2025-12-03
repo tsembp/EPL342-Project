@@ -125,8 +125,6 @@ export async function createServiceType(payload: {
   name: string;
   description: string;
   baseFare: number;
-  perKm: number;
-  perMin: number;
   active: boolean;
   validFrom?: string | null;
   validTo?: string | null;
@@ -143,8 +141,6 @@ export async function updateServiceType(
     name: string;
     description: string;
     baseFare: number;
-    perKm: number;
-    perMin: number;
     active: boolean;
   }
 ) {

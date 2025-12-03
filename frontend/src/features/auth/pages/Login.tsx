@@ -62,7 +62,7 @@ export default function Login() {
           {/* Back button */}
           <Button
             variant="ghost"
-            className="mb-8 -ml-2 text-gray-600 hover:text-gray-900"
+            className="mb-8 -ml-2 text-gray-600 hover:text-gray-200"
             onClick={() => navigate("/")}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

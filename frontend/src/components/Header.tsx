@@ -22,7 +22,7 @@ export function Header({ title, showBack, showBackButton, backTo, action }: Head
             variant="ghost"
             size="icon"
             onClick={() => backTo ? navigate(backTo) : navigate(-1)}
-            className="h-9 w-9 border border-gray-200 bg-white hover:bg-gray-50 text-gray-900"
+            className="h-9 w-9 border border-gray-200 bg-white hover:bg-gray-100 text-gray-900"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
