@@ -16,6 +16,11 @@ import PendingApproval from "@/features/driver/pages/PendingApproval";
 import DriverDashboard from "@/features/driver/pages/Dashboard";
 import VehicleDocuments from "@/features/driver/pages/VehicleDocuments";
 import AddVehiclePage from "@/features/driver/pages/AddVehiclePage";
+import VehiclesPage from "@/features/driver/pages/VehiclesPage";
+import ServicesPage from "@/features/driver/pages/ServicesPage";
+import AvailabilityPage from "@/features/driver/pages/AvailabilityPage";
+import HistoryPage from "@/features/driver/pages/HistoryPage";
+import ProfilePage from "@/features/driver/pages/ProfilePage";
 
 // PASSENGER
 import PassengerLayout from "@/features/passenger/pages/PassengerLayout";
@@ -98,15 +103,6 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-
             {/* PASSENGER */}
             <Route
               path="/passenger/*"
@@ -119,6 +115,7 @@ function App() {
               <Route index element={<PassengerHome />} />
               <Route path="ride" element={<PassengerHome />} />
               <Route path="history" element={<RideHistory />} />
+              <Route path="profile" element={<Profile />} />
               <Route
                 path="rides/:requestId/details"
                 element={<RideRequestDetailsPage />}
@@ -152,6 +149,56 @@ function App() {
                 <ProtectedRoute>
                   <DriverPendingGuard>
                     <DriverDashboard />
+                  </DriverPendingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/vehicles"
+              element={
+                <ProtectedRoute>
+                  <DriverPendingGuard>
+                    <VehiclesPage />
+                  </DriverPendingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/services"
+              element={
+                <ProtectedRoute>
+                  <DriverPendingGuard>
+                    <ServicesPage />
+                  </DriverPendingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/availability"
+              element={
+                <ProtectedRoute>
+                  <DriverPendingGuard>
+                    <AvailabilityPage />
+                  </DriverPendingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/history"
+              element={
+                <ProtectedRoute>
+                  <DriverPendingGuard>
+                    <HistoryPage />
+                  </DriverPendingGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/profile"
+              element={
+                <ProtectedRoute>
+                  <DriverPendingGuard>
+                    <ProfilePage />
                   </DriverPendingGuard>
                 </ProtectedRoute>
               }

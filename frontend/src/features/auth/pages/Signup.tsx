@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { useAuthStore } from "@/lib/store";
 import { toast } from "sonner";
-import { Car } from "lucide-react";
+import { Car, ArrowLeft, User, Briefcase } from "lucide-react";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -95,31 +94,66 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Header / Logo */}
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-neutral-800 bg-neutral-900 mb-4 shadow-lg">
-            <Car className="h-8 w-8 text-emerald-500" />
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Create account
-          </h1>
-          <p className="text-sm text-neutral-400 mt-2">
-            Get started in seconds
-          </p>
-        </div>
+    <div className="min-h-screen bg-white flex">
+      {/* Left side - Form */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8 py-12">
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            className="mb-4 -ml-2 text-gray-600 hover:text-gray-900"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
 
-        {/* Card */}
-        <Card className="border border-neutral-800 bg-neutral-900/80 p-6 shadow-xl backdrop-blur">
-          <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+          {/* Header */}
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold text-gray-900">
+              Create your account
+            </h1>
+            <p className="text-lg text-gray-600">
+              Join OSRH and start your journey
+            </p>
+          </div>
+
+          {/* Role Selection Cards */}
+          <div className="grid grid-cols-2 gap-4 pt-4">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: "Passenger" })}
+              className={`p-6 rounded-xl border-2 transition-all ${
+                formData.role === "Passenger"
+                  ? "border-black bg-gray-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <User className="h-8 w-8 mb-3 mx-auto" />
+              <p className="font-semibold text-gray-900">Passenger</p>
+              <p className="text-xs text-gray-600 mt-1">Book rides</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, role: "Driver" })}
+              className={`p-6 rounded-xl border-2 transition-all ${
+                formData.role === "Driver"
+                  ? "border-black bg-gray-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <Car className="h-8 w-8 mb-3 mx-auto" />
+              <p className="font-semibold text-gray-900">Driver</p>
+              <p className="text-xs text-gray-600 mt-1">Earn money</p>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             {/* Name */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label
-                  htmlFor="firstName"
-                  className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-                >
+                <Label htmlFor="firstName" className="text-sm font-medium text-gray-900">
                   First Name
                 </Label>
                 <Input
@@ -131,15 +165,12 @@ export default function Signup() {
                     setFormData({ ...formData, firstName: e.target.value })
                   }
                   required
-                  className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                  className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label
-                  htmlFor="lastName"
-                  className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-                >
+                <Label htmlFor="lastName" className="text-sm font-medium text-gray-900">
                   Last Name
                 </Label>
                 <Input
@@ -151,43 +182,15 @@ export default function Signup() {
                     setFormData({ ...formData, lastName: e.target.value })
                   }
                   required
-                  className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                  className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
                 />
               </div>
-            </div>
-
-            {/* Role */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="role"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
-                Role
-              </Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, role: value })
-                }
-              >
-                <SelectTrigger className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 focus:ring-emerald-500 focus:ring-offset-0">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent className="border border-neutral-800 bg-neutral-900 text-neutral-50">
-                  <SelectItem value="Passenger">Passenger</SelectItem>
-                  <SelectItem value="Driver">Driver</SelectItem>
-                  <SelectItem value="Company Representative">Company Representative</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* DOB & Gender */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label
-                  htmlFor="dob"
-                  className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-                >
+                <Label htmlFor="dob" className="text-sm font-medium text-gray-900">
                   Date of Birth
                 </Label>
                 <Input
@@ -198,15 +201,12 @@ export default function Signup() {
                     setFormData({ ...formData, dob: e.target.value })
                   }
                   required
-                  className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                  className="h-11 bg-gray-50 border-gray-200 text-gray-900"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label
-                  htmlFor="gender"
-                  className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-                >
+                <Label htmlFor="gender" className="text-sm font-medium text-gray-900">
                   Gender
                 </Label>
                 <Select
@@ -215,10 +215,10 @@ export default function Signup() {
                     setFormData({ ...formData, gender: value })
                   }
                 >
-                  <SelectTrigger className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 focus:ring-emerald-500 focus:ring-offset-0">
-                    <SelectValue placeholder="Select gender" />
+                  <SelectTrigger className="h-11 bg-gray-50 border-gray-200 text-gray-900">
+                    <SelectValue placeholder="Select" />
                   </SelectTrigger>
-                  <SelectContent className="border border-neutral-800 bg-neutral-900 text-neutral-50">
+                  <SelectContent>
                     <SelectItem value="Male">Male</SelectItem>
                     <SelectItem value="Female">Female</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
@@ -232,10 +232,7 @@ export default function Signup() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
+              <Label htmlFor="email" className="text-sm font-medium text-gray-900">
                 Email
               </Label>
               <Input
@@ -247,58 +244,49 @@ export default function Signup() {
                   setFormData({ ...formData, email: e.target.value })
                 }
                 required
-                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
             {/* Phone */}
             <div className="space-y-2">
-              <Label
-                htmlFor="phone"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
+              <Label htmlFor="phone" className="text-sm font-medium text-gray-900">
                 Phone
               </Label>
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+1234567890"
+                placeholder="+357 99 123456"
                 value={formData.phone}
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 required
-                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
             {/* Address */}
             <div className="space-y-2">
-              <Label
-                htmlFor="address"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
+              <Label htmlFor="address" className="text-sm font-medium text-gray-900">
                 Address
               </Label>
               <Input
                 id="address"
                 type="text"
-                placeholder="123 Main St, City, Country"
+                placeholder="123 Main St, Nicosia, Cyprus"
                 value={formData.address}
                 onChange={(e) =>
                   setFormData({ ...formData, address: e.target.value })
                 }
                 required
-                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
             {/* Username */}
             <div className="space-y-2">
-              <Label
-                htmlFor="username"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
+              <Label htmlFor="username" className="text-sm font-medium text-gray-900">
                 Username
               </Label>
               <Input
@@ -310,53 +298,77 @@ export default function Signup() {
                   setFormData({ ...formData, username: e.target.value })
                 }
                 required
-                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
             {/* Password */}
             <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
+              <Label htmlFor="password" className="text-sm font-medium text-gray-900">
                 Password
               </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Create a strong password"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
                 required
-                className="h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="h-11 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400"
               />
             </div>
 
             {/* Submit */}
             <Button
               type="submit"
-              className="mt-2 w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 text-sm font-medium hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
-              disabled={loading}
+              className="w-full h-12 bg-black text-white hover:bg-gray-800 text-base font-medium mt-2"
+              disabled={loading || !formData.role}
             >
-              {loading ? "Creating account..." : "Sign up"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
 
           {/* Footer */}
-          <div className="mt-6 text-center text-sm">
-            <span className="text-neutral-500">Already have an account? </span>
+          <div className="text-center pt-4">
+            <span className="text-gray-600">Already have an account? </span>
             <Button
               variant="link"
-              className="p-0 h-auto text-emerald-400 hover:text-emerald-300"
+              className="p-0 h-auto text-black hover:text-gray-700 font-medium"
               onClick={() => navigate("/login")}
             >
-              Sign in
+              Log in
             </Button>
           </div>
-        </Card>
+        </div>
+      </div>
+
+      {/* Right side - Brand */}
+      <div className="hidden lg:flex lg:flex-1 bg-black items-center justify-center p-12 relative overflow-hidden">
+        {/* Background video with low opacity */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-20"
+        >
+          <source src="/background-video.mp4" type="video/mp4" />
+        </video>
+        
+        {/* Content overlay */}
+        <div className="max-w-md text-center space-y-6 relative z-10">
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto">
+            <Car className="h-10 w-10 text-black" />
+          </div>
+          <h2 className="text-4xl font-bold text-white">
+            Start your journey with OSRH
+          </h2>
+          <p className="text-xl text-gray-300">
+            Whether you're riding or driving, we've got you covered.
+          </p>
+        </div>
       </div>
     </div>
   );

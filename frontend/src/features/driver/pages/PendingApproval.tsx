@@ -137,7 +137,7 @@ export default function PendingApproval() {
   return (
     <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 text-neutral-50">
       <div className="w-full max-w-md space-y-6">
-        <Card className="bg-neutral-950 text-center border-2 border-emerald-500">
+        <Card className="bg-neutral-950 text-center border-2 border-gray-500">
           <CardHeader className="pb-4">
             <div className="flex justify-center mb-4">
               <div className="w-20 h-20 rounded-full bg-warning/10 flex items-center justify-center">
@@ -177,7 +177,7 @@ export default function PendingApproval() {
                   </div>
                   <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
                     <div
-                      className="h-full bg-emerald-500 transition-all"
+                      className="h-full bg-gray-500 transition-all"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -193,7 +193,7 @@ export default function PendingApproval() {
                   </div>
                   <div className="bg-transparent p-3 flex flex-col gap-1 items-center">
                   <span className="font-semibold text-neutral-100">Accepted</span>
-                  <span className="font-semibold text-emerald-400 text-lg">
+                  <span className="font-semibold text-gray-400 text-lg">
                     {docStats.accepted}
                   </span>
                   </div>
@@ -220,7 +220,7 @@ export default function PendingApproval() {
                 <div className="space-y-2 pt-2">
                   <Button
                     onClick={() => navigate("/driver/documents")}
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-neutral-900 font-semibold"
+                    className="w-full bg-gray-500 hover:bg-gray-800 text-neutral-900 font-semibold"
                   >
                     Review & Upload Documents
                   </Button>

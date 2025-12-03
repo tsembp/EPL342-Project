@@ -21,60 +21,60 @@ export type DriverRow = {
 
 export default function UsersDriversTable({ data }: { data: DriverRow[] }) {
   return (
-    <div className="w-full rounded-xl border border-neutral-800/70 bg-neutral-950/50 shadow-lg overflow-hidden">
+    <div className="w-full rounded-xl border border-gray-200/70 bg-white/50 shadow-sm overflow-hidden">
       <Table className="w-full">
-        <TableHeader className="bg-neutral-900/80">
-          <TableRow className="border-b border-neutral-800/80">
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+        <TableHeader className="bg-white/80">
+          <TableRow className="border-b border-gray-200/80">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Name
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Email
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Age
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Country
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Verification
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               # Vehicles
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600">
               Avg. Rating
             </TableHead>
-            <TableHead className="text-xs font-medium uppercase tracking-wide text-neutral-400 text-right">
+            <TableHead className="text-xs font-medium uppercase tracking-wide text-gray-600 text-right">
               Actions
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody className="bg-neutral-950/40">
+        <TableBody className="bg-white/40">
           {data.map((row) => (
             <TableRow
               key={row.id}
-              className="border-b border-neutral-900/80 last:border-0 hover:bg-neutral-900/70 transition-colors"
+              className="border-b border-gray-200/80 last:border-0 hover:bg-white/70 transition-colors"
             >
-              <TableCell className="text-sm text-neutral-100">
+              <TableCell className="text-sm text-gray-900">
                 {row.name}
               </TableCell>
-              <TableCell className="text-sm text-neutral-300">
+              <TableCell className="text-sm text-gray-700">
                 {row.email}
               </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              <TableCell className="text-sm text-gray-800">
                 {row.age}
               </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              <TableCell className="text-sm text-gray-800">
                 {row.country}
               </TableCell>
               <TableCell>
                 <Badge
                   className={
-                    "rounded-full px-2.5 py-0.5 text-[11px] font-medium border " +
+                    "rounded-lg px-2.5 py-0.5 text-[11px] font-medium border " +
                     (row.verification === "verified"
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                      ? "bg-gray-50 text-gray-900 border-gray-200"
                       : row.verification === "pending"
                       ? "bg-amber-500/10 text-amber-300 border-amber-500/40"
                       : "bg-rose-500/10 text-rose-300 border-rose-500/40")
@@ -84,14 +84,14 @@ export default function UsersDriversTable({ data }: { data: DriverRow[] }) {
                     row.verification.slice(1)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm text-neutral-200">
+              <TableCell className="text-sm text-gray-800">
                 {row.vehicles}
               </TableCell>
-              <TableCell className="text-sm text-neutral-100">
+              <TableCell className="text-sm text-gray-900">
                 {row.rating.toFixed(1)}
               </TableCell>
               <TableCell className="text-right">
-                <button className="text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:underline">
+                <button className="text-xs font-medium text-gray-400 hover:text-gray-900 hover:underline">
                   View
                 </button>
               </TableCell>
@@ -102,7 +102,7 @@ export default function UsersDriversTable({ data }: { data: DriverRow[] }) {
             <TableRow>
               <TableCell
                 colSpan={8}
-                className="py-6 text-center text-sm text-neutral-500"
+                className="py-6 text-center text-sm text-gray-9000"
               >
                 No drivers found.
               </TableCell>

@@ -66,19 +66,19 @@ export default function DriverProfile() {
   return (
     <div className="w-full space-y-3">
       {/* DRIVER PREFERENCES CARD */}
-      <Card className="w-full border border-neutral-800 bg-neutral-900/80 px-5 py-4 sm:px-6 sm:py-5">
+      <Card className="w-full border border-gray-200 bg-white px-5 py-4 sm:px-6 sm:py-5">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-sm font-semibold text-neutral-50">
+              <p className="text-sm font-semibold text-gray-900">
                 Driver preferences
               </p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-gray-600">
                 Control notifications and live location usage
               </p>
             </div>
             {prefsLoading && (
-              <span className="text-[11px] text-neutral-500">Loading…</span>
+              <span className="text-[11px] text-gray-500">Loading…</span>
             )}
           </div>
 
@@ -86,12 +86,12 @@ export default function DriverProfile() {
             <label className="flex items-center gap-2 text-xs sm:text-sm">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-neutral-600 bg-neutral-900"
+                className="h-4 w-4 rounded border-gray-400 bg-gray-100"
                 checked={notificationsEnabled}
                 onChange={(e) => setNotificationsEnabled(e.target.checked)}
                 disabled={prefsLoading || prefsSaving}
               />
-              <span className="text-neutral-200">
+              <span className="text-gray-800">
                 Enable dispatch / ride notifications
               </span>
             </label>
@@ -99,12 +99,12 @@ export default function DriverProfile() {
             <label className="flex items-center gap-2 text-xs sm:text-sm">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-neutral-600 bg-neutral-900"
+                className="h-4 w-4 rounded border-gray-400 bg-gray-100"
                 checked={locEnabled}
                 onChange={(e) => setLocEnabled(e.target.checked)}
                 disabled={prefsLoading || prefsSaving}
               />
-              <span className="text-neutral-200">
+              <span className="text-gray-800">
                 Allow live vehicle location updates
               </span>
             </label>
@@ -113,7 +113,7 @@ export default function DriverProfile() {
           <div className="flex justify-end pt-1">
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-neutral-50 border-none"
+              className="bg-gray-600 hover:bg-gray-700 text-gray-900 border-none"
               disabled={prefsLoading || prefsSaving}
               onClick={async () => {
                 try {
@@ -158,17 +158,17 @@ export default function DriverProfile() {
             state: { backTo: "/driver/dashboard?tab=profile" },
           })
         }
-        className="w-full cursor-pointer border border-neutral-800 bg-neutral-900/80 px-5 py-4 sm:px-6 sm:py-5 transition-colors hover:bg-neutral-850 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+        className="w-full cursor-pointer border border-gray-200 bg-white px-5 py-4 sm:px-6 sm:py-5 transition-colors hover:bg-neutral-850 focus:outline-none focus:ring-2 focus:ring-black/60"
       >
         <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800">
-            <FileText className="h-5 w-5 text-emerald-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
+            <FileText className="h-5 w-5 text-black" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-neutral-50">
+            <p className="text-sm font-semibold text-gray-900">
               GDPR request
             </p>
-            <p className="text-xs text-neutral-400">Submit a data request</p>
+            <p className="text-xs text-gray-600">Submit a data request</p>
           </div>
         </div>
       </Card>
@@ -178,17 +178,17 @@ export default function DriverProfile() {
         role="button"
         tabIndex={0}
         onClick={() => navigate("/gdpr-export")}
-        className="w-full cursor-pointer border border-neutral-800 bg-neutral-900/80 px-5 py-4 sm:px-6 sm:py-5 transition-colors hover:bg-neutral-850 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+        className="w-full cursor-pointer border border-gray-200 bg-white px-5 py-4 sm:px-6 sm:py-5 transition-colors hover:bg-neutral-850 focus:outline-none focus:ring-2 focus:ring-black/60"
       >
         <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-800">
-            <Download className="h-5 w-5 text-emerald-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
+            <Download className="h-5 w-5 text-black" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-neutral-50">
+            <p className="text-sm font-semibold text-gray-900">
               Download my data
             </p>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-gray-600">
               View or export the data stored about your account
             </p>
           </div>

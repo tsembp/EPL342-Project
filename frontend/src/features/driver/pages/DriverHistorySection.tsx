@@ -86,18 +86,18 @@ export function DriverHistorySection() {
 
   return (
     <>
-      <Card className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5">
+      <Card className="border border-gray-200 bg-white p-4 sm:p-5">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900">
-              <History className="h-4 w-4 text-emerald-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+              <History className="h-4 w-4 text-black" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-neutral-50">
+              <h2 className="text-sm font-semibold text-gray-900">
                 Ride history
               </h2>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-gray-600">
                 Completed and cancelled rides, with timing and transaction
                 details.
               </p>
@@ -106,7 +106,7 @@ export function DriverHistorySection() {
 
           <Button
             size="sm"
-            className="rounded-xl bg-neutral-900 text-neutral-200 border border-neutral-800 hover:bg-neutral-800 text-xs"
+            className="rounded-xl bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200 text-xs"
             onClick={loadHistory}
             disabled={loading}
           >
@@ -126,7 +126,7 @@ export function DriverHistorySection() {
 
         {/* Empty state */}
         {!hasHistory && !loading && !error && (
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             You don&apos;t have any past rides yet.
           </p>
         )}
@@ -141,19 +141,19 @@ export function DriverHistorySection() {
                 return (
                   <Card
                     key={ride.RideId}
-                    className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5"
+                    className="border border-gray-200 bg-white p-4 sm:p-5"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       {/* Left: route & meta */}
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-50">
-                          <MapPin className="h-4 w-4 text-emerald-400" />
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                          <MapPin className="h-4 w-4 text-black" />
                           <span>{ride.FromName}</span>
-                          <ArrowRight className="h-4 w-4 text-neutral-500" />
+                          <ArrowRight className="h-4 w-4 text-gray-500" />
                           <span>{ride.ToName}</span>
                         </div>
 
-                        <div className="flex flex-wrap gap-3 text-xs text-neutral-400">
+                        <div className="flex flex-wrap gap-3 text-xs text-gray-600">
                           <span className="inline-flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {formatDateTime(ride.EndedAt ?? ride.StartedAt)}
@@ -177,10 +177,10 @@ export function DriverHistorySection() {
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className={`border-neutral-700 bg-neutral-900/70 text-[11px] font-normal ${
+                            className={`border-gray-300 bg-gray-100/70 text-[11px] font-normal ${
                               isCancelled
                                 ? "text-red-300"
-                                : "text-neutral-200"
+                                : "text-gray-800"
                             }`}
                           >
                             {ride.Status}
@@ -191,7 +191,7 @@ export function DriverHistorySection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-full border-emerald-500/70 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10"
+                          className="rounded-full border-black/70 text-xs font-semibold text-black hover:bg-black/10"
                           onClick={() => setDetailsRide(ride)}
                         >
                           View details
@@ -205,14 +205,14 @@ export function DriverHistorySection() {
 
             {/* Pagination controls (same style as DriverOffersSection) */}
             {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between text-xs text-neutral-400">
+              <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
                 <span>
                   Showing{" "}
-                  <span className="text-neutral-100">
+                  <span className="text-gray-900">
                     {startIndex + 1}–{endIndex}
                   </span>{" "}
                   of{" "}
-                  <span className="text-neutral-100">
+                  <span className="text-gray-900">
                     {totalRides}
                   </span>{" "}
                   rides
@@ -221,26 +221,26 @@ export function DriverHistorySection() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                    className="border-gray-300 bg-gray-100 text-[11px] font-medium text-gray-800 hover:bg-gray-200"
                     disabled={clampedPage <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
                     Previous
                   </Button>
-                  <span className="text-[11px] text-neutral-400">
+                  <span className="text-[11px] text-gray-600">
                     Page{" "}
-                    <span className="text-neutral-100">
+                    <span className="text-gray-900">
                       {clampedPage}
                     </span>{" "}
                     of{" "}
-                    <span className="text-neutral-100">
+                    <span className="text-gray-900">
                       {totalPages}
                     </span>
                   </span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                    className="border-gray-300 bg-gray-100 text-[11px] font-medium text-gray-800 hover:bg-gray-200"
                     disabled={clampedPage >= totalPages}
                     onClick={() =>
                       setPage((p) => Math.min(totalPages, p + 1))
@@ -260,7 +260,7 @@ export function DriverHistorySection() {
         open={detailsRide != null}
         onOpenChange={(open) => !open && setDetailsRide(null)}
       >
-        <DialogContent className="max-w-md border border-neutral-800 bg-neutral-950 text-neutral-50">
+        <DialogContent className="max-w-md border border-gray-200 bg-gray-900 text-gray-900">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">
               Ride transaction details
@@ -271,39 +271,39 @@ export function DriverHistorySection() {
             <div className="mt-3 space-y-4 text-sm">
               {/* Route */}
               <div>
-                <p className="text-xs uppercase tracking-wide text-neutral-500">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
                   Route
                 </p>
-                <div className="mt-1 flex items-center gap-2 text-sm font-medium text-neutral-100">
-                  <MapPin className="h-4 w-4 text-emerald-400" />
+                <div className="mt-1 flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <MapPin className="h-4 w-4 text-black" />
                   <span>{detailsRide.FromName}</span>
-                  <ArrowRight className="h-4 w-4 text-neutral-500" />
+                  <ArrowRight className="h-4 w-4 text-gray-500" />
                   <span>{detailsRide.ToName}</span>
                 </div>
-                <p className="mt-1 text-xs text-neutral-400">
+                <p className="mt-1 text-xs text-gray-600">
                   {formatDateTime(detailsRide.EndedAt ?? detailsRide.StartedAt)}
                 </p>
               </div>
 
               {/* Payment summary */}
               <div className="space-y-1.5">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
                   Payment
                 </p>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="inline-flex items-center gap-1 text-neutral-300">
+                  <span className="inline-flex items-center gap-1 text-gray-700">
                     <CreditCard className="h-3 w-3" />
                     Method
                   </span>
-                  <span className="font-medium text-neutral-100">
+                  <span className="font-medium text-gray-900">
                     {detailsRide.PaymentMethod ?? "—"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-neutral-400">
+                <div className="flex items-center justify-between text-xs text-gray-600">
                   <span>Status</span>
                   <span>{detailsRide.PaymentStatus ?? "—"}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-neutral-400">
+                <div className="flex items-center justify-between text-xs text-gray-600">
                   <span>Paid at</span>
                   <span>{formatDateTime(detailsRide.PaymentPaidAt)}</span>
                 </div>
@@ -311,11 +311,11 @@ export function DriverHistorySection() {
 
               {/* Money breakdown */}
               <div className="space-y-1.5">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
                   Fare breakdown
                 </p>
 
-                <div className="flex items-center justify-between text-xs text-neutral-300">
+                <div className="flex items-center justify-between text-xs text-gray-700">
                   <span>Passenger total</span>
                   <span className="font-medium">
                     {formatMoney(
@@ -324,14 +324,14 @@ export function DriverHistorySection() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-neutral-300">
+                <div className="flex items-center justify-between text-xs text-gray-700">
                   <span>OSRH platform fee</span>
                   <span className="font-medium">
                     {formatMoney(detailsRide.PaymentOsrhFee)}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-emerald-300">
+                <div className="flex items-center justify-between text-xs text-black">
                   <span>Your income</span>
                   <span className="font-semibold">
                     {formatMoney(detailsRide.PaymentDriverPayout)}

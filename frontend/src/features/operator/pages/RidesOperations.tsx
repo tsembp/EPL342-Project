@@ -66,14 +66,14 @@ export default function RidesOperations() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             Rides &amp; Operations
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Monitor live rides, completed trips, and operational status in real
             time.
           </p>
@@ -89,28 +89,28 @@ export default function RidesOperations() {
               }
               className="w-full md:w-auto"
             >
-              <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+              <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
                 <TabsTrigger
                   value="all"
-                  className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
                 >
                   All
                 </TabsTrigger>
                 <TabsTrigger
                   value="active"
-                  className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
                 >
                   Active
                 </TabsTrigger>
                 <TabsTrigger
                   value="completed"
-                  className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
                 >
                   Completed
                 </TabsTrigger>
                 <TabsTrigger
                   value="cancelled"
-                  className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
                 >
                   Cancelled
                 </TabsTrigger>
@@ -121,18 +121,18 @@ export default function RidesOperations() {
               placeholder="Search by passenger, driver, or vehicle..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-xs border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="max-w-xs border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
 
-          <Card className="p-0 rounded-2xl border border-neutral-800 bg-neutral-900/80 shadow-lg">
+          <Card className="p-0 rounded-lg border border-gray-200 bg-white/80 shadow-sm">
             <RidesOperationsTable data={filtered} onDetails={handleDetails} />
           </Card>
         </div>
 
         {/* Details dialog */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl rounded-2xl">
+          <DialogContent className="max-w-lg border border-gray-200 bg-white text-gray-900 shadow-2xl rounded-lg">
             <DialogHeader>
               <DialogTitle className="text-lg font-semibold">
                 Ride Details
@@ -140,51 +140,51 @@ export default function RidesOperations() {
             </DialogHeader>
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-neutral-400">Passenger:</span>{" "}
-                <span className="text-neutral-100 font-medium">
+                <span className="text-gray-600">Passenger:</span>{" "}
+                <span className="text-gray-900 font-medium">
                   {selected?.passenger}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Driver:</span>{" "}
-                <span className="text-neutral-100 font-medium">
+                <span className="text-gray-600">Driver:</span>{" "}
+                <span className="text-gray-900 font-medium">
                   {selected?.driver}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Vehicle:</span>{" "}
-                <span className="text-neutral-100 font-medium">
+                <span className="text-gray-600">Vehicle:</span>{" "}
+                <span className="text-gray-900 font-medium">
                   {selected?.vehicle}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Status:</span>{" "}
-                <span className="text-neutral-100 font-medium">
+                <span className="text-gray-600">Status:</span>{" "}
+                <span className="text-gray-900 font-medium">
                   {selected?.status}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Started At:</span>{" "}
-                <span className="text-neutral-100">
+                <span className="text-gray-600">Started At:</span>{" "}
+                <span className="text-gray-900">
                   {selected?.startedAt}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Completed At:</span>{" "}
-                <span className="text-neutral-100">
+                <span className="text-gray-600">Completed At:</span>{" "}
+                <span className="text-gray-900">
                   {selected?.completedAt || "-"}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-400">Price:</span>{" "}
-                <span className="text-neutral-100">{selected?.price}</span>
+                <span className="text-gray-600">Price:</span>{" "}
+                <span className="text-gray-900">{selected?.price}</span>
               </div>
             </div>
             <DialogFooter className="mt-4">
               <Button
                 variant="outline"
                 onClick={() => setModalOpen(false)}
-                className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 rounded-full px-4 py-2"
+                className="border-gray-300 bg-white text-gray-800 hover:bg-gray-100 rounded-lg px-4 py-2"
               >
                 Close
               </Button>

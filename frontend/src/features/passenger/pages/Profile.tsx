@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/store";
 import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Car, Download, FileText, Loader2, LogOut, User } from "lucide-react";
+import { Car, Download, FileText, Loader2, LogOut, User, ArrowLeft } from "lucide-react";
 import {
   getSelfDriveStatus,
   uploadPassengerLicense,
@@ -120,154 +118,133 @@ export default function Profile() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-neutral-950 text-neutral-50">
-      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-semibold tracking-tight">
-            OSRH | Profile
-          </span>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto pb-20">
-        <div className="max-w-2xl mx-auto p-4 space-y-4">
-          {/* User info */}
-          <Card className="p-6 border border-neutral-800 bg-neutral-900/80 shadow-lg">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full border border-neutral-800 bg-neutral-900 flex items-center justify-center">
-                <User className="h-8 w-8 text-emerald-500" />
-              </div>
-
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold text-neutral-50">
-                  User Account
-                </h2>
-                <p className="text-sm text-neutral-400">{email}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  {/* Role Badge */}
-                  <Badge
-                    variant="outline"
-                    className="border-neutral-700 bg-neutral-900 text-neutral-200"
-                  >
-                    {userRole === "passenger" ? "Passenger" : "Driver"}
-                  </Badge>
-
-                  {/* Verification Badge — only show for passengers */}
+    <div className="flex h-full flex-col bg-gray-50 text-gray-900">
+      {/* Content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-8 py-8">
+          {/* Account Info Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Information</h2>
+            <Card className="p-6 border border-gray-200 bg-white">
+              <div className="flex items-start gap-6">
+                <div className="w-16 h-16 rounded-full border-2 border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0">
+                  <User className="h-8 w-8 text-gray-700" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-900">{email}</h3>
+                    <Badge
+                      variant="outline"
+                      className="border-gray-300 bg-gray-50 text-gray-700"
+                    >
+                      {userRole === "passenger" ? "Passenger" : "Driver"}
+                    </Badge>
+                  </div>
                   {userRole === "passenger" && selfDriveStatus && (
-                    selfDriveStatus.eligible ? (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-600 text-emerald-400 bg-neutral-900"
-                      >
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-yellow-600 text-yellow-400 bg-neutral-900"
-                      >
-                        Unverified
-                      </Badge>
-                    )
+                    <div className="mt-3">
+                      {selfDriveStatus.eligible ? (
+                        <Badge className="border-gray-200 bg-gray-50 text-gray-900">
+                          ✓ Self-Drive Verified
+                        </Badge>
+                      ) : (
+                        <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                          Pending Verification
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Actions */}
-          <div className="space-y-2">
-            {/* Verification for car rental service */}
-            <Card className="p-4 border border-neutral-800 bg-neutral-900/80">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-3">
-                  <Car className="h-5 w-5 text-emerald-500" />
-                  <div>
-                    <h3 className="font-semibold text-neutral-50">
-                      Self-drive rentals (no driver)
-                    </h3>
-                    <p className="text-sm text-neutral-400">
-                      Upload your driving licence to get verified
-                    </p>
-                  </div>
-                </div>
                 <Button
-                  size="sm"
-                  variant="ghost"
-                  className="mt-2 w-full sm:mt-0 sm:w-auto border border-emerald-500 bg-neutral-900 text-emerald-400 hover:bg-neutral-800 group"
-                  onClick={() => setLicenseModalOpen(true)}
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
-                  {selfDriveStatus?.hasLicense ? "Update licence" : "Get verified"}
-                  <span className="ml-1 inline-block transition-transform group-hover:-rotate-45 align-middle">
-                    <svg
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 12h14M12 5l7 7-7 7"
-                      />
-                    </svg>
-                  </span>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
                 </Button>
               </div>
             </Card>
+          </div>
 
-            {/* User Preferences */}
-            <Card className="p-4 border border-neutral-800 bg-neutral-900/80">
-              <div className="flex flex-col gap-3">
+          {/* Verification & Services Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Verification & Services</h2>
+            <Card className="p-6 border border-gray-200 bg-white">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Car className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Self-Drive Verification
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Upload your driving licence to rent vehicles without a driver
+                  </p>
+                  <Button
+                    className="bg-black text-white hover:bg-gray-800"
+                    onClick={() => setLicenseModalOpen(true)}
+                  >
+                    {selfDriveStatus?.hasLicense ? "Update Licence" : "Get Verified"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Preferences Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Preferences</h2>
+
+            <Card className="p-6 border border-gray-200 bg-white">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-neutral-50">
-                      User preferences
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      App Preferences
                     </h3>
-                    <p className="text-sm text-neutral-400">
+                    <p className="text-sm text-gray-600">
                       Control notifications and location usage
                     </p>
                   </div>
                   {prefsLoading && (
-                    <span className="text-xs text-neutral-500">Loading…</span>
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   )}
                 </div>
 
-                <div className="mt-2 space-y-2">
-                  <label className="flex items-center gap-2 text-sm">
+                <div className="space-y-3 pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-neutral-600 bg-neutral-900"
+                      className="h-4 w-4 rounded border-gray-300 bg-white"
                       checked={notificationsEnabled}
                       onChange={(e) =>
                         setNotificationsEnabled(e.target.checked)
                       }
                       disabled={prefsLoading || prefsSaving}
                     />
-                    <span className="text-neutral-200">
+                    <span className="text-sm text-gray-900">
                       Enable notifications
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-neutral-600 bg-neutral-900"
+                      className="h-4 w-4 rounded border-gray-300 bg-white"
                       checked={locEnabled}
                       onChange={(e) => setLocEnabled(e.target.checked)}
                       disabled={prefsLoading || prefsSaving}
                     />
-                    <span className="text-neutral-200">
-                      Allow location during rides
+                    <span className="text-sm text-gray-900">
+                      Enable location services
                     </span>
                   </label>
                 </div>
 
-                <div className="flex justify-end pt-2">
+                <div className="pt-4 flex justify-end">
                   <Button
-                    size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-neutral-50 border-none"
+                    className="bg-black text-white hover:bg-gray-800"
                     disabled={prefsLoading || prefsSaving}
                     onClick={async () => {
                       try {
@@ -296,80 +273,54 @@ export default function Profile() {
                         Saving…
                       </>
                     ) : (
-                      "Save preferences"
+                      "Save Preferences"
                     )}
                   </Button>
                 </div>
               </div>
             </Card>
-
-            {/* GDPR Request */}
-            <Card
-              className="p-4 cursor-pointer border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-900 transition-colors"
-              onClick={() =>
-                navigate("/gdpr", { state: { backTo: "/profile" } })
-              }
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-emerald-500" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-neutral-50">
-                    GDPR request
-                  </h3>
-                  <p className="text-sm text-neutral-400">
-                    Submit a data request
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card
-              className="p-4 cursor-pointer border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-900 transition-colors"
-              onClick={() => navigate("/gdpr/export")}
-            >
-              <div className="flex items-center gap-3">
-                <Download className="h-5 w-5 text-emerald-500" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-neutral-50">
-                    Download my data
-                  </h3>
-                  <p className="text-sm text-neutral-400">
-                    View or export the data stored about your account
-                  </p>
-                </div>
-              </div>
-            </Card>
           </div>
 
-          {/* Logout */}
-          <div className="flex justify-center">
-            <button
-              onClick={handleLogout}
-              className="
-                flex items-center gap-1 px-4 py-2 rounded-xl text-sm
-                text-red-400
-                transition-all duration-150
-                hover:bg-red-900/20
-                hover:text-red-300
-                hover:border-red-700
-              "
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
+          {/* Data & Privacy Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Data & Privacy</h2>
+            <Card className="p-6 border border-gray-200 bg-white">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-6 w-6 text-black" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Download Your Data
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Export all data stored about your account
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="border-gray-300 hover:bg-gray-50"
+                    onClick={() => navigate("/gdpr")}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    GDPR Request
+                  </Button>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
-      </div>
+      </main>
+      
       <Dialog open={licenseModalOpen} onOpenChange={setLicenseModalOpen}>
-        <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50">
+        <DialogContent className="max-w-lg border border-gray-200 bg-gray-100 text-gray-900">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-emerald-500" />
+              <FileText className="h-5 w-5 text-black" />
               Driving licence verification
             </DialogTitle>
-            <DialogDescription className="text-sm text-neutral-400">
+            <DialogDescription className="text-sm text-gray-600">
               Upload your driving licence so we can verify you for{" "}
-              <span className="font-semibold text-neutral-200">
+              <span className="font-semibold text-gray-800">
                 self-drive rides
               </span>
               .
@@ -455,7 +406,7 @@ export default function Profile() {
                     }))
                   }
                   placeholder="e.g. CY123456"
-                  className="bg-neutral-800 text-neutral-100 border border-neutral-700 placeholder-neutral-400 focus:bg-neutral-700"
+                  className="bg-gray-200 text-gray-900 border border-gray-300 placeholder-gray-600 focus:bg-gray-300"
                 />
               </div>
 
@@ -471,7 +422,7 @@ export default function Profile() {
                       issueDate: e.target.value,
                     }))
                   }
-                  className="bg-neutral-800 text-neutral-100 border border-neutral-700 placeholder-neutral-400 focus:bg-neutral-700"
+                  className="bg-gray-200 text-gray-900 border border-gray-300 placeholder-gray-600 focus:bg-gray-300"
                 />
               </div>
 
@@ -487,7 +438,7 @@ export default function Profile() {
                       expiryDate: e.target.value,
                     }))
                   }
-                  className="bg-neutral-800 text-neutral-100 border border-neutral-700 placeholder-neutral-400 focus:bg-neutral-700"
+                  className="bg-gray-200 text-gray-900 border border-gray-300 placeholder-gray-600 focus:bg-gray-300"
                 />
               </div>
 
@@ -503,7 +454,7 @@ export default function Profile() {
                       file: e.target.files?.[0] ?? null,
                     }))
                   }
-                  className="bg-neutral-800 text-neutral-100 border border-neutral-700 placeholder-neutral-400 focus:bg-neutral-700 file:bg-neutral-700 file:text-neutral-200"
+                  className="bg-gray-200 text-gray-900 border border-gray-300 placeholder-gray-600 focus:bg-gray-300 file:bg-gray-300 file:text-gray-800"
                 />
               </div>
             </div>
@@ -512,7 +463,7 @@ export default function Profile() {
               <Button
                 type="submit"
                 disabled={licenseSubmitting}
-                className="bg-emerald-600 hover:bg-emerald-700 text-neutral-50 border-none"
+                className="bg-black hover:bg-gray-700 text-gray-900 border-none"
               >
                 {licenseSubmitting ? (
                   <>
@@ -527,8 +478,6 @@ export default function Profile() {
           </form>
         </DialogContent>
       </Dialog>
-
-      <BottomNav />
     </div>
   );
 }

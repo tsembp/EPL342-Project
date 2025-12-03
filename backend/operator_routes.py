@@ -9,25 +9,107 @@ operator_bp = Blueprint("operator", __name__, url_prefix="/api/operator")
 @require_auth
 @require_role("O", "I")  # Operator or Inspector
 def get_operator_dashboard():
-    """Get operator dashboard - requires operator or inspector role"""
+    """Get operator dashboard with comprehensive metrics"""
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
+                # Pending person documents
                 cur.execute(
                     """
-                    SELECT COUNT(*) as PendingDocs 
+                    SELECT COUNT(*) 
                     FROM dbo.UserDocumentVerification 
                     WHERE VerificationStatusId = 1
                     """
                 )
-                row = cur.fetchone()
+                pending_person_docs = cur.fetchone()[0] or 0
+                
+                # Pending vehicle documents
+                cur.execute(
+                    """
+                    SELECT COUNT(*) 
+                    FROM dbo.VehicleDocumentVerification 
+                    WHERE VerificationStatusId = 1
+                    """
+                )
+                pending_vehicle_docs = cur.fetchone()[0] or 0
+                
+                # Pending service enrollments
+                cur.execute(
+                    """
+                    SELECT COUNT(*) 
+                    FROM dbo.ServiceEnrollment 
+                    WHERE VerificationStatusId = 1
+                    """
+                )
+                pending_enrollments = cur.fetchone()[0] or 0
+                
+                # Pending GDPR requests
+                cur.execute(
+                    """
+                    SELECT COUNT(*) 
+                    FROM dbo.Gdpr_DataCorrectionRequest 
+                    WHERE RequestStatus IN ('Pending', 'UnderReview')
+                    """
+                )
+                pending_gdpr = cur.fetchone()[0] or 0
+                
+                # Active rides (ongoing rides)
+                cur.execute(
+                    """
+                    SELECT COUNT(*) 
+                    FROM dbo.Ride 
+                    WHERE RideStatusId = 2
+                    """
+                )
+                active_rides = cur.fetchone()[0] or 0
+                
+                # Recent activity (last 10 verification actions)
+                cur.execute(
+                    """
+                    SELECT TOP 10 
+                        'Document ' + 
+                        CASE 
+                            WHEN vs.VerificationStatusName = 'Approved' THEN 'Approved'
+                            WHEN vs.VerificationStatusName = 'Rejected' THEN 'Rejected'
+                            ELSE 'Updated'
+                        END as ActionType,
+                        COALESCE(p.FirstName + ' ' + p.LastName, 'Unknown User') as UserName,
+                        DATEDIFF(MINUTE, COALESCE(udv.ReviewedAt, udv.UploadedAt), GETDATE()) as MinutesAgo
+                    FROM dbo.UserDocumentVerification udv
+                    INNER JOIN dbo.VerificationStatus vs ON udv.VerificationStatusId = vs.VerificationStatusId
+                    LEFT JOIN dbo.Person p ON udv.PersonId = p.PersonId
+                    WHERE udv.ReviewedAt IS NOT NULL
+                    ORDER BY udv.ReviewedAt DESC
+                    """
+                )
+                activities = []
+                for row in cur.fetchall():
+                    action_type, user_name, minutes_ago = row
+                    if minutes_ago < 60:
+                        time_str = f"{minutes_ago}m ago"
+                    elif minutes_ago < 1440:
+                        time_str = f"{minutes_ago // 60}h ago"
+                    else:
+                        time_str = f"{minutes_ago // 1440}d ago"
+                    activities.append({
+                        "type": action_type,
+                        "user": user_name,
+                        "time": time_str
+                    })
+                
                 return jsonify(
                     {
-                        "pendingDocuments": row[0] if row else 0,
+                        "pendingPersonDocuments": pending_person_docs,
+                        "pendingVehicleDocuments": pending_vehicle_docs,
+                        "pendingEnrollments": pending_enrollments,
+                        "pendingGdpr": pending_gdpr,
+                        "activeRides": active_rides,
+                        "recentActivity": activities,
                         "operatorId": session["user_id"],
                     }
                 ), 200
     except Exception as e:
+        print("Error in dashboard:", e)
         return jsonify({"error": str(e)}), 500
     
 @operator_bp.route("/pending-vehicle-documents", methods=["GET"])
@@ -573,9 +655,7 @@ def get_gdpr_requests():
                     cur.execute(
                         """
                         EXEC dbo.usp_Gdpr_GetPendingRequests
-                            @TypeFilter = ?
-                        """,
-                        (type_filter,),
+                        """
                     )
                 else:
                     cur.execute("EXEC dbo.usp_Gdpr_GetPendingRequests")

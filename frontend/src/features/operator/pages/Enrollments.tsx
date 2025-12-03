@@ -115,14 +115,14 @@ export default function Enrollments() {
   const filtered = rows.filter((e) => e.status === tab);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="mb-2 text-2xl font-semibold text-neutral-50">
+          <h1 className="mb-2 text-2xl font-semibold text-gray-900">
             Service Enrollments
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Review and manage driver enrollments to ride services.
           </p>
         </div>
@@ -131,22 +131,22 @@ export default function Enrollments() {
           value={tab}
           onValueChange={(val: any) => setTab(val)}
         >
-          <TabsList className="inline-flex rounded-full border border-neutral-800 bg-neutral-900/80 p-1">
+          <TabsList className="inline-flex rounded-lg border border-gray-200 bg-white/80 p-1">
             <TabsTrigger
               value="pending"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 transition-colors data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 transition-colors data-[state=active]:bg-black data-[state=active]:text-white"
             >
               Pending
             </TabsTrigger>
             <TabsTrigger
               value="approved"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 transition-colors data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 transition-colors data-[state=active]:bg-black data-[state=active]:text-white"
             >
               Approved
             </TabsTrigger>
             <TabsTrigger
               value="rejected"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 transition-colors data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 transition-colors data-[state=active]:bg-black data-[state=active]:text-white"
             >
               Rejected
             </TabsTrigger>
@@ -154,7 +154,7 @@ export default function Enrollments() {
 
           <TabsContent value="pending" className="mt-4">
             {loading ? (
-              <div className="rounded-xl border border-neutral-800/70 bg-neutral-950/50 px-4 py-6 text-sm text-neutral-400">
+              <div className="rounded-xl border border-gray-200/70 bg-white/50 px-4 py-6 text-sm text-gray-600">
                 Loading pending enrollments…
               </div>
             ) : (
@@ -168,7 +168,7 @@ export default function Enrollments() {
 
           <TabsContent value="approved" className="mt-4">
             {loading ? (
-              <div className="rounded-xl border border-neutral-800/70 bg-neutral-950/50 px-4 py-6 text-sm text-neutral-400">
+              <div className="rounded-xl border border-gray-200/70 bg-white/50 px-4 py-6 text-sm text-gray-600">
                 Loading approved enrollments…
               </div>
             ) : (
@@ -178,7 +178,7 @@ export default function Enrollments() {
 
           <TabsContent value="rejected" className="mt-4">
             {loading ? (
-              <div className="rounded-xl border border-neutral-800/70 bg-neutral-950/50 px-4 py-6 text-sm text-neutral-400">
+              <div className="rounded-xl border border-gray-200/70 bg-white/50 px-4 py-6 text-sm text-gray-600">
                 Loading rejected enrollments…
               </div>
             ) : (
@@ -190,7 +190,7 @@ export default function Enrollments() {
 
       {/* REVIEW MODAL */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl">
+        <DialogContent className="max-w-lg rounded-lg border border-gray-200 bg-white text-gray-900 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               Review Enrollment
@@ -199,34 +199,34 @@ export default function Enrollments() {
 
           <div className="space-y-2 text-sm">
             <div>
-              <span className="font-medium text-neutral-300">
+              <span className="font-medium text-gray-700">
                 Driver:
               </span>{" "}
-              <span className="text-neutral-100">
+              <span className="text-gray-900">
                 {selected?.driver}
               </span>
             </div>
             <div>
-              <span className="font-medium text-neutral-300">
+              <span className="font-medium text-gray-700">
                 Vehicle:
               </span>{" "}
-              <span className="text-neutral-100">
+              <span className="text-gray-900">
                 {selected?.vehicle}
               </span>
             </div>
             <div>
-              <span className="font-medium text-neutral-300">
+              <span className="font-medium text-gray-700">
                 Service Type:
               </span>{" "}
-              <span className="text-neutral-100">
+              <span className="text-gray-900">
                 {selected?.serviceType}
               </span>
             </div>
             <div>
-              <span className="font-medium text-neutral-300">
+              <span className="font-medium text-gray-700">
                 Ride Type:
               </span>{" "}
-              <span className="text-neutral-100">
+              <span className="text-gray-900">
                 {selected?.rideType}
               </span>
             </div>
@@ -235,7 +235,7 @@ export default function Enrollments() {
           <div className="mt-4 space-y-1">
             <Label
               htmlFor="enrollment-comment"
-              className="text-sm font-medium text-neutral-200"
+              className="text-sm font-medium text-gray-800"
             >
               Comment (optional)
             </Label>
@@ -245,7 +245,7 @@ export default function Enrollments() {
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add a note explaining your decision…"
               rows={3}
-              className="border-neutral-700 bg-neutral-950 text-sm text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
 
@@ -259,7 +259,7 @@ export default function Enrollments() {
             </Button>
             <Button
               onClick={() => handleAction("approve")}
-              className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+              className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
             >
               Approve
             </Button>

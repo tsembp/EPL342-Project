@@ -75,7 +75,7 @@ function statusBadge(status: TestStatus) {
       return (
         <Badge
           variant="outline"
-          className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+          className="border-gray-500/40 bg-gray-500/10 text-gray-300"
         >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Valid
@@ -529,12 +529,12 @@ export function InspectorDashboard() {
                   <p className="text-xs uppercase tracking-wide text-neutral-400">
                     Valid
                   </p>
-                  <p className="mt-1 text-2xl font-semibold text-emerald-300">
+                  <p className="mt-1 text-2xl font-semibold text-gray-300">
                     {stats.valid.toString()}
                   </p>
                 </div>
-                <div className="rounded-xl bg-emerald-500/10 p-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                <div className="rounded-xl bg-gray-500/10 p-2">
+                  <CheckCircle2 className="h-5 w-5 text-gray-300" />
                 </div>
               </div>
             </Card>

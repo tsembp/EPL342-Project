@@ -19,14 +19,11 @@ import { LogOut } from "lucide-react";
 
 const operatorSections = [
   { label: "Overview", path: "/operator/overview" },
-  { label: "Users & Drivers", path: "/operator/users" },
   { label: "Vehicles", path: "/operator/vehicles" },
   { label: "Service Types & Profiles", path: "/operator/services" },
   { label: "Enrollments", path: "/operator/enrollments" },
   { label: "Documents", path: "/operator/documents" },
-  { label: "Rides & Operations", path: "/operator/rides" },
   { label: "Reports & Analytics", path: "/operator/reports" },
-  { label: "System & Audit Logs", path: "/operator/logs" },
   { label: "GDPR Data Correction", path: "/operator/gdpr-data-correction" },
 ];
 
@@ -37,8 +34,8 @@ export default function OperatorDashboard() {
 
   if (userRole !== "operator") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-950 text-neutral-50">
-        <Card className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-8 text-center text-lg font-semibold shadow-lg">
+      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900">
+        <Card className="border border-gray-200 bg-white p-8 text-center text-lg font-semibold shadow-sm">
           Access denied: Operator role required.
         </Card>
       </div>
@@ -55,94 +52,75 @@ export default function OperatorDashboard() {
   };
   
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-neutral-950 text-neutral-50">
-        {/* SIDEBAR */}
-        <Sidebar
-          collapsible="icon"
-          variant="floating"
-          className="hidden md:block"
-        >
-          <SidebarHeader>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">
-                Operator Console
-              </span>
-              <span className="text-sm font-semibold text-neutral-50">
-                One-Stop Ride-Hail
-              </span>
-            </div>
-          </SidebarHeader>
-
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-              <SidebarMenu>
-                {operatorSections.map((section) => {
-                  const active = location.pathname.startsWith(section.path);
-                  return (
-                    <SidebarMenuItem key={section.path}>
-                      <SidebarMenuButton
-                        isActive={active}
-                        onClick={() => navigate(section.path)}
-                        className="justify-start text-sm font-medium"
-                      >
-                        <span className="truncate">{section.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          </SidebarContent>
-
-          {/* FOOTER WITH LOGOUT */}
-          <SidebarFooter>
-            <button
-              onClick={handleLogout}
-              className="
-                flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm 
-                font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 
-                transition-colors group-data-[collapsible=icon]:justify-center
-              "
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="truncate group-data-[collapsible=icon]:hidden">
-                Logout
-              </span>
-            </button>
-          </SidebarFooter>
-        </Sidebar>
-
-        {/* MAIN AREA */}
-        <SidebarInset className="flex flex-col">
-          {/* Top app bar */}
-          <header className="flex items-center justify-between border-b border-neutral-900/70 px-4 py-3 md:px-6">
-            <div className="flex items-center gap-3">
-              {/* Mobile trigger */}
-              <div className="md:hidden">
-                <SidebarTrigger />
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[0.7rem] uppercase tracking-[0.18em] text-neutral-500">
-                  Operator Console
-                </span>
-                <h1 className="text-base font-semibold text-neutral-50 md:text-lg">
-                  {currentSection.label}
-                </h1>
-              </div>
-            </div>
-
-            {/* Removed Role badge */}
-            <div></div>
-          </header>
-
-          {/* Page content */}
-          <div className="flex-1 px-4 py-4 md:px-6 md:py-6">
-            <Outlet />
+    <div className="flex min-h-screen bg-white">
+      {/* SIDEBAR */}
+      <aside className="hidden md:flex w-64 flex-col border-r border-gray-200 bg-white">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Operator Console
+            </span>
+            <span className="text-sm font-semibold text-gray-900">
+              One-Stop Ride-Hail
+            </span>
           </div>
-        </SidebarInset>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-gray-500 px-3 mb-2">Navigation</p>
+            {operatorSections.map((section) => {
+              const active = location.pathname.startsWith(section.path);
+              return (
+                <button
+                  key={section.path}
+                  onClick={() => navigate(section.path)}
+                  className={`
+                    w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                    ${active 
+                      ? 'bg-black text-white' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* FOOTER WITH LOGOUT */}
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN AREA */}
+      <div className="flex-1 flex flex-col bg-gray-50">
+        {/* Top app bar */}
+        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Operator Console
+            </span>
+            <h1 className="text-lg font-semibold text-gray-900">
+              {currentSection.label}
+            </h1>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <Outlet />
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }

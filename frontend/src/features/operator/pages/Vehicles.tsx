@@ -96,35 +96,35 @@ export default function Vehicles() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             Vehicles &amp; Fleet
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Monitor vehicle verification status, document health, and service enrollments.
           </p>
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+          <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
             <TabsTrigger
               value="all"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               All Vehicles
             </TabsTrigger>
             <TabsTrigger
               value="pending"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               Pending Verification
             </TabsTrigger>
             <TabsTrigger
               value="risk"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               At Risk / Expiring
             </TabsTrigger>
@@ -136,12 +136,12 @@ export default function Vehicles() {
                 placeholder="Search by owner or plate…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="max-w-xs border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+                className="max-w-xs border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
               />
             </div>
 
             {isLoading ? (
-              <div className="flex items-center justify-center py-10 text-neutral-400 text-sm gap-2">
+              <div className="flex items-center justify-center py-10 text-gray-600 text-sm gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Loading vehicles…</span>
               </div>

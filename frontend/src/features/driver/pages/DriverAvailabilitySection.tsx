@@ -196,23 +196,23 @@ export function DriverAvailabilitySection() {
   const controlsDisabled = saving || loading || locked;
 
   return (
-    <Card className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5">
+    <Card className="border border-gray-200 bg-white p-4 sm:p-5">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900">
-            <CalendarClock className="h-4 w-4 text-emerald-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100">
+            <CalendarClock className="h-4 w-4 text-black" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-neutral-50">
+            <h2 className="text-sm font-semibold text-gray-900">
               Today&apos;s availability
             </h2>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-gray-600">
               {locked
                 ? "Today's availability is confirmed and cannot be changed."
                 : "Set whether you can receive ride offers today, for which service, and in which hours."}
             </p>
-            <p className="mt-1 text-[11px] text-neutral-500">
+            <p className="mt-1 text-[11px] text-gray-500">
               Today: <span className="font-mono">{today}</span>
             </p>
           </div>
@@ -220,7 +220,8 @@ export function DriverAvailabilitySection() {
 
         <Button
           size="sm"
-          className="rounded-xl bg-neutral-900 text-neutral-200 border border-neutral-800 hover:bg-neutral-800 text-xs"
+          variant="outline"
+          className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 text-xs"
           onClick={loadAvailability}
           disabled={loading || saving}
           type="button"
@@ -237,9 +238,9 @@ export function DriverAvailabilitySection() {
       </div>
 
       {locked && (
-        <div className="mb-3 flex items-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-900/20 px-3 py-2">
-          <Lock className="h-3 w-3 text-emerald-400" />
-          <p className="text-[11px] text-emerald-200">
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+          <Lock className="h-3 w-3 text-gray-700" />
+          <p className="text-[11px] text-gray-700">
             Today&apos;s availability is{" "}
             <span className="font-semibold">confirmed</span>. You can&apos;t
             edit it anymore.
@@ -247,7 +248,7 @@ export function DriverAvailabilitySection() {
         </div>
       )}
 
-      {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
+      {error && <p className="mb-3 text-xs text-red-600">{error}</p>}
 
       {/* Toggle */}
       <div className="mb-4 flex items-center gap-3">
@@ -257,10 +258,10 @@ export function DriverAvailabilitySection() {
           disabled={controlsDisabled}
         />
         <div>
-          <p className="text-sm font-medium text-neutral-50">
+          <p className="text-sm font-medium text-gray-900">
             {enabled ? "Available today" : "Not available today"}
           </p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-gray-600">
             When disabled, you won&apos;t receive offers today.
           </p>
         </div>
@@ -268,18 +269,18 @@ export function DriverAvailabilitySection() {
 
       {/* Enrollment selector (Approved only) */}
       <div className="mb-4">
-        <p className="mb-1 text-xs font-medium text-neutral-300">
+        <p className="mb-1 text-xs font-medium text-gray-700">
           Service for this day
         </p>
 
         {approvedEnrollments.length === 0 ? (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-gray-500">
             You have no approved service enrollments yet. Once your documents
             are approved, you&apos;ll be able to set availability.
           </p>
         ) : (
           <select
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 hover:border-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
             value={selectedEnrollId ?? ""}
             onChange={(e) =>
               setSelectedEnrollId(
@@ -300,11 +301,11 @@ export function DriverAvailabilitySection() {
 
       {/* Pending enrollments with cancel option */}
       {pendingEnrollments.length > 0 && (
-        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3">
-          <p className="mb-2 text-xs font-medium text-neutral-300">
+        <div className="mb-4 rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="mb-2 text-xs font-medium text-gray-900">
             Pending enrollments
           </p>
-          <p className="mb-2 text-[11px] text-neutral-500">
+          <p className="mb-2 text-[11px] text-gray-600">
             You can cancel pending enrollments. Once an enrollment is reviewed
             (approved or rejected), it can&apos;t be cancelled.
           </p>
@@ -312,20 +313,20 @@ export function DriverAvailabilitySection() {
             {pendingEnrollments.map((en) => (
               <div
                 key={en.EnrollId}
-                className="flex items-center justify-between gap-2 rounded-md bg-neutral-900/70 px-2 py-1.5"
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
               >
                 <div className="flex flex-col">
-                  <span className="text-xs text-neutral-100">
+                  <span className="text-xs text-gray-900">
                     {en.VehiclePlate} – {en.ServiceTypeName} ({en.RideTypeName})
                   </span>
-                  <span className="text-[10px] text-amber-400">
+                  <span className="text-[10px] text-gray-600">
                     Status: {en.Status}
                   </span>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-red-500/60 text-[11px] text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                  className="border-red-300 text-[11px] text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400"
                   type="button"
                   disabled={loading || saving || locked}
                   onClick={() => handleCancelEnrollment(en.EnrollId)}
@@ -341,20 +342,20 @@ export function DriverAvailabilitySection() {
       {/* Time range */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-neutral-300">From</p>
+          <p className="text-xs font-medium text-gray-700">From</p>
           <Input
             type="time"
-            className="h-9 bg-neutral-900 border-neutral-700 text-xs text-neutral-100"
+            className="h-9 bg-white border-gray-300 text-sm text-gray-900"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
             disabled={controlsDisabled || !enabled}
           />
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-neutral-300">To</p>
+          <p className="text-xs font-medium text-gray-700">To</p>
           <Input
             type="time"
-            className="h-9 bg-neutral-900 border-neutral-700 text-xs text-neutral-100"
+            className="h-9 bg-white border-gray-300 text-sm text-gray-900"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
             disabled={controlsDisabled || !enabled}
@@ -366,15 +367,8 @@ export function DriverAvailabilitySection() {
       <div className="mt-4 flex justify-end gap-3">
         <Button
           size="sm"
-          className="
-            rounded-xl
-            bg-neutral-900 
-            border border-neutral-700
-            text-neutral-300
-            hover:bg-neutral-800
-            hover:text-neutral-200
-            text-xs
-          "
+          variant="outline"
+          className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 text-xs"
           type="button"
           disabled={controlsDisabled}
           onClick={() => {
@@ -389,7 +383,7 @@ export function DriverAvailabilitySection() {
 
         <Button
           size="sm"
-          className="rounded-xl bg-emerald-500 text-neutral-950 hover:bg-emerald-400 text-xs font-semibold"
+          className="bg-black text-white hover:bg-gray-800 text-xs font-semibold"
           type="button"
           onClick={handleConfirm}
           disabled={controlsDisabled}

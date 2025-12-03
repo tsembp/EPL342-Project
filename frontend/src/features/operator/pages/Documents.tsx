@@ -165,29 +165,29 @@ export default function Documents() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             Documents
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Review and manage pending document submissions
           </p>
         </div>
 
         <div className="flex flex-wrap gap-4 items-center">
           <Tabs value={docTab} onValueChange={(v) => setDocTab(v as DocTab)}>
-            <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+            <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
               <TabsTrigger
                 value="person"
-                className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
               >
                 Person Documents
               </TabsTrigger>
               <TabsTrigger
                 value="vehicle"
-                className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
               >
                 Vehicle Documents
               </TabsTrigger>
@@ -198,22 +198,22 @@ export default function Documents() {
             value={statusTab}
             onValueChange={(v) => setStatusTab(v as StatusTab)}
           >
-            <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+            <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
               <TabsTrigger
                 value="pending"
-                className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
               >
                 Pending
               </TabsTrigger>
               <TabsTrigger
                 value="approved"
-                className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
               >
                 Approved
               </TabsTrigger>
               <TabsTrigger
                 value="rejected"
-                className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+                className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
               >
                 Rejected
               </TabsTrigger>
@@ -221,7 +221,7 @@ export default function Documents() {
           </Tabs>
         </div>
 
-        <Card className="w-full rounded-2xl border border-neutral-800 bg-neutral-900/80 shadow-lg p-0">
+        <Card className="w-full rounded-lg border border-gray-200 bg-white/80 shadow-sm p-0">
           <DocumentsTable
             data={filtered}
             onReview={statusTab === "pending" ? handleReview : undefined}
@@ -230,7 +230,7 @@ export default function Documents() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl rounded-2xl">
+        <DialogContent className="max-w-lg border border-gray-200 bg-white text-gray-900 shadow-2xl rounded-lg">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               Review Document
@@ -238,27 +238,27 @@ export default function Documents() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm">
-              <span className="text-neutral-400">User:</span>{" "}
-              <span className="text-neutral-100 font-medium">
+              <span className="text-gray-600">User:</span>{" "}
+              <span className="text-gray-900 font-medium">
                 {selected?.user}
               </span>
             </div>
             <div className="text-sm">
-              <span className="text-neutral-400">Type:</span>{" "}
-              <span className="text-neutral-100 font-medium">
+              <span className="text-gray-600">Type:</span>{" "}
+              <span className="text-gray-900 font-medium">
                 {selected?.type}
               </span>
             </div>
             <div className="text-sm">
-              <span className="text-neutral-400">Submitted At:</span>{" "}
-              <span className="text-neutral-100 font-medium">
+              <span className="text-gray-600">Submitted At:</span>{" "}
+              <span className="text-gray-900 font-medium">
                 {selected?.submittedAt}
               </span>
             </div>
             <div className="space-y-1.5">
               <Label
                 htmlFor="review-comment"
-                className="text-neutral-200"
+                className="text-gray-800"
               >
                 Review Comment (optional)
               </Label>
@@ -267,7 +267,7 @@ export default function Documents() {
                 placeholder="Add review comment..."
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40 min-h-24"
+                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40 min-h-24"
               />
             </div>
           </div>
@@ -275,13 +275,13 @@ export default function Documents() {
             <Button
               variant="outline"
               onClick={() => handleAction("reject")}
-              className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 rounded-lg"
+              className="border-gray-300 bg-white text-gray-800 hover:bg-gray-100 rounded-lg"
             >
               Reject
             </Button>
             <Button
               onClick={() => handleAction("approve")}
-              className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2"
+              className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2"
             >
               Approve
             </Button>

@@ -349,7 +349,7 @@ export default function DriverDocuments() {
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-neutral-800 bg-neutral-900 shadow-lg">
-            <Car className="h-8 w-8 text-emerald-500" />
+            <Car className="h-8 w-8 text-gray-500" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">
             Driver &amp; Company Documents
@@ -366,7 +366,7 @@ export default function DriverDocuments() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                  <FileText className="h-4 w-4 text-emerald-500" />
+                  <FileText className="h-4 w-4 text-gray-500" />
                   Driver Profile Photo
                 </CardTitle>
                 <CardDescription className="text-xs text-neutral-500">
@@ -379,7 +379,7 @@ export default function DriverDocuments() {
                   text-xs font-medium px-2 py-1 rounded-full border
                   ${
                     photoStatus === "Submitted"
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
+                      ? "bg-gray-500/10 text-gray-400 border-gray-500/40"
                       : "bg-neutral-900 text-neutral-400 border-neutral-700"
                   }
                 `}
@@ -404,7 +404,7 @@ export default function DriverDocuments() {
                   onChange={(e) =>
                     setPhotoFile(e.target.files?.[0] ?? null)
                   }
-                  className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                  className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                 />
                 {photoFile && (
                   <div className="flex items-center gap-1 text-xs text-neutral-400">
@@ -465,14 +465,14 @@ export default function DriverDocuments() {
                   className={
                     isPending
                       ? "border bg-neutral-900/80 shadow-xl backdrop-blur border-amber-500/40"
-                      : "border bg-neutral-900/80 shadow-xl backdrop-blur border-emerald-500/40"
+                      : "border bg-neutral-900/80 shadow-xl backdrop-blur border-gray-500/40"
                   }
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col gap-1">
                         <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                          <FileText className="h-4 w-4 text-emerald-500" />
+                          <FileText className="h-4 w-4 text-gray-500" />
                           {doc.label}
                         </CardTitle>
                         {doc.optional && (
@@ -486,7 +486,7 @@ export default function DriverDocuments() {
                         className={
                           isPending
                             ? "text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40"
-                            : "text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/40"
+                            : "text-xs font-medium px-2 py-1 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/40"
                         }
                       >
                         {badgeText}
@@ -529,7 +529,7 @@ export default function DriverDocuments() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col gap-1">
                       <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                        <FileText className="h-4 w-4 text-emerald-500" />
+                        <FileText className="h-4 w-4 text-gray-500" />
                         {doc.label}
                       </CardTitle>
                       {doc.optional && (
@@ -606,7 +606,7 @@ export default function DriverDocuments() {
                             e.target.value
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                       />
                     </div>
 
@@ -628,7 +628,7 @@ export default function DriverDocuments() {
                             e.target.value
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                       />
                     </div>
 
@@ -651,7 +651,7 @@ export default function DriverDocuments() {
                               e.target.value
                             )
                           }
-                          className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                          className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                         />
                       </div>
                     )}
@@ -676,7 +676,7 @@ export default function DriverDocuments() {
                             e.target.files?.[0] || null
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                       />
                       {data.file && !isLoading && (
                         <div className="flex items-center gap-1 text-xs text-neutral-400">
