@@ -26,16 +26,29 @@ CN_STR = (
 # ==============================
 # SEEDER CONFIG – ALL COUNTS HERE
 # ==============================
+# NUM_ADMINS = 1
+# NUM_OPERATORS = 3
+
+# NUM_PASSENGERS = 300
+# NUM_DRIVERS = 80
+# NUM_COMPANY_REPS = 60
+
+# NUM_INSPECTORS = 3
+# NUM_VEHICLES = 150
+# NUM_RIDE_REQUESTS = 10000
+
+# BATCH_SIZE = 200
+
 NUM_ADMINS = 1
 NUM_OPERATORS = 3
 
-NUM_PASSENGERS = 200
-NUM_DRIVERS = 60
-NUM_COMPANY_REPS = 60
+NUM_PASSENGERS = 100
+NUM_DRIVERS = 30
+NUM_COMPANY_REPS = 20
 
 NUM_INSPECTORS = 3
 NUM_VEHICLES = 150
-NUM_RIDE_REQUESTS = 2000
+NUM_RIDE_REQUESTS = 500
 
 BATCH_SIZE = 200
 
@@ -55,6 +68,28 @@ BRIDGES_PATH = DATA_DIR / "bridges"
 # ==============================
 # HELPER FUNCTIONS
 # ==============================
+
+def print_main_table_counts(cursor):
+    tables = [
+        "RideRequest",
+        "RideRequestLog",
+        "RideRequestProgress",
+        "ItineraryLeg",
+        "DispatchOffer",
+        "Ride",
+        "DriverAvailability",
+    ]
+
+    print("\n=== MAIN TABLE ROW COUNTS ===")
+    total = 0
+    for t in tables:
+        cursor.execute(f"SELECT COUNT(*) FROM [dbo].[{t}]")
+        count = cursor.fetchone()[0]
+        total += count
+        print(f"{t:25} -> {count:6d}")
+    print(f"TOTAL       -> {total:6d}")
+    print("================================\n")
+
 
 def random_past_date(min_years_ago=18, max_years_ago=60):
     today = date.today()
@@ -109,6 +144,93 @@ def get_zone_graph(cursor):
         graph.setdefault(b, set()).add(a)
     return graph
 
+
+def normalize_timeline_states(cursor):
+    print("\nNormalizing past vs future statuses based on today's date...")
+
+    # ------------------------------
+    # 1) RideRequest: past → Completed
+    # ------------------------------
+    cursor.execute(
+        """
+        UPDATE RR
+        SET
+            RR.Status   = 'Completed',
+            RR.UpdatedAt = GETUTCDATE()
+        FROM dbo.RideRequest AS RR
+        WHERE
+            CAST(RR.PickupAt AS DATE) < CAST(GETUTCDATE() AS DATE)
+            AND RR.Status IN ('Pending', 'Accepted')
+        """
+    )
+    print(f"  ✔ RideRequest past→Completed (rows: {cursor.rowcount})")
+
+    # (Optional) if you want to force future completed requests back to Pending:
+    cursor.execute(
+        """
+        UPDATE RR
+        SET
+            RR.Status   = 'Pending',
+            RR.UpdatedAt = GETUTCDATE()
+        FROM dbo.RideRequest AS RR
+        WHERE
+            CAST(RR.PickupAt AS DATE) >= CAST(GETUTCDATE() AS DATE)
+            AND RR.Status = 'Completed'
+        """
+    )
+    print(f"  ✔ RideRequest future Completed→Pending (rows: {cursor.rowcount})")
+
+    # ------------------------------
+    # 2) Ride: past → Completed, future → Scheduled
+    # ------------------------------
+    # Past rides (EndedAt before today) → Completed
+    cursor.execute(
+        """
+        UPDATE R
+        SET R.Status = 'Completed'
+        FROM dbo.Ride AS R
+        WHERE
+            R.EndedAt IS NOT NULL
+            AND CAST(R.EndedAt AS DATE) < CAST(GETUTCDATE() AS DATE)
+        """
+    )
+    print(f"  ✔ Rides past→Completed (rows: {cursor.rowcount})")
+
+    # Future rides (StartedAt from today onwards) → Scheduled
+    cursor.execute(
+        """
+        UPDATE R
+        SET R.Status = 'Scheduled'
+        FROM dbo.Ride AS R
+        WHERE
+            R.StartedAt IS NOT NULL
+            AND CAST(R.StartedAt AS DATE) >= CAST(GETUTCDATE() AS DATE)
+        """
+    )
+    print(f"  ✔ Rides future→Scheduled (rows: {cursor.rowcount})")
+
+    # ------------------------------
+    # 3) Payment: for past rides → Completed & PaidAt set
+    # ------------------------------
+    cursor.execute(
+        """
+        UPDATE P
+        SET
+            P.Status = 'Completed',
+            P.PaidAt = COALESCE(P.PaidAt, DATEADD(MINUTE, 5, R.EndedAt))
+        FROM dbo.Payment AS P
+        JOIN dbo.Ride AS R
+            ON R.Payment = P.PaymentId
+        WHERE
+            R.EndedAt IS NOT NULL
+            AND CAST(R.EndedAt AS DATE) < CAST(GETUTCDATE() AS DATE)
+        """
+    )
+    print(f"  ✔ Payments for past rides→Completed (rows: {cursor.rowcount})")
+
+    print("✔ Normalization done.\n")
+
+
 # ==============================
 # ZONES / POINTS / BRIDGES
 # ==============================
@@ -122,29 +244,6 @@ def seed_geofence_data(cursor):
     zones = pd.read_csv(ZONES_PATH)
     zone_points = pd.read_csv(ZONE_POINTS_PATH)
     bridges = pd.read_csv(BRIDGES_PATH)
-
-    # 1) CLEAR ALL DATA THAT DEPENDS ON ZONES / ZONEPOINTS
-    print("Clearing ride-related data that depends on zones/points...")
-
-    cursor.execute("DELETE FROM [dbo].[Ride]")
-    cursor.execute("DELETE FROM [dbo].[DispatchOffer]")
-    cursor.execute("DELETE FROM [dbo].[RideRequestProgress]")
-    cursor.execute("DELETE FROM [dbo].[RideRequest]")
-    cursor.execute("DELETE FROM [dbo].[DriverAvailability]")
-
-    # 2) CLEAR ZONE TABLES
-    print("Clearing zone tables (Bridge, ZonePoint, GeofenceZone)...")
-
-    cursor.execute("DELETE FROM [dbo].[Bridge]")
-    cursor.execute("DELETE FROM [dbo].[ZonePoint]")
-    cursor.execute("DELETE FROM [dbo].[GeofenceZone]")
-
-    # Reset identities so CSV IDs line up
-    cursor.execute("DBCC CHECKIDENT ('GeofenceZone', RESEED, 0)")
-    cursor.execute("DBCC CHECKIDENT ('ZonePoint', RESEED, 0)")
-    cursor.execute("DBCC CHECKIDENT ('Bridge', RESEED, 0)")
-
-    # 3) RESEED FROM CSV
 
     print("Seeding GeofenceZone...")
     count = 0
@@ -1124,7 +1223,7 @@ def seed_vehicle_tests(cursor, vehicle_ids, inspector_ids):
     print(f"✔ Seeded VehicleTest rows for {len(eligible_vehicle_ids)} verified vehicles")
 
 
-# ==============================
+# ==============================num_to_ful
 # USER SERVICE ENROLLMENTS & AVAILABILITY
 # ==============================
 
@@ -1322,7 +1421,7 @@ def seed_driver_availability(cursor):
         return
 
     base_date = date.today() - timedelta(days=20)
-    days_ahead = 35
+    days_ahead = 80
     count = 0
 
     # We will:
@@ -1589,7 +1688,7 @@ def seed_ride_requests(cursor, num_requests, passenger_ids, allowed_profiles, zo
         """, req_id)
 
     # seed ride request logs
-    num_with_edits = int(len(request_ids) * 0.5)
+    num_with_edits = int(len(request_ids) * 0.3)
     edited_request_ids = random.sample(request_ids, num_with_edits)
 
     for req_id in edited_request_ids:
@@ -2522,8 +2621,8 @@ def seed_rides_from_offers(cursor):
         print("⚠️  No ride requests have offers on all legs → no rides will be created")
         return []
 
-    # We'll mark about 40% of those as "fully fulfilled"
-    num_to_fulfill = max(1, int(len(candidate_req_ids) * 0.4))
+    # 80% of those as "fully fulfilled"
+    num_to_fulfill = max(1, int(len(candidate_req_ids) * 0.8))
     chosen_req_ids = set(random.sample(candidate_req_ids, num_to_fulfill))
 
     ride_ids = []
@@ -3296,6 +3395,9 @@ def main():
 
         seed_rides_from_offers(cursor)
         seed_payments(cursor)
+
+        normalize_timeline_states(cursor)
+
         seed_ratings(cursor)
         seed_inapp_messages(cursor)
 
@@ -3304,6 +3406,8 @@ def main():
         seed_gdpr_logs(cursor, gdpr_ids, operator_ids)
 
         seed_vehicle_tests(cursor, vehicle_ids, inspector_ids)
+
+        print_main_table_counts(cursor)
 
         # Final commit to flush any leftover < BATCH_SIZE rows
         conn.commit()

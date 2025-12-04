@@ -435,7 +435,7 @@ const filteredRideTypeIds = selected.serviceType
     switch (status) {
       case "SearchingDrivers":
       case "Pending":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/60";
+        return "bg-amber-600/20 text-amber-600 border-amber-600/70";
       case "Accepted":
         return "border-sky-500/70 text-sky-300";
       case "Completed":
@@ -1041,7 +1041,7 @@ const filteredRideTypeIds = selected.serviceType
                       )}
                         <div className="mt-4 flex items-center justify-between gap-2">
                           {/* Left: Refresh */}
-                          <Button
+                            <Button
                             variant="outline"
                             size="sm"
                             onClick={() => loadDetails(true)}
@@ -1051,15 +1051,15 @@ const filteredRideTypeIds = selected.serviceType
                               ["AllAccepted", "RidesCreated", "Completed"].includes(data?.progressStatus) ||
                               ["Accepted", "Cancelled", "Completed"].includes(data?.status)
                             }
-                            className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-gray-900"
-                          >
+                            className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-white"
+                            >
                             {refreshing && (
                               <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                             )}
                             Refresh status
-                          </Button>
+                            </Button>
 
-                          <Button
+                            <Button
                             variant="outline"
                             size="sm"
                             onClick={handleCancelRequest}
@@ -1068,13 +1068,13 @@ const filteredRideTypeIds = selected.serviceType
                               ["Cancelled", "Declined", "Accepted"].includes(data.status) ||
                               ["Failed", "Completed", "RidesCreated", "AllAccepted"].includes(data.progressStatus)
                             }
-                            className="border-red-500/70 text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-100"
-                          >
+                            className="border-red-700/60 text-xs bg-red-700/20 text-red-600 hover:bg-red-700/30 hover:text-red-700"
+                            >
                             {cancelling && (
                               <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                             )}
                             Cancel ride
-                          </Button>
+                            </Button>
                         </div>
                     </div>
                   </>
@@ -1083,12 +1083,12 @@ const filteredRideTypeIds = selected.serviceType
                 {/* Back button */}
                 <div className="mt-4 flex items-center justify-start">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-gray-900"
-                    onClick={() => navigate("/passenger/ride")}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-white"
+                  onClick={() => navigate("/passenger/ride")}
                   >
-                    &larr; Back
+                  &larr; Back
                   </Button>
                 </div>
               </div>

@@ -136,10 +136,10 @@ export default function Login() {
           <div className="text-center pt-2">
             <Button
               variant="link"
-              className="p-0 h-auto text-sm text-gray-500 hover:text-gray-700"
+              className="fixed bottom-4 left-4 p-0 h-auto text-sm text-gray-500 hover:text-gray-700"
               onClick={() => navigate("/admin/login")}
             >
-              Staff login
+              Admin login
             </Button>
           </div>
         </div>
