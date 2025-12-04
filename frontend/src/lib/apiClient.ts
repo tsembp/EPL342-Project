@@ -21,6 +21,20 @@ export async function fetchAPI<T>(
 
   // --- Handle non-2xx HTTP responses ---
   if (!res.ok) {
+    // Handle 401 Unauthorized - redirect to login (except for auth check)
+    if (res.status === 401) {
+      // Don't redirect if this is the auth check endpoint itself
+      if (!path.includes('/auth/me')) {
+        window.location.href = '/login';
+      }
+      throw new Error("Session expired. Please log in again.");
+    }
+
+    // Handle 403 Forbidden - access denied
+    if (res.status === 403) {
+      throw new Error("Access denied. You don't have permission for this action.");
+    }
+
     const text = await res.text();
     console.error("API ERROR BODY:", text);
 

@@ -11,6 +11,7 @@ interface AuthState {
   accountType: 'USER' | 'STAFF' | null;
   username: string | null;
   verificationStatus: string | null;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => Promise<void>;
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
       username: null,
       accountType: null,
       verificationStatus: null,
+      isLoading: true,
       
       login: async (email, password) => {
         try {
@@ -96,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
       },
       
       checkAuth: async () => {
+        set({ isLoading: true });
         try {
           const data = await apiCheckAuth();
           if (data.authenticated) {
@@ -107,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
               accountType: data.accountType,
               userRole: mapRoleToUserRole(data.role!),
               verificationStatus: data.verificationStatus ?? 'unknown',
+              isLoading: false,
             });
           } else {
             set({
@@ -116,6 +120,7 @@ export const useAuthStore = create<AuthState>()(
               accountType: null,
               userRole: 'passenger',
               verificationStatus: null,
+              isLoading: false,
             });
           }
         } catch (error) {
@@ -127,6 +132,7 @@ export const useAuthStore = create<AuthState>()(
             accountType: null,
             userRole: 'passenger',
             verificationStatus: null,
+            isLoading: false,
           });
         }
       },

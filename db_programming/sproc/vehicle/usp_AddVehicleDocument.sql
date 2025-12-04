@@ -22,7 +22,8 @@ BEGIN
         'VEHICLE_REGISTRATION',
         'MOT_CERTIFICATE',
         'VEHICLE_CLASSIFICATION_CERTIFICATE',
-        'VEHICLE_IMAGE'
+        'VEHICLE_IMAGE_INTERIOR',
+        'VEHICLE_IMAGE_EXTERIOR'
     )
     BEGIN
         RAISERROR('Invalid vehicle DocType.', 16, 1);
@@ -42,7 +43,7 @@ BEGIN
         RETURN;
     END;
 
-    IF @DocType = 'VEHICLE_IMAGE'
+    IF @DocType IN ('VEHICLE_IMAGE_INTERIOR', 'VEHICLE_IMAGE_EXTERIOR')
     BEGIN
         IF @DocNo IS NULL OR LTRIM(RTRIM(@DocNo)) = ''
             SET @DocNo = N'1';

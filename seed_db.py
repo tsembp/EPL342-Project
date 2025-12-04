@@ -1457,7 +1457,8 @@ def seed_vehicle_documents(
         "VEHICLE_REGISTRATION",
         "MOT_CERTIFICATE",
         "VEHICLE_CLASSIFICATION_CERTIFICATE",
-        "VEHICLE_IMAGE",
+        "VEHICLE_IMAGE_INTERIOR",
+        "VEHICLE_IMAGE_EXTERIOR",
     ]
     review_comments_options = [
         "Document verified and approved",

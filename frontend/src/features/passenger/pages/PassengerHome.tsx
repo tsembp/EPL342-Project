@@ -390,7 +390,17 @@ export default function PassengerHome() {
         return;
       }
 
-      toast.success("Route confirmed. Looking for drivers…");
+      // Check if there's a warning about missing drivers
+      if (res.warning?.legsWithoutDrivers && res.warning.legsWithoutDrivers.length > 0) {
+        const legNumbers = res.warning.legsWithoutDrivers.join(", ");
+        toast.warning(
+          `No drivers available for leg(s): ${legNumbers}. Your request is submitted but may take longer to be fulfilled.`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.success("Route confirmed. Looking for drivers…");
+      }
+      
       navigate(`/passenger/rides/${requestId}/details`);
     } catch (err: any) {
       console.error(err);
@@ -405,16 +415,16 @@ export default function PassengerHome() {
   
   const CarLoadingAnimation = () => (
     <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl p-8">
-      <div className="relative w-32 h-16">
-        <div className="absolute left-0 top-1/2 animate-car-move">
+      <div className="relative w-32 h-20 mb-2">
+        <div className="absolute bottom-2 left-0 w-full h-0.5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full" />
+        <div className="absolute left-0 top-0 animate-car-move">
           <Car className="w-16 h-16 text-black" />
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full" />
       </div>
       <div className="mt-4 text-gray-900 text-sm font-medium">
         Finding the best routes for you...
       </div>
-      <style>{`@keyframes car-move { 0% { left: 0; } 100% { left: 8rem; } } .animate-car-move { animation: car-move 2s linear infinite alternate; }`}</style>
+      <style>{`@keyframes car-move { 0% { left: 0; } 100% { left: 4rem; } } .animate-car-move { animation: car-move 2s linear infinite alternate; }`}</style>
     </div>
   );
 
