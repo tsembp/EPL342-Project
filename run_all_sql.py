@@ -30,30 +30,30 @@ def get_connection():
 
 def find_sql_files(base_dir: Path):
     sql_files = []
+    db_programming_dir = base_dir / "db_programming"
     
-    # First, process views directory if it exists
-    views_dir = base_dir / "db_programming" / "views"
+    if not db_programming_dir.exists():
+        return sql_files
+    
+    # First, process views directory if it exists (priority)
+    views_dir = db_programming_dir / "views"
     if views_dir.exists() and views_dir.is_dir():
         for f in sorted(views_dir.glob("*.sql")):
             sql_files.append(f)
     
-    # Then process all other directories (excluding views since we already did it)
-    for root, dirs, files in os.walk(base_dir):
-        dirs.sort()
-        root_path = Path(root)
-        is_root = (root_path == base_dir)
-        is_views = (root_path.name == "views")
-
-        # Skip root directory files and views directory (already processed)
-        if is_root or is_views:
+    # Then process all subdirectories inside db_programming (excluding views since we already did it)
+    for subdir in sorted(db_programming_dir.iterdir()):
+        # Only process directories, skip files directly in db_programming
+        if not subdir.is_dir():
             continue
-
-        for f in sorted(files):
-            if f.lower().endswith(".sql"):
-                if f == "availability_change.sql" or f == "DB_definition.sql" or f == "driver_photo.sql" or f == "gdpr_alter.sql" or f == "with_check_no_check.sql":
-                    # skip specific files
-                    continue
-                sql_files.append(root_path / f)
+        
+        # Skip views directory (already processed)
+        if subdir.name == "views":
+            continue
+        
+        # Get all .sql files in this subdirectory (and its subdirectories)
+        for f in sorted(subdir.rglob("*.sql")):
+            sql_files.append(f)
 
     return sql_files
 

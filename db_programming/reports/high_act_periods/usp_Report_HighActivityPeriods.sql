@@ -113,7 +113,7 @@ BEGIN
         MaxTripCount,
         -- Calculate how much higher than average (as percentage)
         CAST(ROUND(
-            ((TripCount - AvgTripCount) / NULLIF(AvgTripCount, 0)) * 100,
+            ( (TripCount - AvgTripCount) * 100.0 ) / NULLIF(AvgTripCount, 0),
             2
         ) AS DECIMAL(10,2)) AS PercentAboveAverage,
         -- Identify if this is a "high activity" period (more than 1 std dev above average)
