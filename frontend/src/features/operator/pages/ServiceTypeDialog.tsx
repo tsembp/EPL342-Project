@@ -21,8 +21,6 @@ type Props = {
     name: string;
     description: string;
     baseFare: number;
-    perKm: number;
-    perMin: number;
     active: boolean;
   }) => Promise<void>;
 };
@@ -36,8 +34,6 @@ export default function ServiceTypeDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [baseFare, setBaseFare] = useState<number>(0);
-  const [perKm, setPerKm] = useState<number>(0);
-  const [perMin, setPerMin] = useState<number>(0);
   const [active, setActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,15 +42,11 @@ export default function ServiceTypeDialog({
       setName(initial.name);
       setDescription(initial.description ?? "");
       setBaseFare(initial.baseFare ?? 0);
-      setPerKm(initial.perKm ?? 0);
-      setPerMin(initial.perMin ?? 0);
       setActive(initial.active);
     } else {
       setName("");
       setDescription("");
       setBaseFare(0);
-      setPerKm(0);
-      setPerMin(0);
       setActive(true);
     }
   }, [initial, open]);
@@ -63,9 +55,7 @@ export default function ServiceTypeDialog({
     if (
       !name.trim() ||
       !description.trim() ||
-      baseFare <= 0 ||
-      perKm < 0 ||
-      perMin < 0
+      baseFare <= 0
     ) {
       return;
     }
@@ -77,8 +67,6 @@ export default function ServiceTypeDialog({
         name,
         description,
         baseFare,
-        perKm,
-        perMin,
         active,
       });
       onOpenChange(false);
@@ -89,7 +77,7 @@ export default function ServiceTypeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-lg border border-gray-200 bg-white text-gray-900 shadow-2xl rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {initial ? "Edit Service Type" : "Add Service Type"}
@@ -98,7 +86,7 @@ export default function ServiceTypeDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="st-name" className="text-neutral-200">
+            <Label htmlFor="st-name" className="text-gray-800">
               Name
             </Label>
             <Input
@@ -106,12 +94,12 @@ export default function ServiceTypeDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Simple Passenger, Luxury Passenger..."
-              className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="st-description" className="text-neutral-200">
+            <Label htmlFor="st-description" className="text-gray-800">
               Description
             </Label>
             <Input
@@ -119,57 +107,27 @@ export default function ServiceTypeDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Short description of service type"
-              className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="st-basefare" className="text-neutral-200">
-                Base Fare
-              </Label>
-              <Input
-                id="st-basefare"
-                type="number"
-                min={0}
-                step="0.01"
-                value={baseFare}
-                onChange={(e) => setBaseFare(Number(e.target.value))}
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 focus-visible:ring-emerald-500/40"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="st-perkm" className="text-neutral-200">
-                Per Km
-              </Label>
-              <Input
-                id="st-perkm"
-                type="number"
-                min={0}
-                step="0.01"
-                value={perKm}
-                onChange={(e) => setPerKm(Number(e.target.value))}
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 focus-visible:ring-emerald-500/40"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="st-permin" className="text-neutral-200">
-                Per Min
-              </Label>
-              <Input
-                id="st-permin"
-                type="number"
-                min={0}
-                step="0.01"
-                value={perMin}
-                onChange={(e) => setPerMin(Number(e.target.value))}
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 focus-visible:ring-emerald-500/40"
-              />
-            </div>
+          <div className="space-y-1">
+            <Label htmlFor="st-basefare" className="text-gray-800">
+              Base Fare
+            </Label>
+            <Input
+              id="st-basefare"
+              type="number"
+              min={0}
+              step="0.01"
+              value={baseFare}
+              onChange={(e) => setBaseFare(Number(e.target.value))}
+              className="border-gray-300 bg-white text-gray-900 focus-visible:ring-gray-500/40"
+            />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label htmlFor="st-active" className="text-neutral-200">
+            <Label htmlFor="st-active" className="text-gray-800">
               Active
             </Label>
             <Switch
@@ -185,7 +143,7 @@ export default function ServiceTypeDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 rounded-lg px-4 py-2"
+            className="border-gray-300 bg-white text-gray-800 hover:bg-gray-100 rounded-lg px-4 py-2"
           >
             Cancel
           </Button>
@@ -195,11 +153,9 @@ export default function ServiceTypeDialog({
               submitting ||
               !name.trim() ||
               !description.trim() ||
-              baseFare <= 0 ||
-              perKm < 0 ||
-              perMin < 0
+              baseFare <= 0
             }
-            className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2"
+            className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2"
           >
             {submitting ? "Saving..." : "Save"}
           </Button>

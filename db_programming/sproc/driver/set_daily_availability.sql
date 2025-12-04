@@ -1,11 +1,12 @@
 CREATE OR ALTER PROCEDURE dbo.usp_Driver_SetDailyAvailability
 (
-    @DriverUserId UNIQUEIDENTIFIER,
-    @Date         DATE,
-    @Enabled      BIT,
-    @EnrollId     INT       = NULL,
-    @StartsAt     TIME(0)   = NULL,
-    @EndsAt       TIME(0)   = NULL
+    @DriverUserId     UNIQUEIDENTIFIER,
+    @Date             DATE,
+    @Enabled          BIT,
+    @EnrollId         INT       = NULL,
+    @StartsAt         TIME(0)   = NULL,
+    @EndsAt           TIME(0)   = NULL,
+    @GeofencezoneId   INT       = NULL
 )
 AS
 BEGIN
@@ -60,6 +61,11 @@ BEGIN
         ;THROW 50023, 'EndsAt must be later than StartsAt.', 1;
     END;
 
+    IF @GeofencezoneId IS NULL
+    BEGIN
+        ;THROW 50027, 'GeofencezoneId is required when Enabled = 1.', 1;
+    END;
+
     ----------------------------------------------------------------
     -- 3. Check enrollment belongs to driver and is Approved
     ----------------------------------------------------------------
@@ -98,17 +104,15 @@ BEGIN
       AND AvailabilityDate = @Date;
 
     ----------------------------------------------------------------
-    -- 6. Choose a Geofence zone (simple rule: first one)
+    -- 6. Validate the provided Geofence zone exists
     ----------------------------------------------------------------
-    DECLARE @GeofencezoneId INT;
-
-    SELECT TOP (1) @GeofencezoneId = G.ZoneId
-    FROM dbo.Geofencezone AS G
-    ORDER BY G.ZoneId;
-
-    IF @GeofencezoneId IS NULL
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.Geofencezone
+        WHERE ZoneId = @GeofencezoneId
+    )
     BEGIN
-        ;THROW 50026, 'No Geofencezone found. Configure at least one zone.', 1;
+        ;THROW 50026, 'Invalid GeofencezoneId. The specified zone does not exist.', 1;
     END;
 
     ----------------------------------------------------------------

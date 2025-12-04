@@ -195,20 +195,20 @@ export function DriverScheduleSection() {
 
   return (
     <>
-      <Card className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5 space-y-4">
+      <Card className="border border-gray-200 bg-white p-4 sm:p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-neutral-50">
+            <h2 className="text-base font-semibold text-gray-900">
               Upcoming rides
             </h2>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-gray-600">
               Confirmed legs assigned to you. Start and end them when appropriate.
             </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-full bg-neutral-50 px-4 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-200 disabled:opacity-60 disabled:hover:bg-neutral-50"
+            className="rounded-full bg-black px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-60"
             onClick={() => queryClient.invalidateQueries({ queryKey: ["driver", "rides"] })}
             disabled={loading}
           >
@@ -223,10 +223,10 @@ export function DriverScheduleSection() {
           </Button>
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
 
         {!hasRides && !loading && (
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-500">
             You have no scheduled or in-progress rides right now.
           </p>
         )}
@@ -239,15 +239,15 @@ export function DriverScheduleSection() {
               return (
                 <Card
                   key={ride.RideId}
-                  className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5"
+                  className="border border-gray-200 bg-gray-50 p-4 sm:p-5"
                 >
                   {/* Header row: route + status/actions */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     {/* Left: route label */}
-                    <div className="flex items-center gap-2 text-sm font-semibold text-neutral-50">
-                      <MapPin className="h-4 w-4 text-emerald-400" />
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <MapPin className="h-4 w-4 text-black" />
                       <span>{ride.FromName}</span>
-                      <ArrowRight className="h-4 w-4 text-neutral-500" />
+                      <ArrowRight className="h-4 w-4 text-gray-400" />
                       <span>{ride.ToName}</span>
                     </div>
 
@@ -255,7 +255,7 @@ export function DriverScheduleSection() {
                     <div className="flex flex-col items-end gap-2">
                       <Badge
                         variant="outline"
-                        className="border-neutral-700 bg-neutral-900/70 text-[11px] font-normal text-neutral-200"
+                        className="border-gray-300 bg-white text-[11px] font-normal text-gray-700"
                       >
                         {ride.Status}
                       </Badge>
@@ -266,7 +266,7 @@ export function DriverScheduleSection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="rounded-full border-neutral-700 bg-neutral-950 px-3 text-xs font-semibold text-neutral-200 hover:bg-neutral-800"
+                          className="rounded-full border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-100"
                           onClick={() => setMapRide(ride)}
                         >
                           <Eye className="mr-1 h-3 w-3" />
@@ -278,7 +278,7 @@ export function DriverScheduleSection() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="rounded-full border-emerald-500 bg-neutral-950 px-4 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/10"
+                            className="rounded-full border-black bg-white px-4 text-xs font-semibold text-gray-900 hover:bg-gray-100"
                             onClick={() =>
                               setActiveChat({
                                 rideId: ride.RideId,
@@ -293,7 +293,7 @@ export function DriverScheduleSection() {
                         {ride.Status === "Scheduled" && (
                           <Button
                             size="sm"
-                            className="rounded-full bg-emerald-500 px-5 text-xs font-semibold text-neutral-950 hover:bg-emerald-400"
+                            className="rounded-full bg-black px-5 text-xs font-semibold text-white hover:bg-gray-800"
                             onClick={() => handleStart(ride.RideId)}
                             disabled={isWorking}
                           >
@@ -312,7 +312,7 @@ export function DriverScheduleSection() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="rounded-full border-red-500/60 px-5 text-xs font-semibold text-red-300 hover:bg-red-500/10"
+                            className="rounded-full border-red-300 px-5 text-xs font-semibold text-red-600 hover:bg-red-50"
                             onClick={() => handleEnd(ride.RideId)}
                             disabled={isWorking}
                           >
@@ -331,8 +331,8 @@ export function DriverScheduleSection() {
                   </div>
 
                   {/* Inline basic details (no map here) */}
-                  <div className="mt-3 flex flex-col gap-1 text-xs text-neutral-300">
-                    <div className="flex flex-wrap gap-3 text-neutral-400">
+                  <div className="mt-3 flex flex-col gap-1 text-xs text-gray-700">
+                    <div className="flex flex-wrap gap-3 text-gray-600">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {ride.ScheduledStart
@@ -350,7 +350,7 @@ export function DriverScheduleSection() {
                       const minutes = getRideMinutesToPickup(ride);
                       if (minutes == null) return null;
                       return (
-                        <div className="text-[11px] text-emerald-400">
+                        <div className="text-[11px] text-black">
                           {minutes <= 0
                             ? "Pickup time is starting"
                             : `Pickup in ${minutes} min`}
@@ -372,21 +372,21 @@ export function DriverScheduleSection() {
           if (!open) setMapRide(null);
         }}
       >
-        <DialogContent className="w-[95vw] max-w-6xl h-[85vh] border-neutral-800 bg-neutral-950 text-neutral-50">
+        <DialogContent className="w-[95vw] max-w-6xl h-[85vh] border-gray-200 bg-white text-gray-900">
           {mapRide && (
             <>
               <DialogHeader>
                 <DialogTitle className="text-base font-semibold">
                   Route overview
                 </DialogTitle>
-                <DialogDescription className="text-xs text-neutral-400">
+                <DialogDescription className="text-xs text-gray-600">
                   {mapRide.FromName} → {mapRide.ToName}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="mt-4 grid h-[calc(85vh-5rem)] gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 {/* BIG MAP */}
-                <div className="h-full min-h-[24rem] rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
+                <div className="h-full min-h-[24rem] rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
                   <MapView
                     center={getRideMapCenter(mapRide)}
                     markers={getRideMarkers(mapRide)}
@@ -396,17 +396,17 @@ export function DriverScheduleSection() {
                 </div>
 
                 {/* Extra details */}
-                <div className="flex flex-col gap-3 overflow-y-auto text-xs text-neutral-200">
+                <div className="flex flex-col gap-3 overflow-y-auto text-xs text-gray-900">
                   <div>
-                    <p className="text-neutral-400">Pickup</p>
+                    <p className="text-gray-600">Pickup</p>
                     <p className="font-medium">{mapRide.FromName}</p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Dropoff</p>
+                    <p className="text-gray-600">Dropoff</p>
                     <p className="font-medium">{mapRide.ToName}</p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Scheduled time</p>
+                    <p className="text-gray-600">Scheduled time</p>
                     <p>
                       {mapRide.ScheduledStart
                         ? new Date(
@@ -416,14 +416,14 @@ export function DriverScheduleSection() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Passengers</p>
+                    <p className="text-gray-600">Passengers</p>
                     <p>
                       {mapRide.NumOfPeople} passenger
                       {mapRide.NumOfPeople !== 1 && "s"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-neutral-400">Pickup countdown</p>
+                    <p className="text-gray-600">Pickup countdown</p>
                     <p>
                       {(() => {
                         const minutes = getRideMinutesToPickup(mapRide);

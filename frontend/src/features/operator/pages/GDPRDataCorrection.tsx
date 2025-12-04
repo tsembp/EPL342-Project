@@ -63,7 +63,7 @@ export function GDPRDataCorrection() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-gray-600" />
       </div>
     );
   }
@@ -78,20 +78,20 @@ export function GDPRDataCorrection() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <Card className="border border-neutral-800 bg-neutral-900/80 p-4 shadow-md">
+      <Card className="border border-gray-200 bg-white/80 p-4 shadow-md">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-50">
+            <h2 className="text-lg font-semibold text-gray-900">
               GDPR Data Correction Requests
             </h2>
-            <p className="text-sm text-neutral-400">
+            <p className="text-sm text-gray-600">
               Review users&apos; data correction requests. First update their data in the
               relevant profile screens, then mark the request as completed or denied.
             </p>
           </div>
           <Badge
             variant="outline"
-            className="border-emerald-500/50 text-xs text-emerald-400"
+            className="border-gray-500/50 text-xs text-gray-400"
           >
             Pending: {requests.length}
           </Badge>
@@ -101,8 +101,8 @@ export function GDPRDataCorrection() {
       {/* Requests list */}
       <div className="space-y-2">
         {requests.length === 0 ? (
-          <Card className="border border-neutral-800 bg-neutral-900/80 p-4">
-            <p className="text-sm text-neutral-400">
+          <Card className="border border-gray-200 bg-white/80 p-4">
+            <p className="text-sm text-gray-600">
               There are no pending data correction requests.
             </p>
           </Card>
@@ -110,48 +110,48 @@ export function GDPRDataCorrection() {
           requests.map((r) => (
             <Card
               key={r.GdprId}
-              className="border border-neutral-800 bg-neutral-900/80 p-4 hover:border-emerald-500/40 transition-colors"
+              className="border border-gray-200 bg-white/80 p-4 hover:border-gray-200 transition-colors"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 {/* Left: user info + reason */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900">
-                      <User className="h-5 w-5 text-emerald-400" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white">
+                      <User className="h-5 w-5 text-gray-400" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-neutral-50">
+                        <span className="font-medium text-gray-900">
                           {r.Username}
                         </span>
                         <Badge
                           variant="outline"
-                          className="border-neutral-700 text-[11px] uppercase text-neutral-300"
+                          className="border-gray-300 text-[11px] uppercase text-gray-700"
                         >
                           {r.Type}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-neutral-400">
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
                         <Mail className="h-3 w-3" />
                         <span>{r.Email}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-sm text-neutral-300">
-                    <span className="font-medium text-neutral-200">
+                  <div className="text-sm text-gray-700">
+                    <span className="font-medium text-gray-800">
                       Requested corrections:
                     </span>{" "}
                     {r.Reason && r.Reason.trim().length > 0 ? (
                       r.Reason
                     ) : (
-                      <span className="italic text-neutral-500">
+                      <span className="italic text-gray-9000">
                         (no details provided)
                       </span>
                     )}
                   </div>
 
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-gray-9000">
                     Requested at: {new Date(r.RequestedAt).toLocaleString()}
                   </div>
                 </div>
@@ -160,7 +160,7 @@ export function GDPRDataCorrection() {
                 <div className="flex flex-col items-end gap-2">
                   <Badge
                     variant="outline"
-                    className="border-neutral-700 bg-neutral-900 text-xs text-neutral-300"
+                    className="border-gray-300 bg-white text-xs text-gray-700"
                   >
                     {r.Status}
                   </Badge>
@@ -169,15 +169,15 @@ export function GDPRDataCorrection() {
                     <Button
                         size="sm"
                         className="
-                            bg-emerald-600/20 
-                            text-emerald-300 
-                            hover:bg-emerald-600/30 
-                            border border-emerald-700/40
+                            bg-gray-600/20 
+                            text-gray-900 
+                            hover:bg-gray-600/30 
+                            border border-gray-700/40
                             backdrop-blur-sm
                         "
                         onClick={() => openDialog(r.GdprId, "Completed")}
                         >
-                        <CheckCircle2 className="mr-1 h-4 w-4 text-emerald-300" />
+                        <CheckCircle2 className="mr-1 h-4 w-4 text-gray-900" />
                         Mark completed
                         </Button>
 
@@ -212,9 +212,9 @@ export function GDPRDataCorrection() {
           setNote("");
         }}
       >
-        <DialogContent className="border border-neutral-800 bg-neutral-900">
+        <DialogContent className="border border-gray-200 bg-white">
           <DialogHeader>
-            <DialogTitle className="text-neutral-50">
+            <DialogTitle className="text-gray-900">
               {action === "Completed"
                 ? "Mark request as completed"
                 : "Deny data correction request"}
@@ -222,7 +222,7 @@ export function GDPRDataCorrection() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <p className="text-sm text-neutral-300">
+            <p className="text-sm text-gray-700">
               Optionally add an internal note about what you changed in the user&apos;s
               data or why the request is denied.
             </p>
@@ -230,7 +230,7 @@ export function GDPRDataCorrection() {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Example: Updated surname and phone number in user profile..."
-              className="min-h-[100px] border-neutral-700 bg-neutral-900 text-sm text-neutral-100"
+              className="min-h-[100px] border-gray-300 bg-white text-sm text-gray-900"
             />
           </div>
 
@@ -244,11 +244,11 @@ export function GDPRDataCorrection() {
                 setNote("");
                 }}
                 className="
-                bg-neutral-800
-                text-neutral-300
-                border border-neutral-700
-                hover:bg-neutral-700 
-                hover:text-neutral-200
+                bg-gray-100
+                text-gray-700
+                border border-gray-300
+                hover:bg-gray-100 
+                hover:text-gray-800
                 backdrop-blur-sm
                 "
             >
@@ -261,17 +261,17 @@ export function GDPRDataCorrection() {
                 onClick={onConfirm}
                 disabled={mutation.isPending}
                 className="
-                bg-emerald-600/20
-                text-emerald-300
-                border border-emerald-700/40
-                hover:bg-emerald-600/30
+                bg-gray-600/20
+                text-gray-900
+                border border-gray-700/40
+                hover:bg-gray-600/30
                 disabled:opacity-50
                 backdrop-blur-sm
                 "
             >
                 {mutation.isPending ? (
                 <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-emerald-300" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-gray-900" />
                     Saving...
                 </>
                 ) : (

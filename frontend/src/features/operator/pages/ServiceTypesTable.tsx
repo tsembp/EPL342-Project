@@ -7,6 +7,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatLabel } from "@/lib/formatLabel";
 
 // ServiceTypesTable.tsx
 
@@ -15,8 +16,6 @@ export type ServiceTypeRow = {
   name: string;
   description: string;
   baseFare: number;
-  perKm: number;
-  perMin: number;
   active: boolean;
 };
 
@@ -30,23 +29,17 @@ export default function ServiceTypesTable({
   return (
     <Table>
       <TableHeader>
-        <TableRow className="border-b border-neutral-800">
-          <TableHead className="text-xs font-medium text-neutral-400">
+        <TableRow className="border-b border-gray-200">
+          <TableHead className="text-xs font-medium text-gray-600">
             Name
           </TableHead>
-          <TableHead className="text-xs font-medium text-neutral-400">
+          <TableHead className="text-xs font-medium text-gray-600">
             Description
           </TableHead>
-          <TableHead className="text-xs font-medium text-neutral-400">
+          <TableHead className="text-xs font-medium text-gray-600">
             Base Fare
           </TableHead>
-          <TableHead className="text-xs font-medium text-neutral-400">
-            Per Km
-          </TableHead>
-          <TableHead className="text-xs font-medium text-neutral-400">
-            Per Min
-          </TableHead>
-          <TableHead className="text-xs font-medium text-neutral-400">
+          <TableHead className="text-xs font-medium text-gray-600">
             Status
           </TableHead>
           <TableHead />
@@ -56,34 +49,28 @@ export default function ServiceTypesTable({
         {data.map((row) => (
           <TableRow
             key={row.id}
-            className="border-b border-neutral-900/60 last:border-b-0 hover:bg-neutral-800/60"
+            className="border-b border-gray-200/60 last:border-b-0 hover:bg-gray-100/60"
           >
-            <TableCell className="text-sm text-neutral-100">
-              {row.name}
+            <TableCell className="text-sm text-gray-900">
+              {formatLabel(row.name)}
             </TableCell>
-            <TableCell className="text-sm text-neutral-300">
+            <TableCell className="text-sm text-gray-700">
               {row.description}
             </TableCell>
-            <TableCell className="text-sm text-neutral-100">
+            <TableCell className="text-sm text-gray-900">
               {row.baseFare.toFixed(2)}
-            </TableCell>
-            <TableCell className="text-sm text-neutral-100">
-              {row.perKm.toFixed(2)}
-            </TableCell>
-            <TableCell className="text-sm text-neutral-100">
-              {row.perMin.toFixed(2)}
             </TableCell>
             <TableCell>
               <Badge
                 variant={row.active ? "default" : "secondary"}
-                className="rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                className="rounded-lg px-2.5 py-0.5 text-[11px] font-medium"
               >
                 {row.active ? "Active" : "Inactive"}
               </Badge>
             </TableCell>
             <TableCell className="text-right">
               <button
-                className="text-emerald-400 hover:text-emerald-300 text-xs font-medium"
+                className="text-gray-400 hover:text-gray-900 text-xs font-medium"
                 onClick={() => onEdit?.(row)}
               >
                 Edit

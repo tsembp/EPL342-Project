@@ -284,18 +284,18 @@ export default function VehicleDocuments() {
 
   if (isLoadingExistingDocs) {
     return (
-      <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50 flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-        <p className="mt-4 text-neutral-400">Loading vehicle documents...</p>
+      <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900 flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-black" />
+        <p className="mt-4 text-gray-600">Loading vehicle documents...</p>
       </div>
     );
   }
 
   if (existingDocsError) {
     return (
-      <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50 flex flex-col items-center justify-center">
-        <AlertCircle className="h-8 w-8 text-red-500" />
-        <p className="mt-4 text-red-400">
+      <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900 flex flex-col items-center justify-center">
+        <AlertCircle className="h-8 w-8 text-red-600" />
+        <p className="mt-4 text-red-600">
           Error loading vehicle documents:{" "}
           {existingDocsError instanceof Error
             ? existingDocsError.message
@@ -306,75 +306,76 @@ export default function VehicleDocuments() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50">
-      <Card className="mx-auto w-full max-w-3xl border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+    <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900">
+      <Card className="mx-auto w-full border border-gray-200 bg-white shadow-sm p-5 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900">
-              <FileText className="h-5 w-5 text-emerald-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
+              <FileText className="h-5 w-5 text-black" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-neutral-50 sm:text-lg">
+              <h1 className="text-base font-semibold text-gray-900 sm:text-lg">
                 Vehicle documents
               </h1>
-              <p className="mt-1 text-xs text-neutral-400 sm:text-sm">
+              <p className="mt-1 text-xs text-gray-600 sm:text-sm">
                 Upload and submit all required documents for your vehicle
                 verification.
               </p>
             </div>
           </div>
-          <Badge className="hidden border border-neutral-700 bg-neutral-900/80 text-[11px] font-normal text-neutral-300 sm:inline-flex">
+          <Badge className="hidden border border-gray-200 bg-gray-50 text-[11px] font-normal text-gray-700 sm:inline-flex">
             Driver onboarding · Documents
           </Badge>
         </div>
 
-        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-[11px] text-neutral-400 sm:text-xs">
+        <div className="mb-4 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-[11px] text-gray-700 sm:text-xs">
           <p>
             Please make sure all documents are clear and up to date. You can
             submit each document individually or all remaining at once.
           </p>
         </div>
 
-        <form onSubmit={handleSubmitAll} className="space-y-4">
-          {remainingDocuments.map((doc) => {
-            const data = documents[doc.id];
-            const isSubmittable = isDocumentSubmittable(doc.id);
-            const isLoading = data.status === "uploading";
+        <form onSubmit={handleSubmitAll} className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {remainingDocuments.map((doc) => {
+              const data = documents[doc.id];
+              const isSubmittable = isDocumentSubmittable(doc.id);
+              const isLoading = data.status === "uploading";
 
-            return (
-              <Card
-                key={doc.id}
-                className={`border bg-neutral-900/80 ${
-                  data.status === "error"
-                    ? "border-red-700/70"
-                    : "border-neutral-800"
-                }`}
-              >
-                <CardHeader className="border-b border-neutral-800 px-4 pb-3 pt-4">
+              return (
+                <Card
+                  key={doc.id}
+                  className={`border bg-white ${
+                    data.status === "error"
+                      ? "border-red-300"
+                      : "border-gray-200"
+                  }`}
+                >
+                <CardHeader className="border-b border-gray-200 px-4 pb-3 pt-4">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <CardTitle className="flex items-center gap-2 text-sm font-semibold text-neutral-50 sm:text-base">
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900 sm:text-base">
                       {doc.label}
                     </CardTitle>
                     {data.status === "success" && (
-                      <div className="flex items-center gap-1 text-xs text-emerald-400">
+                      <div className="flex items-center gap-1 text-xs text-gray-600">
                         <CheckCircle2 className="h-4 w-4" />
                         <span>Submitted</span>
                       </div>
                     )}
                     {data.status === "error" && (
-                      <div className="flex items-center gap-1 text-xs text-red-300">
+                      <div className="flex items-center gap-1 text-xs text-red-600">
                         <AlertCircle className="h-4 w-4" />
                         <span>Submission failed</span>
                       </div>
                     )}
                   </div>
-                  <CardDescription className="mt-1 text-[11px] text-neutral-400">
+                  <CardDescription className="mt-1 text-[11px] text-gray-600">
                     {doc.hasExpiry
                       ? "Include issue and expiry dates along with a clear scan or photo."
                       : "No expiry date required. Just upload a clear image or PDF."}
                   </CardDescription>
                   {data.status === "error" && data.error && (
-                    <div className="mt-2 rounded-md border border-red-700/60 bg-red-950/40 px-3 py-1.5 text-[11px] text-red-200">
+                    <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
                       Error: {data.error}
                     </div>
                   )}
@@ -386,7 +387,7 @@ export default function VehicleDocuments() {
                       <div className="space-y-1.5">
                         <Label
                           htmlFor={`${doc.id}-number`}
-                          className="text-xs font-medium text-neutral-300"
+                          className="text-xs font-medium text-gray-700"
                         >
                           Document number
                         </Label>
@@ -400,7 +401,7 @@ export default function VehicleDocuments() {
                               e.target.value
                             )
                           }
-                          className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100 placeholder:text-neutral-500"
+                          className="border-gray-300 bg-white text-xs text-gray-900 placeholder:text-gray-500"
                           placeholder="Enter document number"
                         />
                       </div>
@@ -409,7 +410,7 @@ export default function VehicleDocuments() {
                     <div className="space-y-1.5">
                       <Label
                         htmlFor={`${doc.id}-issue`}
-                        className="text-xs font-medium text-neutral-300"
+                        className="text-xs font-medium text-gray-700"
                       >
                         Issue date
                       </Label>
@@ -420,7 +421,7 @@ export default function VehicleDocuments() {
                         onChange={(e) =>
                           handleFieldChange(doc.id, "issueDate", e.target.value)
                         }
-                        className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100"
+                        className="border-gray-300 bg-white text-xs text-gray-900"
                       />
                     </div>
 
@@ -428,7 +429,7 @@ export default function VehicleDocuments() {
                       <div className="space-y-1.5">
                         <Label
                           htmlFor={`${doc.id}-expiry`}
-                          className="text-xs font-medium text-neutral-300"
+                          className="text-xs font-medium text-gray-700"
                         >
                           Expiry date
                         </Label>
@@ -443,7 +444,7 @@ export default function VehicleDocuments() {
                               e.target.value
                             )
                           }
-                          className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100"
+                          className="border-gray-300 bg-white text-xs text-gray-900"
                         />
                       </div>
                     )}
@@ -452,7 +453,7 @@ export default function VehicleDocuments() {
                   <div className="space-y-1.5">
                     <Label
                       htmlFor={`${doc.id}-file`}
-                      className="text-xs font-medium text-neutral-300"
+                      className="text-xs font-medium text-gray-700"
                     >
                       Upload document
                     </Label>
@@ -467,10 +468,10 @@ export default function VehicleDocuments() {
                             e.target.files?.[0] || null
                           )
                         }
-                        className="border-neutral-800 bg-neutral-950 text-xs text-neutral-100 file:text-xs"
+                        className="border-gray-300 bg-white text-xs text-gray-900 file:text-xs"
                       />
                       {data.file && !isLoading && (
-                        <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                        <div className="flex items-center gap-1 text-[11px] text-gray-600">
                           <FileText className="h-4 w-4" />
                           <span className="max-w-[180px] truncate">
                             {data.file.name}
@@ -483,11 +484,10 @@ export default function VehicleDocuments() {
                   <div className="pt-1">
                     <Button
                       type="button"
-                      variant="outline"
                       size="sm"
                       onClick={() => handleIndividualSubmit(doc.id)}
                       disabled={!isSubmittable || isLoading}
-                      className="border-neutral-700 bg-neutral-900 text-xs font-medium text-neutral-200 hover:bg-neutral-800"
+                      className="bg-black text-white text-xs font-medium hover:bg-gray-800"
                     >
                       {isLoading ? (
                         <>
@@ -503,11 +503,12 @@ export default function VehicleDocuments() {
               </Card>
             );
           })}
+          </div>
 
           <div className="pt-3">
             <Button
               type="submit"
-              className="flex h-11 w-full items-center justify-center rounded-lg bg-emerald-500 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-11 w-full items-center justify-center bg-black text-white text-sm font-semibold hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={remainingDocuments.some(
                 (doc) => !isDocumentSubmittable(doc.id)
               )}

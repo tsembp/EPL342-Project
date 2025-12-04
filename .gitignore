@@ -5,3 +5,5 @@ __pycache__/
 secrets/
 test.sql
 uploads/
+frontend/public/background-video.mp4
+backend/uploads/

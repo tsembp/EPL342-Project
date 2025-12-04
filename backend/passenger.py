@@ -406,30 +406,46 @@ def select_alternative(request_id: int):
     user_id = session["user_id"]
     data = request.json or {}
 
+    print(f"DEBUG select_alternative: RequestId={request_id}, UserId={user_id}")
+    print(f"DEBUG select_alternative: Request data={data}")
+
     try:
         alternative_no = data.get("alternativeNo")
         legs = data.get("legs", [])
 
+        print(f"DEBUG select_alternative: AlternativeNo={alternative_no}, Legs count={len(legs)}")
+
         if not legs:
+            print("DEBUG select_alternative: ERROR - No legs provided")
             return jsonify({"success": False, "error": "No legs provided"}), 400
 
         itinerary_json = json.dumps({"legs": legs})
+        print(f"DEBUG select_alternative: ItineraryJson={itinerary_json}")
 
         with get_connection() as conn:
             with conn.cursor() as cur:
                 # Validate user owns this request + status Pending
+                print(f"DEBUG select_alternative: Validating ownership for RequestId={request_id}, PassengerId={user_id}")
                 cur.execute("""
                     SELECT Status
                     FROM dbo.RideRequest
                     WHERE RequestId = ? AND PassengerId = ?
                 """, request_id, user_id)
                 row = cur.fetchone()
+                
                 if not row:
+                    print(f"DEBUG select_alternative: ERROR - RideRequest not found for RequestId={request_id}, UserId={user_id}")
                     return jsonify({"success": False, "error": "RideRequest not found"}), 404
-                if row[0] not in ("Pending", "Edited"):
+                
+                status = row[0]
+                print(f"DEBUG select_alternative: RideRequest status={status}")
+                
+                if status not in ("Pending", "Edited"):
+                    print(f"DEBUG select_alternative: ERROR - RideRequest not in selectable state (status={status})")
                     return jsonify({"success": False, "error": "RideRequest not in selectable state"}), 400
 
                 # Save itinerary legs in DB
+                print(f"DEBUG select_alternative: Calling usp_RideRequest_SaveItineraryFromAlternative")
                 cur.execute("""
                     EXEC dbo.usp_RideRequest_SaveItineraryFromAlternative
                         @RequestId=?,
@@ -438,16 +454,24 @@ def select_alternative(request_id: int):
 
                 # Expect sproc to return LegIds we just created
                 leg_ids = [r[0] for r in cur.fetchall()]
+                print(f"DEBUG select_alternative: Created leg IDs={leg_ids}")
 
                 # For each leg, create dispatch offers (existing sproc)
                 for leg_id in leg_ids:
-                    cur.execute("""
-                        EXEC dbo.usp_DispatchOfferCreation
-                            @ItineraryLegId=?,
-                            @SearchRadiusMeters=?
-                    """, leg_id, 5000.0)
+                    print(f"DEBUG select_alternative: Creating dispatch offers for LegId={leg_id}")
+                    try:
+                        cur.execute("""
+                            EXEC dbo.usp_DispatchOfferCreation
+                                @ItineraryLegId=?,
+                                @SearchRadiusMeters=?
+                        """, leg_id, 5000.0)
+                        print(f"DEBUG select_alternative: SUCCESS - Dispatch offers created for LegId={leg_id}")
+                    except Exception as leg_error:
+                        print(f"DEBUG select_alternative: FAILED - Error creating dispatch offers for LegId={leg_id}: {type(leg_error).__name__}: {str(leg_error)}")
+                        raise
 
                 conn.commit()
+                print(f"DEBUG select_alternative: SUCCESS - Committed transaction")
 
         return jsonify({
             "success": True,
@@ -456,6 +480,7 @@ def select_alternative(request_id: int):
         }), 200
 
     except Exception as e:
+        print(f"DEBUG select_alternative: EXCEPTION - {type(e).__name__}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 400
 
 
@@ -878,16 +903,17 @@ def pay_for_ride_request(request_id: int):
                         "error": f"RideRequest is not in Completed status (current: {request_status})"
                     }), 400
 
-                # 2) Find all completed rides for this request with no payment
+                # 2) Find all completed rides for this request with no payment or pending payment
                 cur.execute("""
                     SELECT DISTINCT r.RideId
                     FROM dbo.Ride r
                     JOIN dbo.DispatchOffer dof ON r.OfferId = dof.OfferId
                     JOIN dbo.ItineraryLeg il   ON dof.LegId = il.LegId
+                    LEFT JOIN dbo.Payment p ON r.Payment = p.PaymentId
                     WHERE il.RideRequestId = ?
                       AND r.PassengerUserId = ?
                       AND r.Status = 'Completed'
-                      AND r.Payment IS NULL
+                      AND (r.Payment IS NULL OR p.Status = 'Pending')
                     ORDER BY r.RideId
                 """, request_id, user_id)
                 ride_rows = cur.fetchall()

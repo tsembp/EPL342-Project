@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BottomNav } from "@/components/BottomNav";
 import { EmptyState } from "@/components/EmptyState";
 import { Car, Clock, MapPin, Loader2, ArrowRight } from "lucide-react";
 
@@ -100,51 +99,45 @@ export default function RideHistory() {
   function statusClasses(status: string) {
     switch (status) {
       case "Completed":
-        return "border-emerald-500/70 text-emerald-400";
+        return "border-gray-200 bg-gray-50 text-gray-900";
       case "Pending":
-        return "border-amber-400/70 text-amber-300";
+        return "border-amber-200 bg-amber-50 text-amber-700";
       case "Accepted":
       case "RidesCreated":
-        return "border-sky-500/70 text-sky-300";
+        return "border-blue-200 bg-blue-50 text-blue-700";
       case "Cancelled":
       case "Failed":
-        return "border-red-500/70 text-red-300";
+        return "border-red-200 bg-red-50 text-red-700";
       default:
-        return "border-neutral-700 text-neutral-300";
+        return "border-gray-200 bg-gray-50 text-gray-700";
     }
   }
 
   return (
-    <>
-      <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50">
-        {/* Header */}
-        <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-semibold tracking-tight">
-              OSRH | Ride history
-            </span>
-          </div>
-        </header>
+    <div className="flex h-full flex-col bg-white text-gray-900">
+      {/* Page Header */}
+      <div className="border-b border-gray-200 bg-white px-8 py-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Rides</h1>
+        <p className="text-sm text-gray-600">
+          View your previous ride requests and trips.
+        </p>
+      </div>
 
-        {/* Filter bar */}
-        <section className="border-b border-neutral-900 bg-neutral-950">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
-            <div className="flex flex-col">
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-                Filter
-              </label>
-              <span className="text-xs text-neutral-400">
-                View your previous ride requests and trips.
-              </span>
-            </div>
-            <div className="relative mt-2 w-56">
+      {/* Filter bar */}
+      <section className="border-b border-gray-200 bg-gray-50">
+        <div className="mx-auto max-w-6xl px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-900">
+              Filter by status:
+            </label>
+            <div className="relative w-56">
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
-                  setPage(1); // ✅ reset page when filter changes
+                  setPage(1);
                 }}
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-4 pr-10 py-2 text-sm text-neutral-50 appearance-none outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-white pl-4 pr-10 py-2 text-sm text-gray-900 appearance-none outline-none focus:border-black focus:ring-1 focus:ring-black"
               >
                 <option value="ALL">All statuses</option>
                 <option value="Pending">Pending</option>
@@ -154,7 +147,6 @@ export default function RideHistory() {
                 <option value="Cancelled">Cancelled</option>
                 <option value="Failed">Failed</option>
               </select>
-              {/* Down arrow */}
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
                 <svg
                   width="20"
@@ -162,11 +154,10 @@ export default function RideHistory() {
                   viewBox="0 0 20 20"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="text-emerald-500"
                 >
                   <path
                     d="M6 8L10 12L14 8"
-                    stroke="currentColor"
+                    stroke="#000"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -175,13 +166,14 @@ export default function RideHistory() {
               </span>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4 pb-24">
+      {/* Content */}
+      <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4 pb-8">
             {loading && (
-              <div className="flex items-center justify-center py-16 text-sm text-neutral-400">
+              <div className="flex items-center justify-center py-16 text-sm text-gray-600">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading ride history…
               </div>
@@ -220,19 +212,19 @@ export default function RideHistory() {
                   return (
                     <Card
                       key={item.RequestId}
-                      className="border border-neutral-800 bg-neutral-900/80 p-4 sm:p-5 transition-colors hover:border-emerald-500/70"
+                      className="border border-gray-200 bg-gray-100/80 p-4 sm:p-5 transition-colors hover:border-black/70"
                     >
                       {/* Top row: route + status */}
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <div>
-                            <div className="text-lg font-semibold text-neutral-50">
+                            <div className="text-lg font-semibold text-gray-900">
                               {(item.FromName || "Unknown") +
                                 " \u2192 " +
                                 (item.ToName || "Unknown")}
                             </div>
-                            <div className="mt-0.5 flex items-center gap-1 text-base text-neutral-400">
-                              <MapPin className="h-4 w-4 text-emerald-400" />
+                            <div className="mt-0.5 flex items-center gap-1 text-base text-gray-600">
+                              <MapPin className="h-4 w-4 text-black" />
                               <span>Pickup:</span>
                               <span>
                                 {new Date(item.PickupAt).toLocaleString()}
@@ -254,11 +246,11 @@ export default function RideHistory() {
                       </div>
 
                       {/* Middle row: summary */}
-                      <div className="mt-2 flex flex-col gap-2 text-base text-neutral-300">
+                      <div className="mt-2 flex flex-col gap-2 text-base text-gray-700">
                         {hasRides ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-neutral-400" />
+                              <Clock className="h-4 w-4 text-gray-600" />
                               <span>
                                 {item.TotalRides} ride
                                 {item.TotalRides && item.TotalRides > 1
@@ -274,20 +266,20 @@ export default function RideHistory() {
                                 ).toLocaleString()}
                               </span>
                             </div>
-                            <div className="text-neutral-400">
+                            <div className="text-gray-600">
                               Total distance:{" "}
-                              <span className="text-neutral-100">
+                              <span className="text-gray-900">
                                 {item.TotalDistanceKm ?? 0} km
                               </span>{" "}
                               · Total duration:{" "}
-                              <span className="text-neutral-100">
+                              <span className="text-gray-900">
                                 {item.TotalDurationMinutes ?? 0} min
                               </span>
                             </div>
                           </>
                         ) : (
-                          <div className="flex items-center gap-2 text-neutral-400">
-                            <Clock className="h-4 w-4 text-neutral-400" />
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Clock className="h-4 w-4 text-gray-600" />
                             <span>No rides started yet.</span>
                           </div>
                         )}
@@ -295,13 +287,13 @@ export default function RideHistory() {
 
                       {/* Actions and Price */}
                       <div className="mt-4 flex items-center justify-between">
-                        <div className="text-lg font-semibold text-emerald-400">
+                        <div className="text-lg font-semibold text-black">
                           €{formatMoney(item.TotalPrice)}
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-neutral-700 bg-neutral-900 text-base font-medium text-neutral-200 hover:bg-neutral-800"
+                          className="border-gray-300 bg-gray-100 text-base font-medium text-gray-800 hover:bg-gray-200"
                           onClick={() =>
                             navigate(
                               `/passenger/rides/${item.RequestId}/details`
@@ -317,14 +309,14 @@ export default function RideHistory() {
                 })}
 
                 {totalPages > 1 && (
-                  <div className="mt-2 flex items-center justify-between text-xs text-neutral-400">
+                  <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
                     <span>
                       Showing{" "}
-                      <span className="text-neutral-100">
+                      <span className="text-gray-900">
                         {startIndex}–{endIndex}
                       </span>{" "}
                       of{" "}
-                      <span className="text-neutral-100">
+                      <span className="text-gray-900">
                         {totalCount}
                       </span>{" "}
                       trips
@@ -333,23 +325,23 @@ export default function RideHistory() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                        className="border-gray-300 bg-gray-100 text-[11px] font-medium text-gray-800 hover:bg-gray-200"
                         disabled={page <= 1}
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                       >
                         Previous
                       </Button>
-                      <span className="text-[11px] text-neutral-400">
+                      <span className="text-[11px] text-gray-600">
                         Page{" "}
-                        <span className="text-neutral-100">{page}</span> of{" "}
-                        <span className="text-neutral-100">
+                        <span className="text-gray-900">{page}</span> of{" "}
+                        <span className="text-gray-900">
                           {totalPages}
                         </span>
                       </span>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                        className="border-gray-300 bg-gray-100 text-[11px] font-medium text-gray-800 hover:bg-gray-200"
                         disabled={page >= totalPages}
                         onClick={() =>
                           setPage((p) => Math.min(totalPages, p + 1))
@@ -364,9 +356,6 @@ export default function RideHistory() {
             )}
           </div>
         </main>
-
-        <BottomNav />
       </div>
-    </>
   );
 }

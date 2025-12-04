@@ -5,30 +5,33 @@ import { Button } from "@/components/ui/button";
 interface HeaderProps {
   title: string;
   showBack?: boolean;
+  showBackButton?: boolean;
+  backTo?: string;
   action?: React.ReactNode;
 }
 
-export function Header({ title, showBack, action }: HeaderProps) {
+export function Header({ title, showBack, showBackButton, backTo, action }: HeaderProps) {
   const navigate = useNavigate();
+  const shouldShowBack = showBack || showBackButton;
 
   return (
-    <header className="sticky top-0 z-40 bg-neutral-950/95 backdrop-blur border-b border-neutral-900 text-neutral-50">
-      <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
-        {showBack && (
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200 text-gray-900">
+      <div className="w-full px-4 h-14 flex items-center gap-3">
+        {shouldShowBack && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
-            className="h-8 w-8 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-emerald-400"
+            onClick={() => backTo ? navigate(backTo) : navigate(-1)}
+            className="h-9 w-9 border border-gray-200 bg-white hover:bg-gray-100 text-gray-900"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
-        <h1 className="text-lg font-semibold flex-1 flex justify-center items-center text-neutral-50">
+        <h1 className="text-lg font-semibold flex-1 text-gray-900">
           {title}
         </h1>
-        {/* keep the right side reserved for actions so title stays centered */}
-        <div className="flex items-center justify-end min-w-[2rem]">
+        {/* keep the right side reserved for actions */}
+        <div className="flex items-center justify-end">
           {action}
         </div>
       </div>

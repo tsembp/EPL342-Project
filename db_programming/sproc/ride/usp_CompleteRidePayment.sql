@@ -51,8 +51,35 @@ BEGIN
             RETURN;
         END;
 
-        -- Only 1 valid payment per ride
-        IF @ExistingPayment IS NOT NULL AND @ExistingPaymentStatus <> 'Failed'
+        -- If payment exists with Pending status, update it to Completed
+        IF @ExistingPayment IS NOT NULL AND @ExistingPaymentStatus = 'Pending'
+        BEGIN
+            -- Update the existing pending payment to completed
+            UPDATE dbo.Payment
+            SET 
+                Status = 'Completed',
+                PaidAt = SYSUTCDATETIME(),
+                Method = @PaymentMethod  -- Update method in case it changed
+            WHERE PaymentId = @ExistingPayment;
+
+            COMMIT TRANSACTION;
+
+            -- Return the updated payment info
+            SELECT
+                'SUCCESS'       AS Result,
+                @RideId         AS RideId,
+                @ExistingPayment AS PaymentId,
+                @PriceFinal     AS FinalPrice,
+                @PriceFinal     AS GrossAmount,
+                ROUND(@PriceFinal * (@PlatformFeePercent / 100.0), 2) AS PlatformFee,
+                @PriceFinal - ROUND(@PriceFinal * (@PlatformFeePercent / 100.0), 2) AS DriverPayout,
+                @PaymentMethod  AS PaymentMethod,
+                'Payment completed successfully.' AS Message;
+            RETURN;
+        END;
+
+        -- Only 1 valid payment per ride (if it's already completed or succeeded)
+        IF @ExistingPayment IS NOT NULL AND @ExistingPaymentStatus IN ('Completed', 'Succeeded')
         BEGIN
             RAISERROR('Ride %d already has a completed payment.', 16, 1, @RideId);
             RETURN;

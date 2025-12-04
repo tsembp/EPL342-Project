@@ -49,42 +49,42 @@ export default function UsersDrivers() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             Users &amp; Drivers
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Manage platform users, verify drivers, and review their activity.
           </p>
         </div>
 
         <Tabs defaultValue="drivers">
-          <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+          <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
             <TabsTrigger
               value="all"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               All Users
             </TabsTrigger>
             <TabsTrigger
               value="drivers"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               Drivers
             </TabsTrigger>
             <TabsTrigger
               value="passengers"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               Passengers
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-4">
-            <div className="rounded-xl border border-neutral-800/70 bg-neutral-950/50 px-4 py-6 text-sm text-neutral-500">
+            <div className="rounded-xl border border-gray-200/70 bg-white/50 px-4 py-6 text-sm text-gray-9000">
               All Users table – TODO
             </div>
           </TabsContent>
@@ -95,7 +95,7 @@ export default function UsersDrivers() {
                 placeholder="Search drivers…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="max-w-xs border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+                className="max-w-xs border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
               />
               {/* Future filters (country, verification, rating) */}
             </div>
@@ -104,7 +104,7 @@ export default function UsersDrivers() {
           </TabsContent>
 
           <TabsContent value="passengers" className="mt-4">
-            <div className="rounded-xl border border-neutral-800/70 bg-neutral-950/50 px-4 py-6 text-sm text-neutral-500">
+            <div className="rounded-xl border border-gray-200/70 bg-white/50 px-4 py-6 text-sm text-gray-9000">
               Passengers table – TODO
             </div>
           </TabsContent>

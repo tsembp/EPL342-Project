@@ -152,27 +152,27 @@ export default function AddVehiclePage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 px-4 py-6 text-neutral-50">
+    <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900">
       {/* Wider container with two big side-by-side boxes */}
       <div className="mx-auto grid max-w-8xl gap-8 md:grid-cols-2">
         {/* LEFT: Add vehicle form */}
-        <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6 min-h-[750px]">
+        <Card className="border border-gray-200 bg-white p-5 sm:p-6 min-h-[750px] shadow-sm">
           {/* Header */}
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900">
-                <Car className="h-5 w-5 text-emerald-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
+                <Car className="h-5 w-5 text-black" />
               </div>
               <div>
-                <h1 className="text-base font-semibold text-neutral-50">
+                <h1 className="text-base font-semibold text-gray-900">
                   Add a vehicle
                 </h1>
-                <p className="mt-1 text-xs text-neutral-400">
+                <p className="mt-1 text-xs text-gray-600">
                   Register a vehicle you&apos;ll use for rides and deliveries.
                 </p>
               </div>
             </div>
-            <Badge className="hidden border border-neutral-700 bg-neutral-900/80 text-[11px] font-normal text-neutral-300 sm:inline-flex">
+            <Badge className="hidden border border-gray-200 bg-gray-50 text-[11px] font-normal text-gray-700 sm:inline-flex">
               Driver onboarding · Vehicle
             </Badge>
           </div>
@@ -186,13 +186,13 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5 md:col-span-2">
               <Label
                 htmlFor="vehicleType"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Vehicle type
               </Label>
               <select
                 id="vehicleType"
-                className="flex h-10 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-100 ring-offset-background placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={vehicleTypeId}
                 onChange={(e) => setVehicleTypeId(e.target.value)}
                 required
@@ -205,7 +205,7 @@ export default function AddVehiclePage() {
                 ))}
               </select>
               {vehicleTypes && vehicleTypes.length > 0 && (
-                <p className="text-[11px] text-neutral-500">
+                <p className="text-[11px] text-gray-600">
                   Different vehicle types may unlock different service
                   categories.
                 </p>
@@ -216,7 +216,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="plateNumber"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Plate number
               </Label>
@@ -224,7 +224,7 @@ export default function AddVehiclePage() {
                 id="plateNumber"
                 value={plateNumber}
                 onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
                 placeholder="KAA123"
                 required
               />
@@ -234,7 +234,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="brand"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Brand
               </Label>
@@ -242,7 +242,7 @@ export default function AddVehiclePage() {
                 id="brand"
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black"
                 required
               >
                 <option value="">Select brand</option>
@@ -258,7 +258,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="model"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Model
               </Label>
@@ -266,7 +266,7 @@ export default function AddVehiclePage() {
                 id="model"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
                 placeholder="e.g. Corolla, X5"
                 required
               />
@@ -276,7 +276,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="color"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Color
               </Label>
@@ -284,7 +284,7 @@ export default function AddVehiclePage() {
                 id="color"
                 value={color}
                 onChange={(e) => setColor(e.target.value)}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
                 placeholder="e.g. Black"
                 required
               />
@@ -294,7 +294,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="seats"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Seats
               </Label>
@@ -304,7 +304,7 @@ export default function AddVehiclePage() {
                 value={seats}
                 onChange={(e) => setSeats(e.target.value)}
                 min="1"
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
                 placeholder="e.g. 4"
                 required
               />
@@ -314,7 +314,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="cargoVolume"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Cargo volume (m³)
               </Label>
@@ -324,8 +324,8 @@ export default function AddVehiclePage() {
                 step="0.01"
                 value={cargoVolume}
                 onChange={(e) => setCargoVolume(e.target.value)}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
-                placeholder="Optional"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
+                placeholder="0.20"
               />
             </div>
 
@@ -333,7 +333,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="cargoWeight"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Cargo weight (kg)
               </Label>
@@ -343,8 +343,8 @@ export default function AddVehiclePage() {
                 step="0.01"
                 value={cargoWeight}
                 onChange={(e) => setCargoWeight(e.target.value)}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
-                placeholder="Optional"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
+                placeholder="0.5"
               />
             </div>
 
@@ -352,7 +352,7 @@ export default function AddVehiclePage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="pricePerKm"
-                className="text-xs font-medium text-neutral-300"
+                className="text-xs font-medium text-gray-700"
               >
                 Price per km (€)
               </Label>
@@ -363,11 +363,11 @@ export default function AddVehiclePage() {
                 min="0.01"
                 value={pricePerKm}
                 onChange={(e) => setPricePerKm(e.target.value)}
-                className="border-neutral-800 bg-neutral-950 text-sm text-neutral-100 placeholder:text-neutral-500"
+                className="border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-500"
                 placeholder="e.g. 2.50"
                 required
               />
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-gray-600">
                 Your rate per kilometer for this vehicle.
               </p>
             </div>
@@ -376,7 +376,7 @@ export default function AddVehiclePage() {
             <div className="pt-2 md:col-span-2">
               <Button
                 type="submit"
-                className="flex w-full items-center justify-center rounded-lg bg-emerald-500 px-3 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+                className="flex w-full items-center justify-center bg-black text-white hover:bg-gray-800 px-3 text-sm font-semibold"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -388,7 +388,7 @@ export default function AddVehiclePage() {
                   "Add vehicle"
                 )}
               </Button>
-              <p className="mt-2 text-[11px] text-neutral-500">
+              <p className="mt-2 text-[11px] text-gray-600">
                 Once your vehicle is added, you&apos;ll be asked to upload the
                 required vehicle documents for verification.
               </p>
@@ -414,35 +414,35 @@ function VehicleTypeRequirementsCard({
   isLoading: boolean;
 }) {
   return (
-    <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
-      <h2 className="text-base font-semibold text-neutral-50">
+    <Card className="border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
+      <h2 className="text-base font-semibold text-gray-900">
         Vehicle type requirements
       </h2>
-      <p className="mt-1 text-xs text-neutral-400">
+      <p className="mt-1 text-xs text-gray-600">
         Minimum seats and cargo capacity expected for each vehicle type.
       </p>
 
       {isLoading ? (
-        <div className="mt-4 flex items-center gap-2 text-xs text-neutral-400">
+        <div className="mt-4 flex items-center gap-2 text-xs text-gray-600">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading requirements…
         </div>
       ) : (
         // No max-h / overflow-y here → full table visible
-        <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-950/40">
-          <table className="min-w-full border-collapse text-xs text-neutral-200">
-            <thead className="bg-neutral-900/80 text-[11px] uppercase tracking-wide text-neutral-400">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-gray-50">
+          <table className="min-w-full border-collapse text-xs text-gray-900">
+            <thead className="bg-gray-100 text-[11px] uppercase tracking-wide text-gray-700">
               <tr>
-                <th className="border-b border-neutral-800 px-3 py-2 text-left font-medium">
+                <th className="border-b border-gray-200 px-3 py-2 text-left font-medium">
                   Type
                 </th>
-                <th className="border-b border-neutral-800 px-3 py-2 text-right font-medium">
+                <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">
                   Maximum Number Of Seats
                 </th>
-                <th className="border-b border-neutral-800 px-3 py-2 text-right font-medium">
+                <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">
                   Min cargo vol (m³)
                 </th>
-                <th className="border-b border-neutral-800 px-3 py-2 text-right font-medium">
+                <th className="border-b border-gray-200 px-3 py-2 text-right font-medium">
                   Min cargo wt (kg)
                 </th>
               </tr>
@@ -451,18 +451,18 @@ function VehicleTypeRequirementsCard({
               {requirements.map((vt) => (
                 <tr
                   key={vt.VehicleTypeId}
-                  className="odd:bg-neutral-900/40 even:bg-neutral-900/20"
+                  className="odd:bg-white even:bg-gray-50"
                 >
-                  <td className="border-b border-neutral-900 px-3 py-1.5 text-left">
+                  <td className="border-b border-gray-200 px-3 py-1.5 text-left">
                     {vt.Name}
                   </td>
-                  <td className="border-b border-neutral-900 px-3 py-1.5 text-right">
+                  <td className="border-b border-gray-200 px-3 py-1.5 text-right">
                     {vt.NumOfSeats}
                   </td>
-                  <td className="border-b border-neutral-900 px-3 py-1.5 text-right">
+                  <td className="border-b border-gray-200 px-3 py-1.5 text-right">
                     {Number(vt.MinCargoVolume).toFixed(2)}
                   </td>
-                  <td className="border-b border-neutral-900 px-3 py-1.5 text-right">
+                  <td className="border-b border-gray-200 px-3 py-1.5 text-right">
                     {Number(vt.MinCargoWeight).toFixed(0)}
                   </td>
                 </tr>

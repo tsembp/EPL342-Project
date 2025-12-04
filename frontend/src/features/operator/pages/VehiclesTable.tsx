@@ -25,19 +25,19 @@ function statusBadge(status: VehicleRow["status"]) {
   switch (status) {
     case "verified":
       return (
-        <Badge className="rounded-full bg-emerald-600/80 text-emerald-50 border border-emerald-500/70 text-xs">
+        <Badge className="rounded-lg bg-gray-600/80 text-gray-50 border border-gray-500/70 text-xs">
           Verified
         </Badge>
       );
     case "rejected":
       return (
-        <Badge className="rounded-full bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
+        <Badge className="rounded-lg bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
           Rejected
         </Badge>
       );
     default:
       return (
-        <Badge className="rounded-full bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
+        <Badge className="rounded-lg bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
           Pending
         </Badge>
       );
@@ -48,19 +48,19 @@ function docsBadge(docsStatus: VehicleRow["docsStatus"]) {
   switch (docsStatus) {
     case "expiring":
       return (
-        <Badge className="rounded-full bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
+        <Badge className="rounded-lg bg-amber-600/80 text-amber-50 border border-amber-500/70 text-xs">
           At risk
         </Badge>
       );
     case "expired":
       return (
-        <Badge className="rounded-full bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
+        <Badge className="rounded-lg bg-rose-700/80 text-rose-50 border border-rose-500/70 text-xs">
           Expired
         </Badge>
       );
     default:
       return (
-        <Badge className="rounded-full bg-emerald-700/80 text-emerald-50 border border-emerald-500/70 text-xs">
+        <Badge className="rounded-lg bg-gray-700/80 text-gray-50 border border-gray-500/70 text-xs">
           Ok
         </Badge>
       );
@@ -72,16 +72,16 @@ export default function VehiclesTable({ data }: VehiclesTableProps) {
 
   if (!data.length) {
     return (
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 px-6 py-10 text-center text-sm text-neutral-400">
+      <div className="rounded-lg border border-gray-200 bg-white/60 px-6 py-10 text-center text-sm text-gray-600">
         No vehicles found.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900/60">
-      <table className="min-w-full text-sm text-neutral-200">
-        <thead className="border-b border-neutral-800 bg-neutral-900/80 text-xs uppercase tracking-wide text-neutral-500">
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white/60">
+      <table className="min-w-full text-sm text-gray-800">
+        <thead className="border-b border-gray-200 bg-white/80 text-xs uppercase tracking-wide text-gray-9000">
           <tr>
             <th className="px-4 py-3 text-left">Owner</th>
             <th className="px-4 py-3 text-left">Plate</th>
@@ -99,15 +99,15 @@ export default function VehiclesTable({ data }: VehiclesTableProps) {
           {data.map((row) => (
             <tr
               key={row.id}
-              className="border-b border-neutral-800/70 hover:bg-neutral-800/40 transition-colors"
+              className="border-b border-gray-200/70 hover:bg-gray-100/40 transition-colors"
             >
-              <td className="px-4 py-3 whitespace-nowrap text-neutral-100">
+              <td className="px-4 py-3 whitespace-nowrap text-gray-900">
                 {row.owner}
               </td>
-              <td className="px-4 py-3 font-mono text-sm text-neutral-50">
+              <td className="px-4 py-3 font-mono text-sm text-gray-900">
                 {row.plate}
               </td>
-              <td className="px-4 py-3 text-neutral-300">{row.type}</td>
+              <td className="px-4 py-3 text-gray-700">{row.type}</td>
               <td className="px-4 py-3 text-right tabular-nums">
                 {row.seats}
               </td>
@@ -118,14 +118,14 @@ export default function VehiclesTable({ data }: VehiclesTableProps) {
               <td className="px-4 py-3 text-right tabular-nums">
                 {row.enrollments}
               </td>
-              <td className="px-4 py-3 text-neutral-300">
+              <td className="px-4 py-3 text-gray-700">
                 {row.motExpiry || "—"}
               </td>
               <td className="px-4 py-3">{docsBadge(row.docsStatus)}</td>
               <td className="px-4 py-3 text-right">
                 <Button
                   size="sm"
-                  className="h-8 px-3 rounded-full bg-emerald-500/95 hover:bg-emerald-400 text-xs font-medium text-emerald-950 border border-emerald-300 shadow-sm flex items-center gap-1 ml-auto"
+                  className="h-8 px-3 rounded-lg bg-black hover:bg-gray-800 text-xs font-medium text-white border border-black shadow-sm flex items-center gap-1 ml-auto"
                   onClick={() =>
                     navigate(
                       `/operator/documents?vehicleId=${encodeURIComponent(

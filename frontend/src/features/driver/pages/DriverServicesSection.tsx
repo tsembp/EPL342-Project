@@ -186,17 +186,17 @@ export function DriverServicesSection() {
   return (
     <div className="space-y-4">
       {/* Header / intro card (like your existing My services card) */}
-      <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+      <Card className="border border-gray-200 bg-white p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900">
-              <ClipboardList className="h-5 w-5 text-emerald-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+              <ClipboardList className="h-5 w-5 text-black" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-neutral-50">
+              <h2 className="text-base font-semibold text-gray-900">
                 My services
               </h2>
-              <p className="mt-1 text-xs text-neutral-400">
+              <p className="mt-1 text-xs text-gray-600">
                 Register new services for your approved vehicles and see the
                 status of each enrollment.
               </p>
@@ -205,7 +205,7 @@ export function DriverServicesSection() {
           <Button
             variant="outline"
             size="sm"
-            className="hidden rounded-xl border-neutral-700 bg-neutral-900 text-xs font-semibold text-neutral-100 hover:bg-neutral-800 sm:inline-flex"
+            className="hidden rounded-xl border-gray-300 bg-white text-xs font-semibold text-gray-900 hover:bg-gray-50 hover:text-black sm:inline-flex"
             onClick={() => setShowForm((s) => !s)}
           >
             <PlusCircle className="mr-1.5 h-4 w-4" />
@@ -217,7 +217,7 @@ export function DriverServicesSection() {
           <Button
             variant="outline"
             size="sm"
-            className="w-full rounded-xl border-neutral-700 bg-neutral-900 text-xs font-semibold text-neutral-100 hover:bg-neutral-800"
+            className="w-full rounded-xl border-gray-300 bg-white text-xs font-semibold text-gray-900 hover:bg-gray-50"
             onClick={() => setShowForm((s) => !s)}
           >
             <PlusCircle className="mr-1.5 h-4 w-4" />
@@ -228,16 +228,16 @@ export function DriverServicesSection() {
 
       {/* Add new service form */}
       {showForm && (
-        <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+        <Card className="border border-gray-200 bg-white p-5 sm:p-6">
           <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900">
-              <CarFront className="h-4 w-4 text-emerald-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+              <CarFront className="h-4 w-4 text-black" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-neutral-50">
+              <h3 className="text-sm font-semibold text-gray-900">
                 Enroll a vehicle to a service
               </h3>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-gray-600">
                 Only vehicles with all required documents approved can be
                 enrolled.
               </p>
@@ -248,14 +248,14 @@ export function DriverServicesSection() {
           {allowedRideTypes.length > 0 && (
             <div className="mb-4 flex items-start gap-2 rounded-lg border border-blue-900/30 bg-blue-950/20 p-3">
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
-              <div className="text-xs text-neutral-300">
+              <div className="text-xs text-gray-700">
                 <span className="font-medium text-blue-400">
                   {userRole === "company_representative"
                     ? "Company Representatives"
                     : "Drivers"}
                 </span>{" "}
                 can only enroll vehicles for:{" "}
-                <span className="font-semibold text-neutral-100">
+                <span className="font-semibold text-gray-900">
                   {allowedRideTypes.join(", ")}
                 </span>
               </div>
@@ -263,24 +263,24 @@ export function DriverServicesSection() {
           )}
 
           {isLoading ? (
-            <p className="text-sm text-neutral-400">Loading…</p>
+            <p className="text-sm text-gray-600">Loading…</p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-[1fr,1fr,1fr,auto]">
               {/* Vehicle select */}
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
                   Vehicle
                 </p>
                 <Select
                   value={selectedVehicleId}
                   onValueChange={handleVehicleChange}
                 >
-                  <SelectTrigger className="h-9 w-full bg-neutral-900 text-sm text-neutral-50">
+                  <SelectTrigger className="h-9 w-full bg-gray-100 text-sm text-gray-900">
                     <SelectValue placeholder="Select vehicle" />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 text-sm text-neutral-50">
+                  <SelectContent className="bg-gray-100 text-sm text-gray-900">
                     {eligibleVehicles.length === 0 && (
-                      <div className="px-2 py-1 text-xs text-neutral-400">
+                      <div className="px-2 py-1 text-xs text-gray-600">
                         No approved vehicles yet.
                       </div>
                     )}
@@ -295,7 +295,7 @@ export function DriverServicesSection() {
 
               {/* Service type select */}
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
                   Service type
                 </p>
                 <Select
@@ -303,12 +303,12 @@ export function DriverServicesSection() {
                   onValueChange={handleServiceTypeChange}
                   disabled={!selectedVehicleId || loadingValidCombos}
                 >
-                  <SelectTrigger className="h-9 w-full bg-neutral-900 text-sm text-neutral-50">
+                  <SelectTrigger className="h-9 w-full bg-gray-100 text-sm text-gray-900">
                     <SelectValue placeholder={selectedVehicleId ? "Select service type" : "Select vehicle first"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 text-sm text-neutral-50">
+                  <SelectContent className="bg-gray-100 text-sm text-gray-900">
                     {filteredServiceTypes.length === 0 && (
-                      <div className="px-2 py-1 text-xs text-neutral-400">
+                      <div className="px-2 py-1 text-xs text-gray-600">
                         No valid service types for this vehicle.
                       </div>
                     )}
@@ -334,7 +334,7 @@ export function DriverServicesSection() {
 
               {/* Ride type select */}
               <div className="space-y-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
                   Ride type
                 </p>
                 <Select
@@ -342,16 +342,16 @@ export function DriverServicesSection() {
                   onValueChange={setSelectedRideTypeId}
                   disabled={!selectedVehicleId || !selectedServiceTypeId || loadingValidCombos}
                 >
-                  <SelectTrigger className="h-9 w-full bg-neutral-900 text-sm text-neutral-50">
+                  <SelectTrigger className="h-9 w-full bg-gray-100 text-sm text-gray-900">
                     <SelectValue placeholder={
                       !selectedVehicleId ? "Select vehicle first" :
                       !selectedServiceTypeId ? "Select service type first" :
                       "Select ride type"
                     } />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 text-sm text-neutral-50">
+                  <SelectContent className="bg-gray-100 text-sm text-gray-900">
                     {filteredRideTypes.length === 0 && (
-                      <div className="px-2 py-1 text-xs text-neutral-400">
+                      <div className="px-2 py-1 text-xs text-gray-600">
                         No valid ride types for this combination.
                       </div>
                     )}
@@ -372,7 +372,7 @@ export function DriverServicesSection() {
               {/* Submit button */}
               <div className="flex items-end">
                 <Button
-                  className="w-full rounded-xl bg-emerald-500 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+                  className="w-full rounded-xl bg-black text-sm font-semibold text-gray-900 hover:bg-black"
                   onClick={handleSubmit}
                   disabled={createMutation.isPending || isLoading}
                 >
@@ -385,18 +385,18 @@ export function DriverServicesSection() {
       )}
 
       {/* Enrollments list */}
-      <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+      <Card className="border border-gray-200 bg-white p-5 sm:p-6">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-neutral-50">
+          <h3 className="text-sm font-semibold text-gray-900">
             Current enrollments
           </h3>
-          <p className="text-[11px] text-neutral-400">
+          <p className="text-[11px] text-gray-600">
             Pending • Approved • Rejected
           </p>
         </div>
 
         {enrollments.length === 0 ? (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-gray-500">
             You have no service enrollments yet.
           </p>
         ) : (
@@ -404,13 +404,13 @@ export function DriverServicesSection() {
             {enrollments.map((e) => (
               <li
                 key={e.EnrollId}
-                className="flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2"
               >
                 <div>
-                  <p className="text-sm font-medium text-neutral-50">
+                  <p className="text-sm font-medium text-gray-900">
                     {e.ServiceTypeName ?? "Service"} • {e.VehiclePlate}
                   </p>
-                  <p className="text-[11px] text-neutral-400">
+                  <p className="text-[11px] text-gray-600">
                     {e.RideTypeName ?? "Ride type"} · Enrollment #{e.EnrollId}
                   </p>
                 </div>
@@ -420,7 +420,7 @@ export function DriverServicesSection() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 rounded-lg border-neutral-700 bg-neutral-900 px-2 text-[11px] text-neutral-200 hover:bg-neutral-800"
+                      className="h-7 rounded-lg border-gray-300 bg-gray-100 px-2 text-[11px] text-gray-800 hover:bg-gray-200 hover:text-black"
                       onClick={() => cancelMutation.mutate(e.EnrollId)}
                     >
                       Cancel
@@ -438,10 +438,10 @@ export function DriverServicesSection() {
 
 function StatusBadge({ status }: { status: string }) {
   let classes =
-    "border-neutral-700 bg-neutral-900 text-neutral-200 border px-2 py-0.5 text-[11px]";
+    "border-gray-300 bg-gray-100 text-gray-800 border px-2 py-0.5 text-[11px]";
   if (status === "Approved") {
     classes =
-      "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 border px-2 py-0.5 text-[11px]";
+      "border-black/40 bg-black/10 text-black border px-2 py-0.5 text-[11px]";
   } else if (status === "Pending") {
     classes =
       "border-amber-500/40 bg-amber-500/10 text-amber-300 border px-2 py-0.5 text-[11px]";

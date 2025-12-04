@@ -12,7 +12,8 @@ BEGIN
         DA.EnrollId,
         DA.StartsAt,
         DA.EndsAt,
-        DA.IsLocked
+        DA.IsLocked,
+        DA.GeofencezoneId
     FROM dbo.DriverAvailability AS DA
     JOIN dbo.UserServiceEnrollment AS SE
       ON DA.EnrollId = SE.EnrollId

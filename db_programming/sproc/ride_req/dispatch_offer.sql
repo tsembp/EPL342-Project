@@ -72,7 +72,7 @@ BEGIN
         FROM [dbo].[UserServiceEnrollment] enroll
         INNER JOIN [dbo].[User] u ON enroll.UserId = u.UserId
         INNER JOIN [dbo].[DriverAvailability] avail ON enroll.EnrollId = avail.EnrollId
-        INNER JOIN [dbo].[VehicleLocationLive] vloc ON enroll.VehicleId = vloc.VehicleId
+        -- INNER JOIN [dbo].[VehicleLocationLive] vloc ON enroll.VehicleId = vloc.VehicleId
         INNER JOIN [dbo].[Vehicle] v ON enroll.VehicleId = v.VehicleId
         WHERE 
             (u.Role = 'D' OR u.Role = 'C')

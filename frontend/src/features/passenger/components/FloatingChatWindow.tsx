@@ -146,7 +146,7 @@ export default function RideChatWindow({
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
-        className="absolute pointer-events-auto w-80 max-w-[90vw] rounded-xl border border-emerald-700/40 bg-neutral-900/80 shadow-2xl backdrop-blur-md flex flex-col"
+        className="absolute pointer-events-auto w-80 max-w-[90vw] rounded-xl border border-gray-700/40 bg-neutral-900/80 shadow-2xl backdrop-blur-md flex flex-col"
         style={{ top: position.y, left: position.x }}
       >
         {/* Header (drag handle) */}
@@ -189,7 +189,7 @@ export default function RideChatWindow({
                   <div
                     className={`max-w-[80%] rounded-lg px-2 py-1 ${
                       m.isMine
-                        ? "bg-emerald-600 text-white"
+                        ? "bg-gray-600 text-white"
                         : "bg-neutral-800 text-neutral-100"
                     }`}
                   >
@@ -213,7 +213,7 @@ export default function RideChatWindow({
         <div className="border-t border-neutral-800 px-3 py-2 space-y-2">
           <div className="flex items-center gap-2">
             <input
-              className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-50 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm text-neutral-50 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
               placeholder="Type a message…"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -227,7 +227,7 @@ export default function RideChatWindow({
             <Button
               type="button"
               size="sm"
-              className="gap-1 bg-emerald-600 text-xs text-white hover:bg-emerald-500 disabled:opacity-50"
+              className="gap-1 bg-gray-600 text-xs text-white hover:bg-gray-500 disabled:opacity-50"
               onClick={handleSend}
               disabled={!message.trim() || sending}
             >

@@ -1,15 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/store";
+import LandingPage from "@/pages/LandingPage";
 
 export function RoleRedirect() {
   const { isAuthenticated, userRole } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login", { replace: true });
-    } else {
+    if (isAuthenticated) {
       switch (userRole) {
         case "admin":
           navigate("/admin", { replace: true });
@@ -29,6 +28,10 @@ export function RoleRedirect() {
       }
     }
   }, [isAuthenticated, userRole, navigate]);
+
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
 
   return null;
 }

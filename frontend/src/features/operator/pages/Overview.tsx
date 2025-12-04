@@ -4,144 +4,190 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-// import { getOperatorReports } from "@/lib/api";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
-const demoKPIs = [
-  { label: "Pending user documents", value: 8, status: "warning" },
-  { label: "Pending vehicle documents", value: 3, status: "warning" },
-  { label: "Pending service enrollments", value: 5, status: "warning" },
-  { label: "Pending GDPR requests", value: 2, status: "warning" },
-  { label: "Active rides right now", value: 12, status: "success" },
-];
-
-const demoActivity = [
-  { type: "Document Approved", user: "D. Papadopoulos", time: "2m ago" },
-  { type: "GDPR Request Rejected", user: "A. Ioannou", time: "10m ago" },
-  { type: "Enrollment Approved", user: "M. Christou", time: "20m ago" },
-  { type: "Vehicle Verified", user: "S. Georgiou", time: "30m ago" },
-];
+interface DashboardData {
+  pendingPersonDocuments: number;
+  pendingVehicleDocuments: number;
+  pendingEnrollments: number;
+  pendingGdpr: number;
+  activeRides: number;
+  recentActivity: Array<{
+    type: string;
+    user: string;
+    time: string;
+  }>;
+}
 
 export default function Overview() {
   const navigate = useNavigate();
-  const [loading] = useState(false);
-  // Placeholder for future API integration
-  // const [kpis, setKpis] = useState([]);
-  // const [activity, setActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await fetch("/api/operator/dashboard", {
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard data");
+        }
+        
+        const data = await response.json();
+        setDashboardData(data);
+      } catch (error) {
+        console.error("Error fetching dashboard:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const kpis = dashboardData ? [
+    { label: "Pending user documents", value: dashboardData.pendingPersonDocuments, status: "warning" },
+    { label: "Pending vehicle documents", value: dashboardData.pendingVehicleDocuments, status: "warning" },
+    { label: "Pending service enrollments", value: dashboardData.pendingEnrollments, status: "warning" },
+    { label: "Pending GDPR requests", value: dashboardData.pendingGdpr, status: "warning" },
+    { label: "Active rides right now", value: dashboardData.activeRides, status: "success" },
+  ] : [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-8">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">Operator Overview</h1>
-          <p className="text-sm text-neutral-400">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Operator Overview</h1>
+          <p className="text-sm text-gray-600">
             Monitor key metrics and jump into critical queues in real time.
           </p>
         </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {demoKPIs.map((kpi) => (
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Card key={i} className="p-4 border border-gray-200 bg-white shadow-sm">
+                <Skeleton className="h-4 w-24 bg-gray-200 mb-2" />
+                <Skeleton className="h-8 w-16 bg-gray-200 mb-3" />
+                <Skeleton className="h-5 w-20 bg-gray-200" />
+              </Card>
+            ))
+          ) : (
+            kpis.map((kpi) => (
             <Card
               key={kpi.label}
-              className="p-4 rounded-2xl border border-neutral-800 bg-neutral-900/80 shadow-lg flex flex-col items-start justify-center"
+              className="p-4 border border-gray-200 bg-white shadow-sm flex flex-col items-start justify-center"
             >
-              <span className="text-xs font-medium text-neutral-400 mb-1">
+              <span className="text-xs font-medium text-gray-600 mb-1">
                 {kpi.label}
               </span>
-              <span className="text-2xl font-semibold text-neutral-50">
+              <span className="text-2xl font-semibold text-gray-900">
                 {kpi.value}
               </span>
               <Badge
                 className={[
-                  "mt-3 rounded-full px-2.5 py-0.5 text-[11px] font-medium border",
+                  "mt-3 px-2.5 py-0.5 text-[11px] font-medium border transition-colors",
                   kpi.status === "success"
-                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/40"
-                    : "bg-amber-500/10 text-amber-300 border-amber-500/40",
+                    ? "bg-gray-50 text-gray-900 border-gray-200 hover:bg-gray-100"
+                    : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
                 ].join(" ")}
               >
                 {kpi.status === "success" ? "Active" : "Pending"}
               </Badge>
             </Card>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Quick Shortcuts */}
         <div className="flex flex-wrap gap-3">
           <Button
             onClick={() => navigate("/operator/documents")}
-            className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2 border-0"
+            className="bg-black text-white hover:bg-gray-800 px-4 py-2"
           >
             Review pending documents
           </Button>
           <Button
             onClick={() => navigate("/operator/enrollments")}
             variant="outline"
-            className="rounded-full border-neutral-700 bg-neutral-900 text-neutral-100 hover:bg-neutral-800 hover:text-neutral-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
             Review pending enrollments
           </Button>
           <Button
-            onClick={() => navigate("/operator/gdpr")}
+            onClick={() => navigate("/operator/gdpr-data-correction")}
             variant="outline"
-            className="rounded-full border-neutral-700 bg-neutral-900 text-neutral-100 hover:bg-neutral-800 hover:text-neutral-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
             View GDPR queue
           </Button>
           <Button
-            onClick={() => navigate("/operator/rides")}
+            onClick={() => navigate("/operator/reports")}
             variant="outline"
-            className="rounded-full border-neutral-700 bg-neutral-900 text-neutral-100 hover:bg-neutral-800 hover:text-neutral-50 px-4 py-2"
+            className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 hover:text-black px-4 py-2"
           >
-            View live rides
+            View reports
           </Button>
         </div>
 
         {/* Recent Activity Feed */}
-        <Card className="p-4 rounded-2xl border border-neutral-800 bg-neutral-900/80 shadow-lg">
+        <Card className="p-4 border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-neutral-50">Recent Activity</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
           </div>
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-neutral-800">
-                <TableHead className="text-xs font-medium text-neutral-400">
+              <TableRow className="border-b border-gray-200">
+                <TableHead className="text-xs font-medium text-gray-600">
                   Type
                 </TableHead>
-                <TableHead className="text-xs font-medium text-neutral-400">
+                <TableHead className="text-xs font-medium text-gray-600">
                   User
                 </TableHead>
-                <TableHead className="text-xs font-medium text-neutral-400">
+                <TableHead className="text-xs font-medium text-gray-600">
                   Time
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <TableRow key={i} className="border-b border-neutral-900/60">
-                      <TableCell colSpan={3}>
-                        <Skeleton className="h-4 w-full bg-neutral-800" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : demoActivity.map((item, i) => (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i} className="border-b border-gray-200">
+                    <TableCell colSpan={3}>
+                      <Skeleton className="h-4 w-full bg-gray-200" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : dashboardData && dashboardData.recentActivity.length > 0 ? (
+                dashboardData.recentActivity.map((item, i) => (
                     <TableRow
                       key={i}
-                      className="border-b border-neutral-900/60 hover:bg-neutral-800/60"
+                      className="border-b border-gray-200 hover:bg-gray-50"
                     >
-                      <TableCell className="text-sm text-neutral-100">
+                      <TableCell className="text-sm text-gray-900">
                         {item.type}
                       </TableCell>
-                      <TableCell className="text-sm text-neutral-200">
+                      <TableCell className="text-sm text-gray-700">
                         {item.user}
                       </TableCell>
-                      <TableCell className="text-sm text-neutral-400">
+                      <TableCell className="text-sm text-gray-600">
                         {item.time}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-gray-500 py-8">
+                    No recent activity
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>

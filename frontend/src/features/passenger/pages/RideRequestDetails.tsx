@@ -22,7 +22,8 @@ import {
   CarTaxiFront,
   Pencil,
   X,
-  Bot
+  Bot,
+  CreditCard
 } from "lucide-react";
 import {
   Dialog,
@@ -439,11 +440,11 @@ const filteredRideTypeIds = selected.serviceType
         return "border-sky-500/70 text-sky-300";
       case "Completed":
       case "Matched":
-        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/60";
+        return "bg-black/10 text-black border-black/60";
       case "Cancelled":
         return "bg-red-500/10 text-red-400 border-red-500/60";
       default:
-        return "bg-neutral-700/30 text-neutral-300 border-neutral-600";
+        return "bg-gray-300/30 text-gray-700 border-neutral-600";
     }
   };
 
@@ -487,6 +488,12 @@ const filteredRideTypeIds = selected.serviceType
     data?.status === "Completed" || data?.progressStatus === "Completed";
   const canProceedToPayment = requestCompleted && allRidesCompleted;
 
+  // Calculate total price from rides
+  const totalPrice = useMemo(() => {
+    if (!data?.rides) return 0;
+    return data.rides.reduce((sum, ride) => sum + (ride.priceFinal || 0), 0);
+  }, [data?.rides]);
+
   const formattedPickupTime =
     data?.pickupAt ? new Date(data.pickupAt).toLocaleString() : "—";
 
@@ -505,7 +512,21 @@ const filteredRideTypeIds = selected.serviceType
     navigate(`/passenger/checkout?requestId=${data.requestId}`);
   };
 
+  // Calculate map center as midpoint between pickup and dropoff
   const mapCenter: [number, number] = useMemo(() => {
+    if (hasPickupCoords && hasDropoffCoords && data) {
+      const pickupLat = (data as any).pickup.latitude as number;
+      const pickupLng = (data as any).pickup.longitude as number;
+      const dropoffLat = (data as any).dropoff.latitude as number;
+      const dropoffLng = (data as any).dropoff.longitude as number;
+      
+      // Return midpoint
+      return [
+        (pickupLat + dropoffLat) / 2,
+        (pickupLng + dropoffLng) / 2
+      ];
+    }
+    
     if (hasPickupCoords && data) {
       return [
         (data as any).pickup.latitude as number,
@@ -514,7 +535,30 @@ const filteredRideTypeIds = selected.serviceType
     }
 
     return DEFAULT_MAP_CENTER as [number, number];
-  }, [hasPickupCoords, data]);
+  }, [hasPickupCoords, hasDropoffCoords, data]);
+
+  // Calculate appropriate zoom level based on distance between points
+  const mapZoom = useMemo(() => {
+    if (hasPickupCoords && hasDropoffCoords && data) {
+      const pickupLat = (data as any).pickup.latitude as number;
+      const pickupLng = (data as any).pickup.longitude as number;
+      const dropoffLat = (data as any).dropoff.latitude as number;
+      const dropoffLng = (data as any).dropoff.longitude as number;
+      
+      // Calculate distance (rough approximation)
+      const latDiff = Math.abs(pickupLat - dropoffLat);
+      const lngDiff = Math.abs(pickupLng - dropoffLng);
+      const maxDiff = Math.max(latDiff, lngDiff);
+      
+      // Adjust zoom based on distance
+      if (maxDiff > 1) return 8;
+      if (maxDiff > 0.5) return 9;
+      if (maxDiff > 0.2) return 10;
+      if (maxDiff > 0.1) return 11;
+      return 12;
+    }
+    return 12;
+  }, [hasPickupCoords, hasDropoffCoords, data]);
 
   const markers = useMemo(() => {
     const m: {
@@ -526,6 +570,7 @@ const filteredRideTypeIds = selected.serviceType
 
     if (hasPickupCoords && data) {
       const { pickup } = data as any;
+      console.log("Adding pickup marker:", pickup.latitude, pickup.longitude);
       m.push({
         position: [pickup.latitude as number, pickup.longitude as number],
         icon: "pickup",
@@ -535,12 +580,15 @@ const filteredRideTypeIds = selected.serviceType
 
     if (hasDropoffCoords && data) {
       const { dropoff } = data as any;
+      console.log("Adding dropoff marker:", dropoff.latitude, dropoff.longitude);
       m.push({
         position: [dropoff.latitude as number, dropoff.longitude as number],
         icon: "dropoff",
         popup: `Dropoff: ${dropoff.name} (Zone ${dropoff.zoneId})`,
       });
     }
+    
+    console.log("Total markers:", m.length);
 
     if (data?.rides) {
       for (const ride of data.rides) {
@@ -605,8 +653,8 @@ const filteredRideTypeIds = selected.serviceType
 
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950 text-neutral-50 overflow-y-auto">
-      <header className="flex items-center justify-between border-b border-neutral-900 bg-neutral-950 px-6 py-3">
+    <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900 overflow-y-auto">
+      <header className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-3">
         <div className="flex items-center gap-2">
           <span className="text-xl font-semibold tracking-tight">OSRH | Ride</span>
         </div>
@@ -614,14 +662,14 @@ const filteredRideTypeIds = selected.serviceType
 
       <main className="flex flex-col flex-1">
         {/* One big card that contains BOTH details + map */}
-        {/* <section className="w-full bg-neutral-950 px-4 py-6"> */}
-        <section className="w-full bg-neutral-950 px-4 py-6 pb-24">
-          <Card className="w-full border border-neutral-800 bg-neutral-900/80 shadow-lg overflow-hidden">
+        {/* <section className="w-full bg-gray-50 px-4 py-6"> */}
+        <section className="w-full bg-gray-50 px-4 py-6 pb-24">
+          <Card className="w-full border border-gray-200 bg-gray-100/80 shadow-lg overflow-hidden">
             <div className="flex flex-col lg:flex-row w-full">
               {/* LEFT: details (everything that was inside your Card before) */}
-              <div className="w-full lg:w-[420px] border-b lg:border-b-0 lg:border-r border-neutral-800 p-6 space-y-4">
+              <div className="w-full lg:w-[420px] border-b lg:border-b-0 lg:border-r border-gray-200 p-6 space-y-4">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-600">
                     <Loader2 className="h-6 w-6 animate-spin mb-2" />
                     Loading ride request…
                   </div>
@@ -632,7 +680,7 @@ const filteredRideTypeIds = selected.serviceType
                       variant="outline"
                       size="sm"
                       onClick={() => loadDetails(false)}
-                      className="border-neutral-700 text-neutral-100"
+                      className="border-gray-300 text-gray-900"
                     >
                       Try again
                     </Button>
@@ -641,7 +689,7 @@ const filteredRideTypeIds = selected.serviceType
                   <>
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <h1 className="text-lg font-semibold text-neutral-50">
+                        <h1 className="text-lg font-semibold text-gray-900">
                           Ride request #{data.requestId}
                         </h1>
                       </div>
@@ -658,13 +706,13 @@ const filteredRideTypeIds = selected.serviceType
                         {data.status === "Pending" && (
                           <button
                             onClick={() => (editMode ? handleCancelEdit() : handleStartEdit())}
-                            className="p-1 rounded-md border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition"
+                            className="p-1 rounded-md border border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
                             title={editMode ? "Cancel editing" : "Edit request"}
                           >
                             {editMode ? (
                               <X className="h-4 w-4 text-red-400" />
                             ) : (
-                              <Pencil className="h-4 w-4 text-neutral-300" />
+                              <Pencil className="h-4 w-4 text-gray-700" />
                             )}
                           </button>
                         )}
@@ -673,7 +721,7 @@ const filteredRideTypeIds = selected.serviceType
 
                     <div className="mt-2 space-y-3 text-sm">
                       <div className="space-y-2">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-9000 mb-1">
                           Current Ride configuration
                         </div>
 
@@ -681,9 +729,9 @@ const filteredRideTypeIds = selected.serviceType
                         <div className="flex flex-wrap gap-2">
                           <Badge
                             variant="outline"
-                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                            className="border-gray-300 bg-gray-100 text-gray-800 flex items-center gap-1"
                           >
-                            <CarTaxiFront className="h-3 w-3 text-emerald-400" />
+                            <CarTaxiFront className="h-3 w-3 text-black" />
                             <span>
                               {formatName(
                                 (data as any).serviceTypeName ??
@@ -694,9 +742,9 @@ const filteredRideTypeIds = selected.serviceType
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                            className="border-gray-300 bg-gray-100 text-gray-800 flex items-center gap-1"
                           >
-                            <Bot className="h-3 w-3 text-emerald-400" />
+                            <Bot className="h-3 w-3 text-black" />
                             <span>
                               {formatName(
                                 (data as any).rideTypeName ??
@@ -707,9 +755,9 @@ const filteredRideTypeIds = selected.serviceType
                           </Badge>
                           <Badge
                             variant="outline"
-                            className="border-neutral-700 bg-neutral-900 text-neutral-200 flex items-center gap-1"
+                            className="border-gray-300 bg-gray-100 text-gray-800 flex items-center gap-1"
                           >
-                            <Car className="h-3 w-3 text-emerald-400" />
+                            <Car className="h-3 w-3 text-black" />
                             <span>
                               {formatName(
                                 (data as any).vehicleTypeName ??
@@ -724,12 +772,12 @@ const filteredRideTypeIds = selected.serviceType
                         {editMode && (
                           <div className="mt-3 space-y-2">
                             <div>
-                              <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                              <label className="text-xs font-medium uppercase tracking-wide text-gray-600">
                                 Service type
                               </label>
                               <div className="relative">
                                 <select
-                                  className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                  className="w-full rounded-lg border border-gray-200 bg-gray-100 pl-3 pr-10 py-2 text-gray-900 appearance-none outline-none"
                                   value={selected.serviceType}
                                   onChange={(e) => handleServiceChange(e.target.value)}
                                 >
@@ -740,7 +788,7 @@ const filteredRideTypeIds = selected.serviceType
                                     </option>
                                   ))}
                                 </select>
-                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black">
                                   <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                                     <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
@@ -750,12 +798,12 @@ const filteredRideTypeIds = selected.serviceType
 
                             {selected.serviceType && (
                               <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                <label className="text-xs font-medium uppercase tracking-wide text-gray-600">
                                   Ride type
                                 </label>
                                 <div className="relative">
                                   <select
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-100 pl-3 pr-10 py-2 text-gray-900 appearance-none outline-none"
                                     value={selected.rideType}
                                     onChange={(e) => handleRideTypeChange(e.target.value)}
                                   >
@@ -766,7 +814,7 @@ const filteredRideTypeIds = selected.serviceType
                                       </option>
                                     ))}
                                   </select>
-                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black">
                                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                                       <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     </svg>
@@ -777,12 +825,12 @@ const filteredRideTypeIds = selected.serviceType
 
                             {selected.rideType && (
                               <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+                                <label className="text-xs font-medium uppercase tracking-wide text-gray-600">
                                   Vehicle type
                                 </label>
                                 <div className="relative">
                                   <select
-                                    className="w-full rounded-lg border border-neutral-800 bg-neutral-900 pl-3 pr-10 py-2 text-neutral-50 appearance-none outline-none"
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-100 pl-3 pr-10 py-2 text-gray-900 appearance-none outline-none"
                                     value={selected.vehicleType}
                                     onChange={(e) => handleVehicleTypeChange(e.target.value)}
                                   >
@@ -793,7 +841,7 @@ const filteredRideTypeIds = selected.serviceType
                                       </option>
                                     ))}
                                   </select>
-                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black">
                                     <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
                                       <path d="M6 8L10 12L14 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     </svg>
@@ -810,16 +858,16 @@ const filteredRideTypeIds = selected.serviceType
                       </div>
 
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-9000 mb-1">
                           From
                         </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                          <MapPin className="h-4 w-4 text-emerald-500" />
+                        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2">
+                          <MapPin className="h-4 w-4 text-black" />
                           <div className="flex flex-col">
-                            <span className="text-sm text-neutral-50">
+                            <span className="text-sm text-gray-900">
                               {data.pickup.name}
                             </span>
-                            <span className="text-xs text-neutral-500">
+                            <span className="text-xs text-gray-9000">
                               Zone {data.pickup.zoneId}
                             </span>
                           </div>
@@ -827,16 +875,16 @@ const filteredRideTypeIds = selected.serviceType
                       </div>
 
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-9000 mb-1">
                           To
                         </div>
-                        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                          <Navigation2 className="h-4 w-4 text-emerald-500" />
+                        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2">
+                          <Navigation2 className="h-4 w-4 text-black" />
                           <div className="flex flex-col">
-                            <span className="text-sm text-neutral-50">
+                            <span className="text-sm text-gray-900">
                               {data.dropoff.name}
                             </span>
-                            <span className="text-xs text-neutral-500">
+                            <span className="text-xs text-gray-9000">
                               Zone {data.dropoff.zoneId}
                             </span>
                           </div>
@@ -844,13 +892,13 @@ const filteredRideTypeIds = selected.serviceType
                       </div>
 
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-9000 mb-1">
                           Pickup time
                         </div>
 
                         {editMode ? (
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-emerald-500" />
+                            <Clock className="h-4 w-4 text-black" />
                               <Input
                                 type="datetime-local"
                                 value={editPickupAt}
@@ -861,13 +909,13 @@ const filteredRideTypeIds = selected.serviceType
                                     prev ? { ...prev, pickupAt: value } : prev
                                   );
                                 }}
-                                className="h-9 bg-neutral-900 border-neutral-700 text-neutral-50 text-sm"
+                                className="h-9 bg-gray-100 border-gray-300 text-gray-900 text-sm"
                               />
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                            <Clock className="h-4 w-4 text-emerald-500" />
-                            <span className="text-sm text-neutral-50">
+                          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2">
+                            <Clock className="h-4 w-4 text-black" />
+                            <span className="text-sm text-gray-900">
                               {formattedPickupTime}
                             </span>
                           </div>
@@ -875,13 +923,13 @@ const filteredRideTypeIds = selected.serviceType
                       </div>
 
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-9000 mb-1">
                           Passengers
                         </div>
 
                         {editMode ? (
                           <div className="flex items-center gap-2">
-                            <User2 className="h-4 w-4 text-emerald-500" />
+                            <User2 className="h-4 w-4 text-black" />
                               <Input
                                 type="number"
                                 min={1}
@@ -895,13 +943,13 @@ const filteredRideTypeIds = selected.serviceType
                                       : prev
                                   );
                                 }}
-                                className="h-9 bg-neutral-900 border-neutral-700 text-neutral-50 text-sm"
+                                className="h-9 bg-gray-100 border-gray-300 text-gray-900 text-sm"
                               />
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2">
-                            <User2 className="h-4 w-4 text-emerald-500" />
-                            <span className="text-sm text-neutral-50">
+                          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2">
+                            <User2 className="h-4 w-4 text-black" />
+                            <span className="text-sm text-gray-900">
                               {data.numOfPeople}{" "}
                               {data.numOfPeople === 1 ? "person" : "people"}
                             </span>
@@ -912,15 +960,15 @@ const filteredRideTypeIds = selected.serviceType
                     </div>
 
                     {editMode && (
-                    <div className="mt-4 rounded-xl border border-emerald-600/40 bg-emerald-500/5 px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <p className="text-xs text-neutral-200">
+                    <div className="mt-4 rounded-xl border border-black/40 bg-black/5 px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <p className="text-xs text-gray-800">
                         You are editing this ride request. Changes will apply only while the request remains pending.
                       </p>
                       <div className="flex gap-2 justify-end">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-neutral-600 text-xs bg-neutral-900 hover:bg-neutral-800 text-neutral-200"
+                          className="border-neutral-600 text-xs bg-gray-100 hover:bg-gray-200 text-gray-800"
                           onClick={handleCancelEdit}
                           disabled={saving}
                         >
@@ -928,7 +976,7 @@ const filteredRideTypeIds = selected.serviceType
                         </Button>
                         <Button
                           size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-500 text-xs text-white"
+                          className="bg-black hover:bg-black text-xs text-white"
                           onClick={handleSaveEdit}
                           disabled={saving}
                         >
@@ -940,19 +988,19 @@ const filteredRideTypeIds = selected.serviceType
 
 
                     {/* Waiting-for-drivers block */}
-                    <div className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/90 px-4 py-5">
+                    <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-100/90 px-4 py-5">
                       {data.progressStatus === "AllAccepted" ||
                       data.progressStatus === "RidesCreated" ||
                       data.progressStatus === "Completed" ? (
                         <div className="flex items-center gap-3">
-                          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
-                            <Car className="h-5 w-5 text-emerald-400" />
+                          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-black/20">
+                            <Car className="h-5 w-5 text-black" />
                           </span>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-emerald-400">
+                            <p className="text-sm font-medium text-black">
                               All rides have been accepted!
                             </p>
-                            <p className="mt-1 text-xs text-neutral-400">
+                            <p className="mt-1 text-xs text-gray-600">
                               Drivers have accepted your ride. Your trip will begin soon.
                             </p>
                           </div>
@@ -967,7 +1015,7 @@ const filteredRideTypeIds = selected.serviceType
                             <p className="text-sm font-medium text-red-400">
                               Ride request has been cancelled.
                             </p>
-                            <p className="mt-1 text-xs text-neutral-400">
+                            <p className="mt-1 text-xs text-gray-600">
                               You have cancelled this ride request.
                             </p>
                           </div>
@@ -975,16 +1023,16 @@ const filteredRideTypeIds = selected.serviceType
                       ) : (
                         <div className="flex items-center gap-3">
                           <div className="relative h-10 w-10">
-                            <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
-                            <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
-                              <Car className="h-5 w-5 text-emerald-400" />
+                            <span className="absolute inset-0 rounded-full bg-black/20 animate-ping" />
+                            <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-black/20">
+                              <Car className="h-5 w-5 text-black" />
                             </span>
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-neutral-50">
+                            <p className="text-sm font-medium text-gray-900">
                               Waiting for drivers…
                             </p>
-                            <p className="mt-1 text-xs text-neutral-400">
+                            <p className="mt-1 text-xs text-gray-600">
                               We’ve sent out offers to nearby drivers. You’ll see your
                               ride here as soon as someone accepts.
                             </p>
@@ -1003,7 +1051,7 @@ const filteredRideTypeIds = selected.serviceType
                               ["AllAccepted", "RidesCreated", "Completed"].includes(data?.progressStatus) ||
                               ["Accepted", "Cancelled", "Completed"].includes(data?.status)
                             }
-                            className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                            className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-gray-900"
                           >
                             {refreshing && (
                               <Loader2 className="mr-2 h-3 w-3 animate-spin" />
@@ -1037,7 +1085,7 @@ const filteredRideTypeIds = selected.serviceType
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-neutral-700 text-xs text-neutral-900 bg-neutral-50 hover:bg-emerald-500 hover:text-neutral-50"
+                    className="border-gray-300 text-xs text-white bg-gray-900 hover:bg-black hover:text-gray-900"
                     onClick={() => navigate("/passenger/ride")}
                   >
                     &larr; Back
@@ -1050,6 +1098,7 @@ const filteredRideTypeIds = selected.serviceType
                   <div className="relative h-full min-h-[320px] rounded-none">
                     <MapView
                     center={mapCenter}
+                    zoom={mapZoom}
                     markers={markers}
                     polyline={polyline}
                     className="rounded-none"
@@ -1058,13 +1107,73 @@ const filteredRideTypeIds = selected.serviceType
                 </div>
             </div>
           </Card>
+
+          {/* Payment Summary Card - Show when rides are completed */}
+          {allRidesCompleted && totalPrice > 0 && (
+            <Card className="mx-4 my-4 border border-gray-200 bg-white">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Payment Summary</h3>
+                    <p className="text-sm text-gray-600">Your ride is complete</p>
+                  </div>
+                  {canProceedToPayment ? (
+                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/60">
+                      Payment Pending
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/60">
+                      Paid
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {data?.rides?.map((ride, idx) => (
+                    <div key={ride.rideId} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        Leg {ride.legIndex}: {ride.fromName} → {ride.toName}
+                      </span>
+                      <span className="font-medium text-gray-900">
+                        €{ride.priceFinal?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-semibold text-gray-900">Total</span>
+                      <span className="text-xl font-bold text-black">
+                        €{totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {canProceedToPayment && (
+                    <div className="mt-4">
+                      <Button
+                        size="lg"
+                        className="w-full bg-black hover:bg-black/90 text-white flex items-center justify-center gap-2 group"
+                        onClick={handleGoToPayment}
+                      >
+                        <CreditCard className="h-5 w-5" />
+                        <span>Continue to Payment</span>
+                        <span className="transition-transform duration-200 group-hover:translate-x-1 text-xl">→</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* BOTTOM: Rides */}
           <div className="w-full px-4 py-4">
             {/* If accepted → show rides */}
             {(data?.progressStatus === "AllAccepted" || data?.progressStatus === "RidesCreated" || data?.progressStatus === "Completed") &&
               data?.rides && data.rides.length > 0 ? (
               <>
-                <h2 className="text-sm font-semibold text-neutral-200 mb-2">
+                <h2 className="text-sm font-semibold text-gray-800 mb-2">
                 Your rides
                 </h2>
 
@@ -1072,10 +1181,10 @@ const filteredRideTypeIds = selected.serviceType
                   {data.rides.map((ride, idx) => (
                     <div key={ride.rideId} className="flex items-center">
                       <div
-                        className="min-w-[240px] rounded-xl border border-neutral-800 bg-neutral-900 p-4"
+                        className="min-w-[240px] rounded-xl border border-gray-200 bg-gray-100 p-4"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs uppercase text-neutral-400">
+                          <span className="text-xs uppercase text-gray-600">
                             Leg {ride.legIndex}
                           </span>
                           <Badge className="text-[10px] px-2 py-0.5">
@@ -1085,16 +1194,16 @@ const filteredRideTypeIds = selected.serviceType
 
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-emerald-500" />
+                            <MapPin className="h-4 w-4 text-black" />
                             <span>{ride.fromName}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Navigation2 className="h-4 w-4 text-emerald-500" />
+                            <Navigation2 className="h-4 w-4 text-black" />
                             <span>{ride.toName}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
-                            <User2 className="h-4 w-4 text-emerald-500" />
-                            <span className="text-neutral-300">
+                            <User2 className="h-4 w-4 text-black" />
+                            <span className="text-gray-700">
                               {ride.driverName}
                             </span>
                           </div>
@@ -1102,7 +1211,7 @@ const filteredRideTypeIds = selected.serviceType
                         <Button
                           size="sm"
                           variant="outline"
-                          className="mt-3 w-full border-neutral-700 bg-neutral-800 text-neutral-50 hover:bg-neutral-700 hover:text-emerald-400 flex items-center gap-1"
+                          className="mt-3 w-full border-gray-300 bg-gray-200 text-gray-900 hover:bg-gray-300 hover:text-black flex items-center gap-1"
                           onClick={() =>
                           setActiveChat({
                             rideId: ride.rideId,
@@ -1116,28 +1225,28 @@ const filteredRideTypeIds = selected.serviceType
                             : undefined
                           }
                         >
-                          <MessageCircle className="h-4 w-4 text-neutral-50" />
-                          <span className="text-neutral-50 font-semibold">Chat</span>
+                          <MessageCircle className="h-4 w-4 text-gray-900" />
+                          <span className="text-gray-900 font-semibold">Chat</span>
                         </Button>
                         { data.status === "Completed" && (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="mt-3 w-full border-neutral-200 bg-neutral-50 text-neutral-900 hover:bg-neutral-200 hover:text-neutral-900"
+                              className="mt-3 w-full border-gray-800 bg-gray-900 text-white hover:bg-gray-800 hover:text-white"
                               onClick={() => {
                                 setReviewRideId(ride.rideId);
                                 setReviewOpen(true);
                               }}
                             >
-                              <Star className="h-4 w-4 mr-2 text-neutral-900" />
-                              <span className="text-neutral-900 font-semibold">Leave a review</span>
+                              <Star className="h-4 w-4 mr-2 text-white" />
+                              <span className="text-white font-semibold">Leave a review</span>
                             </Button>
                         )}
                       </div>
                       {/* Arrow between legs, except after last leg */}
                       {idx < data.rides.length - 1 && (
                         <div className="flex items-center mx-2">
-                          <span className="text-emerald-500 text-2xl select-none">{'→'}</span>
+                          <span className="text-black text-2xl select-none">{'→'}</span>
                         </div>
                       )}
                     </div>
@@ -1147,26 +1256,13 @@ const filteredRideTypeIds = selected.serviceType
             ) : (
               <>
               {/* WAITING PLACEHOLDER */}
-              <div className="flex flex-col items-center justify-center py-10 text-neutral-500">
-                <Car className="h-10 w-10 text-neutral-700 mb-2" />
+              <div className="flex flex-col items-center justify-center py-10 text-gray-9000">
+                <Car className="h-10 w-10 text-gray-300 mb-2" />
                 <p className="text-sm">Waiting for drivers to accept your ride...</p>
               </div>
             </>
             )}
           </div>
-
-          {canProceedToPayment && (
-            <div className="mt-4 flex justify-end px-4 pb-4">
-                <Button
-                  size="lg"
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 group"
-                  onClick={handleGoToPayment}
-                >
-                  Continue to payment
-                  <span className="transition-transform duration-200 group-hover:translate-x-1 text-xl">→</span>
-                </Button>
-            </div>
-          )}
 
         </section>
       </main>
@@ -1178,9 +1274,9 @@ const filteredRideTypeIds = selected.serviceType
         />
       )}
       <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-        <DialogContent className="bg-neutral-900 border border-neutral-800 text-neutral-50">
+        <DialogContent className="bg-gray-100 border border-gray-200 text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-neutral-50">Leave a review</DialogTitle>
+            <DialogTitle className="text-gray-900">Leave a review</DialogTitle>
           </DialogHeader>
 
           {/* ⭐ STAR SELECTOR */}
@@ -1206,13 +1302,13 @@ const filteredRideTypeIds = selected.serviceType
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Write your feedback..."
-            className="bg-neutral-800 border-neutral-700 text-neutral-50"
+            className="bg-gray-200 border-gray-300 text-gray-900"
           />
 
           <DialogFooter className="pt-3">
             <Button
               variant="outline"
-              className="bg-neutral-800 border-neutral-600 text-white hover:bg-neutral-700 hover:text-emerald-400"
+              className="bg-gray-200 border-neutral-600 text-white hover:bg-gray-300 hover:text-black"
               onClick={() => setReviewOpen(false)}
             >
               Cancel
@@ -1220,7 +1316,7 @@ const filteredRideTypeIds = selected.serviceType
 
             <Button
               disabled={rating === 0 || submittingReview}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              className="bg-black hover:bg-black text-white"
               onClick={async () => {
                 if (!reviewRideId) {
                   toast.error("Missing ride id for review.");

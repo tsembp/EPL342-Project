@@ -95,7 +95,7 @@ export default function GDPRExport() {
         {/* Status / Info card */}
         <Card className="p-4 flex items-start gap-3 border border-neutral-800 bg-neutral-900/80 shadow-lg">
           <div className="mt-1">
-            <ShieldCheck className="h-6 w-6 text-emerald-500" />
+            <ShieldCheck className="h-6 w-6 text-gray-500" />
           </div>
           <div className="flex-1 space-y-1">
             <h2 className="font-semibold text-base text-neutral-50">
@@ -160,7 +160,7 @@ export default function GDPRExport() {
                     variant={verified ? "default" : "outline"}
                     className={
                       verified
-                        ? "bg-emerald-500 text-neutral-950"
+                        ? "bg-gray-500 text-neutral-950"
                         : "border-neutral-700 bg-neutral-900 text-neutral-200"
                     }
                   >
@@ -215,7 +215,7 @@ export default function GDPRExport() {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleDownloadJson}
-                className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400"
+                className="bg-gray-500 text-neutral-950 hover:bg-gray-800"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download JSON

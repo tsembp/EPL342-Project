@@ -28,14 +28,14 @@ export default function ReportsAnalytics() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="mb-2 text-2xl font-semibold text-neutral-50">
+          <h1 className="mb-2 text-2xl font-semibold text-gray-900">
             Analytics &amp; Reports
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             High-level overview of rides, drivers, and weekly performance.
           </p>
         </div>
@@ -45,12 +45,12 @@ export default function ReportsAnalytics() {
           {demoKPIs.map((kpi) => (
             <Card
               key={kpi.label}
-              className="border border-neutral-800 bg-neutral-900/80 px-4 py-3 text-center shadow-md"
+              className="border border-gray-200 bg-white/80 px-4 py-3 text-center shadow-md"
             >
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">
                 {kpi.label}
               </div>
-              <div className="text-2xl font-semibold text-neutral-50">
+              <div className="text-2xl font-semibold text-gray-900">
                 {kpi.value}
               </div>
             </Card>
@@ -58,16 +58,16 @@ export default function ReportsAnalytics() {
         </div>
 
         {/* Simple bar chart card */}
-        <Card className="border border-neutral-800 bg-neutral-900/80 p-6 shadow-md">
+        <Card className="border border-gray-200 bg-white/80 p-6 shadow-md">
           <div className="mb-4 flex items-center justify-between">
-            <div className="text-sm font-semibold text-neutral-100">
+            <div className="text-sm font-semibold text-gray-900">
               Rides per Day (This Week)
             </div>
             <Button
               size="sm"
               onClick={handleExport}
               disabled={exporting}
-              className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-lg bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {exporting ? "Exporting…" : "Export CSV"}
             </Button>
@@ -80,11 +80,11 @@ export default function ReportsAnalytics() {
                 className="flex flex-1 flex-col items-center justify-end"
               >
                 <div
-                  className="w-6 rounded-t-md bg-emerald-500/80"
+                  className="w-6 rounded-t-md bg-black/80"
                   style={{ height: `${d.rides / 3}px`, minHeight: 10 }}
                   title={`${d.rides} rides`}
                 />
-                <div className="mt-2 text-xs text-neutral-400">
+                <div className="mt-2 text-xs text-gray-600">
                   {d.day}
                 </div>
               </div>

@@ -224,45 +224,45 @@ export function DriverOffersSection() {
   const paginatedOffers = offers.slice(startIndex, endIndex);
 
   return (
-    <Card className="border border-neutral-800 bg-neutral-900/80 p-5 sm:p-6">
+    <Card className="border border-gray-200 bg-white p-5 sm:p-6">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900">
-            <MapPin className="h-5 w-5 text-emerald-400" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+            <MapPin className="h-5 w-5 text-black" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-neutral-50">
+            <h2 className="text-base font-semibold text-gray-900">
               Offers & active rides
             </h2>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-gray-600">
               Incoming dispatch offers assigned to you appear here.
             </p>
           </div>
         </div>
-        <Badge className="hidden border border-neutral-700 bg-neutral-900/80 text-[11px] font-normal text-neutral-300 sm:inline-flex">
+        <Badge className="hidden border border-gray-300 bg-white text-[11px] font-normal text-gray-700 sm:inline-flex">
           Live dispatch
         </Badge>
       </div>
 
       {/* Loading / error states */}
       {loading && (
-        <div className="flex items-center justify-center py-10 text-sm text-neutral-400">
+        <div className="flex items-center justify-center py-10 text-sm text-gray-600">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Loading offers…
         </div>
       )}
 
       {!loading && error && (
-        <div className="mt-4 rounded-lg border border-red-700/60 bg-red-950/40 px-3 py-3 text-xs text-red-200">
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-xs text-red-600">
           {error}
         </div>
       )}
 
       {!loading && !error && totalOffers === 0 && (
-        <Card className="mt-4 border border-dashed border-neutral-800 bg-neutral-900/60 p-4">
-          <p className="text-xs text-neutral-400">
-            You don’t have any offers at the moment. When dispatch sends you a
+        <Card className="mt-4 border border-dashed border-gray-300 bg-gray-50 p-4">
+          <p className="text-xs text-gray-600">
+            You don't have any offers at the moment. When dispatch sends you a
             ride, it will appear here with full route and timing details.
           </p>
         </Card>
@@ -284,31 +284,31 @@ export function DriverOffersSection() {
               return (
                 <Card
                   key={`${offer.OfferId}-${offer.LegId}-${offer.SeqNo}`}
-                  className="cursor-pointer border border-neutral-800 bg-neutral-900/80 p-3 transition-colors hover:border-emerald-500/70"
+                  className="cursor-pointer border border-gray-200 bg-white p-3 transition-all hover:border-gray-400 hover:shadow-md"
                 >
                   {/* card header */}
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-neutral-50">
+                      <Car className="h-4 w-4 text-black" />
+                      <span className="text-sm font-semibold text-gray-900">
                         Offer #{offer.OfferId}
                       </span>
                       <Badge
                         variant="outline"
-                        className={`border-neutral-700 bg-neutral-900/80 text-[10px] ${
+                        className={`border-gray-300 bg-white text-[10px] ${
                           isOpen
-                            ? "border-emerald-500/60 text-emerald-400"
+                            ? "border-black text-black"
                             : offer.OfferStatus === "Accepted"
-                            ? "border-emerald-500/60 text-emerald-300"
+                            ? "border-black text-black"
                             : offer.OfferStatus === "Declined"
-                            ? "border-red-500/60 text-red-300"
-                            : "text-neutral-300"
+                            ? "border-red-300 text-red-600"
+                            : "text-gray-700"
                         }`}
                       >
                         {offer.OfferStatus}
                       </Badge>
                     </div>
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-[11px] text-gray-600">
                       {offer.ServiceTypeName || "Service"} ·{" "}
                       {offer.RideTypeName || "Ride type"}
                     </span>
@@ -317,18 +317,18 @@ export function DriverOffersSection() {
                   {/* route details + mini map */}
                   <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
                     {/* LEFT: text details */}
-                    <div className="flex flex-col gap-1 text-xs text-neutral-300">
+                    <div className="flex flex-col gap-1 text-xs text-gray-900">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-emerald-400" />
+                        <MapPin className="h-3 w-3 text-black" />
                         <span className="truncate">
                           {offer.FromPointName || "Unknown pickup"}{" "}
-                          <ArrowRight className="mx-1 inline h-3 w-3 text-neutral-500" />
+                          <ArrowRight className="mx-1 inline h-3 w-3 text-gray-400" />
                           {offer.ToPointName || "Unknown dropoff"}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-neutral-400">
+                        <div className="flex items-center gap-2 text-gray-600">
                           <Clock className="h-3 w-3" />
                           <span>
                             Pickup at{" "}
@@ -342,7 +342,7 @@ export function DriverOffersSection() {
                               : "N/A"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-neutral-300">
+                        <div className="flex items-center gap-2 text-gray-700">
                           <Users className="h-3 w-3" />
                           <span>{offer.NumOfPeople} pax</span>
                         </div>
@@ -352,7 +352,7 @@ export function DriverOffersSection() {
                         const minutes = getOfferMinutesToPickup(offer);
                         if (minutes == null) return null;
                         return (
-                          <div className="text-[11px] text-emerald-400">
+                          <div className="text-[11px] text-black">
                             {minutes <= 0
                               ? "Pickup time is starting"
                               : `Pickup in ${minutes} min`}
@@ -363,7 +363,7 @@ export function DriverOffersSection() {
 
                     {/* RIGHT: map (only if we have a valid center) */}
                     {hasValidCenter ? (
-                      <div className="h-36 rounded-lg border border-neutral-800 bg-neutral-950/80 overflow-hidden">
+                      <div className="h-36 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
                         <MapView
                           center={center}
                           markers={markers}
@@ -372,7 +372,7 @@ export function DriverOffersSection() {
                         />
                       </div>
                     ) : (
-                      <div className="flex h-36 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-950/40 text-[11px] text-neutral-500">
+                      <div className="flex h-36 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[11px] text-gray-500">
                         Map not available for this offer
                       </div>
                     )}
@@ -386,7 +386,7 @@ export function DriverOffersSection() {
                           size="sm"
                           variant="outline"
                           disabled={isActing}
-                          className="border-neutral-700 bg-neutral-900 text-xs font-medium text-neutral-200 hover:bg-neutral-800"
+                          className="border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRespond(offer.OfferId, "reject");
@@ -401,7 +401,7 @@ export function DriverOffersSection() {
                         <Button
                           size="sm"
                           disabled={isActing}
-                          className="rounded-lg bg-emerald-500 px-3 text-xs font-semibold text-neutral-950 hover:bg-emerald-400"
+                          className="rounded-lg bg-black px-3 text-xs font-semibold text-white hover:bg-gray-800"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRespond(offer.OfferId, "accept");
@@ -423,14 +423,14 @@ export function DriverOffersSection() {
 
           {/* Pagination controls */}
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between text-xs text-neutral-400">
+            <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
               <span>
                 Showing{" "}
-                <span className="text-neutral-100">
+                <span className="text-gray-900">
                   {startIndex + 1}–{endIndex}
                 </span>{" "}
                 of{" "}
-                <span className="text-neutral-100">
+                <span className="text-gray-900">
                   {totalOffers}
                 </span>{" "}
                 offers
@@ -439,26 +439,26 @@ export function DriverOffersSection() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-100"
                   disabled={clampedPage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   Previous
                 </Button>
-                <span className="text-[11px] text-neutral-400">
+                <span className="text-[11px] text-gray-600">
                   Page{" "}
-                  <span className="text-neutral-100">
+                  <span className="text-gray-900">
                     {clampedPage}
                   </span>{" "}
                   of{" "}
-                  <span className="text-neutral-100">
+                  <span className="text-gray-900">
                     {totalPages}
                   </span>
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-neutral-700 bg-neutral-900 text-[11px] font-medium text-neutral-200 hover:bg-neutral-800"
+                  className="border-gray-300 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-100"
                   disabled={clampedPage >= totalPages}
                   onClick={() =>
                     setPage((p) => Math.min(totalPages, p + 1))

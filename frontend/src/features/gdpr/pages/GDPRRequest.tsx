@@ -125,7 +125,7 @@ export default function GDPRRequest() {
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 px-3 outline-none focus:ring-emerald-500 focus:ring-offset-0"
+                className="w-full h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 px-3 outline-none focus:ring-gray-500 focus:ring-offset-0"
                 required
               >
                 {REQUEST_TYPES.map((t) => (
@@ -154,7 +154,7 @@ export default function GDPRRequest() {
                 placeholder={getReasonPlaceholder(type)}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="min-h-32 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500 focus-visible:ring-offset-0"
+                className="min-h-32 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
                 required={type === "DataDeletion" || type === "DataCorrection"}
               />
             </div>
@@ -162,7 +162,7 @@ export default function GDPRRequest() {
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl bg-emerald-500 text-neutral-950 font-medium hover:bg-emerald-400 disabled:bg-neutral-800 disabled:text-neutral-500"
+              className="w-full h-11 rounded-xl bg-gray-500 text-neutral-950 font-medium hover:bg-gray-800 disabled:bg-neutral-800 disabled:text-neutral-500"
               disabled={loading}
             >
               {loading ? "Submitting..." : "Submit request"}

@@ -466,6 +466,16 @@ export type DriverDailyAvailability = {
   startTime: string | null; // "HH:MM" or null
   endTime: string | null; // "HH:MM" or null
   locked?: boolean;
+  zoneId?: number | null;
+};
+
+export type GeofenceZone = {
+  zoneId: number;
+  name: string;
+  minLat: number | null;
+  minLng: number | null;
+  maxLat: number | null;
+  maxLng: number | null;
 };
 
 export type DriverServiceEnrollment = {
@@ -509,6 +519,13 @@ export const getDriverDailyAvailability = (date: string) =>
     availability?: DriverDailyAvailability;
     error?: string;
   }>(`/driver/availability?date=${encodeURIComponent(date)}`);
+
+export const getAvailableZones = () =>
+  fetchAPI<{
+    success: boolean;
+    zones: GeofenceZone[];
+    error?: string;
+  }>("/driver/zones");
 
 export const setDriverDailyAvailability = (
   payload: DriverDailyAvailability
@@ -584,3 +601,18 @@ export const updateDriverPreferences = (prefs: UserPreferences) =>
     method: "PUT",
     body: JSON.stringify(prefs),
   });
+
+export const submitRideRating = (
+  rideId: number,
+  data: { stars: number; comment?: string }
+) =>
+  fetchAPI<{ success: boolean; ratingId?: number; error?: string }>(
+    `/driver/rides/${rideId}/rating`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        stars: data.stars,
+        comment: data.comment,
+      }),
+    }
+  );

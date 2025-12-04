@@ -66,8 +66,6 @@ export default function ServiceTypesProfiles() {
         name: row.Name ?? row.name ?? "",
         description: row.Description ?? row.description ?? "",
         baseFare: Number(row.BaseFare ?? row.baseFare ?? 0),
-        perKm: Number(row.PerKm ?? row.perKm ?? 0),
-        perMin: Number(row.PerMin ?? row.perMin ?? 0),
         active:
           row.IsActive === true ||
           row.IsActive === 1 ||
@@ -178,8 +176,6 @@ export default function ServiceTypesProfiles() {
     name: string;
     description: string;
     baseFare: number;
-    perKm: number;
-    perMin: number;
     active: boolean;
   }) => {
     if (values.id) {
@@ -189,8 +185,6 @@ export default function ServiceTypesProfiles() {
           name: values.name,
           description: values.description,
           baseFare: values.baseFare,
-          perKm: values.perKm,
-          perMin: values.perMin,
           active: values.active,
         }
       );
@@ -200,8 +194,6 @@ export default function ServiceTypesProfiles() {
         name: values.name,
         description: values.description,
         baseFare: values.baseFare,
-        perKm: values.perKm,
-        perMin: values.perMin,
         active: values.active,
         validFrom: null,
         validTo: null,
@@ -228,30 +220,30 @@ export default function ServiceTypesProfiles() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full bg-neutral-950 text-neutral-50 px-6 py-6">
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className="min-h-full w-full bg-gray-50 text-gray-900 px-6 py-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-50 mb-2">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
             Service Types &amp; Profiles
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Configure ride service types and allowed combinations between
             services, ride types, and vehicle types.
           </p>
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-neutral-900/80 border border-neutral-800 rounded-full p-1 inline-flex">
+          <TabsList className="bg-white/80 border border-gray-200 rounded-lg p-1 inline-flex">
             <TabsTrigger
               value="service-types"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               Service Types
             </TabsTrigger>
             <TabsTrigger
               value="allowed-profiles"
-              className="rounded-full px-4 py-1.5 text-xs font-medium text-neutral-400 data-[state=active]:bg-neutral-50 data-[state=active]:text-neutral-900 transition-colors"
+              className="rounded-lg px-4 py-1.5 text-xs font-medium text-gray-600 data-[state=active]:bg-black data-[state=active]:text-white transition-colors"
             >
               Allowed Ride Profiles
             </TabsTrigger>
@@ -260,19 +252,19 @@ export default function ServiceTypesProfiles() {
           {/* Service Types tab */}
           <TabsContent value="service-types" className="mt-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-neutral-50">
+              <h2 className="text-lg font-semibold text-gray-900">
                 Service Types
               </h2>
               <Button
                 onClick={handleAddServiceTypeClick}
-                className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2 border-0"
+                className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2 border-0"
               >
                 Add Service Type
               </Button>
             </div>
 
             {serviceTypesLoading ? (
-              <div className="text-sm text-neutral-400">
+              <div className="text-sm text-gray-600">
                 Loading service types…
               </div>
             ) : (
@@ -296,19 +288,19 @@ export default function ServiceTypesProfiles() {
             className="mt-4 space-y-4"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-neutral-50">
+              <h2 className="text-lg font-semibold text-gray-900">
                 Allowed Ride Profiles
               </h2>
               <Button
                 onClick={handleAddAllowedProfileClick}
-                className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2 border-0"
+                className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2 border-0"
               >
                 Add Allowed Profile
               </Button>
             </div>
 
             {allowedProfilesLoading ? (
-              <div className="text-sm text-neutral-400">
+              <div className="text-sm text-gray-600">
                 Loading allowed profiles…
               </div>
             ) : (
@@ -411,7 +403,7 @@ function AllowedProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-lg border border-gray-200 bg-white text-gray-900 shadow-2xl rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             Add Allowed Profile
@@ -422,13 +414,13 @@ function AllowedProfileDialog({
           <div className="space-y-1">
             <Label
               htmlFor="ap-service-type"
-              className="text-neutral-200"
+              className="text-gray-800"
             >
               Service Type
             </Label>
             <select
               id="ap-service-type"
-              className="w-full border border-neutral-700 rounded-md px-2.5 py-2 text-sm bg-neutral-900 text-neutral-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full border border-gray-300 rounded-md px-2.5 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500/40"
               value={serviceTypeId}
               onChange={(e) =>
                 setServiceTypeId(
@@ -449,13 +441,13 @@ function AllowedProfileDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="ap-ride-type"
-                className="text-neutral-200"
+                className="text-gray-800"
               >
                 Ride Type
               </Label>
               <select
                 id="ap-ride-type"
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-0 placeholder:text-gray-9000 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/40"
                 value={rideTypeId}
                 onChange={(e) =>
                   setRideTypeId(
@@ -475,13 +467,13 @@ function AllowedProfileDialog({
             <div className="space-y-1">
               <Label
                 htmlFor="ap-vehicle-type"
-                className="text-neutral-200"
+                className="text-gray-800"
               >
                 Vehicle Type
               </Label>
               <select
                 id="ap-vehicle-type"
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-0 placeholder:text-gray-9000 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/40"
                 value={vehicleTypeId}
                 onChange={(e) =>
                   setVehicleTypeId(
@@ -503,7 +495,7 @@ function AllowedProfileDialog({
           <div className="space-y-1">
             <Label
               htmlFor="ap-profile-name"
-              className="text-neutral-200"
+              className="text-gray-800"
             >
               Profile Name (optional)
             </Label>
@@ -512,7 +504,7 @@ function AllowedProfileDialog({
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
               placeholder="e.g. bridged_route – hatchback"
-              className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
         </div>
@@ -522,7 +514,7 @@ function AllowedProfileDialog({
             variant="outline"
             onClick={() => handleClose(false)}
             disabled={submitting}
-            className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 rounded-lg px-4 py-2"
+            className="border-gray-300 bg-white text-gray-800 hover:bg-gray-100 rounded-lg px-4 py-2"
           >
             Cancel
           </Button>
@@ -534,7 +526,7 @@ function AllowedProfileDialog({
               rideTypeId === "" ||
               vehicleTypeId === ""
             }
-            className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400 rounded-full px-4 py-2"
+            className="bg-black text-white hover:bg-gray-800 rounded-lg px-4 py-2"
           >
             {submitting ? "Saving…" : "Save"}
           </Button>

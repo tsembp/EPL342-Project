@@ -106,7 +106,7 @@ export default function AllowedProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-neutral-800 bg-neutral-900 text-neutral-50 shadow-2xl">
+      <DialogContent className="max-w-lg border border-gray-200 bg-white text-gray-900 shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold tracking-tight">
             {initial ? "Edit Allowed Profile" : "Add Allowed Profile"}
@@ -118,7 +118,7 @@ export default function AllowedProfileDialog({
             <Label htmlFor="ap-service-type">Service Type</Label>
             <select
               id="ap-service-type"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-0 placeholder:text-gray-9000 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/40"
               value={serviceTypeId ?? ""}
               onChange={(e) =>
                 setServiceTypeId(
@@ -140,7 +140,7 @@ export default function AllowedProfileDialog({
               <Label htmlFor="ap-ride-type">Ride Type</Label>
               <select
                 id="ap-ride-type"
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-0 placeholder:text-gray-9000 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/40"
                 value={rideTypeId ?? ""}
                 onChange={(e) =>
                   setRideTypeId(
@@ -161,7 +161,7 @@ export default function AllowedProfileDialog({
               <Label htmlFor="ap-vehicle-type">Vehicle Type</Label>
               <select
                 id="ap-vehicle-type"
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none ring-0 placeholder:text-neutral-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-0 placeholder:text-gray-9000 focus:border-gray-500 focus:ring-2 focus:ring-gray-500/40"
                 value={vehicleTypeId ?? ""}
                 onChange={(e) =>
                   setVehicleTypeId(
@@ -187,7 +187,7 @@ export default function AllowedProfileDialog({
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
               placeholder="e.g. 'bridged_route – hatchback'"
-              className="border-neutral-700 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-emerald-500/40"
+              className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-9000 focus-visible:ring-gray-500/40"
             />
           </div>
         </div>
@@ -197,7 +197,7 @@ export default function AllowedProfileDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={submitting}
-            className="border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800"
+            className="border-gray-300 bg-white text-gray-800 hover:bg-gray-100"
           >
             Cancel
           </Button>
@@ -209,7 +209,7 @@ export default function AllowedProfileDialog({
               rideTypeId === undefined ||
               vehicleTypeId === undefined
             }
-            className="bg-emerald-500 text-neutral-950 hover:bg-emerald-400"
+            className="bg-black text-white hover:bg-gray-800"
           >
             {submitting ? "Saving..." : "Save"}
           </Button>
