@@ -6,5 +6,6 @@ secrets/
 test.sql
 uploads/
 frontend/public/background-video.mp4
+sources/frontend/public/background-video.mp4
 backend/uploads/
 sources/frontend/node_modules/
