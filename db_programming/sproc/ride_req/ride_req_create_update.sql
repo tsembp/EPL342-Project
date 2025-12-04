@@ -79,7 +79,7 @@ BEGIN
         END
 
         -- if ride type is renting vehicle -> Passenger.CanDrive must be 1
-        IF @RideType = 'vehicle_no_driver'
+        IF @RideType = 'vehicle_rental'
         BEGIN
             DECLARE @CanDrive BIT;
             SELECT @CanDrive = P.CanDrive
@@ -236,7 +236,7 @@ BEGIN
             ;THROW 50005, 'For rides between different zones, service type must be bridged route.', 1;
         END
 
-        -- 3) Ride type selected is vehicle_no_driver -> passenger must be eligible to drive
+        -- 3) Ride type selected is vehicle_rental -> passenger must be eligible to drive
         DECLARE @PassengerCanDrive BIT;
 
         SELECT @PassengerCanDrive = P.CanDrive
@@ -244,7 +244,7 @@ BEGIN
         JOIN Passenger P ON RR.PassengerId = P.UserId
         WHERE RR.RequestId = @RequestId;
 
-        IF @RideTypeName = 'vehicle_no_driver' AND ISNULL(@PassengerCanDrive, 0) = 0
+        IF @RideTypeName = 'vehicle_rental' AND ISNULL(@PassengerCanDrive, 0) = 0
         BEGIN
             ;THROW 50013, 'You must be eligible to drive to be able to select this service. Get verified in the Profile page.', 1;
         END;

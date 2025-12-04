@@ -2,7 +2,7 @@
 
 export const RIDE_TYPES = [
   ["vehicle_with_driver", "Ride with a driver"],
-  ["vehicle_no_driver", "Driverless car"],
+  ["vehicle_rental", "Driverless car"],
   ["teledriving", "Teleoperated vehicle"],
   ["fully_autonomous", "Autonomous vehicle"],
   ["small_cargo_van", "Cargo van (small)"],

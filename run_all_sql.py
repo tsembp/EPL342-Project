@@ -12,7 +12,7 @@ CONNECTION_STRING = (
     "Driver={ODBC Driver 18 for SQL Server};"
     f"Server={os.getenv('DB_HOST')},1433;"
     f"Database={os.getenv('DB_NAME')};"
-    f"UID={os.getenv('DB_NAME')};PWD={os.getenv('DB_PASS')};"
+    f"UID={os.getenv('DB_USERNAME')};PWD={os.getenv('DB_PASS')};"
     "Encrypt=yes;TrustServerCertificate=yes"
 )
 
@@ -30,28 +30,32 @@ def get_connection():
 
 def find_sql_files(base_dir: Path):
     sql_files = []
+    
+    # First, process views directory if it exists
+    views_dir = base_dir / "db_programming" / "views"
+    if views_dir.exists() and views_dir.is_dir():
+        for f in sorted(views_dir.glob("*.sql")):
+            sql_files.append(f)
+    
+    # Then process all other directories (excluding views since we already did it)
     for root, dirs, files in os.walk(base_dir):
         dirs.sort()
         root_path = Path(root)
         is_root = (root_path == base_dir)
+        is_views = (root_path.name == "views")
+
+        # Skip root directory files and views directory (already processed)
+        if is_root or is_views:
+            continue
 
         for f in sorted(files):
             if f.lower().endswith(".sql"):
-                if is_root or f == "availability_change.sql" or f == "DB_definition.sql" or f == "driver_photo.sql" or f == "gdpr_alter.sql" or f == "with_check_no_check.sql":
-                    # skip files in the root directory
+                if f == "availability_change.sql" or f == "DB_definition.sql" or f == "driver_photo.sql" or f == "gdpr_alter.sql" or f == "with_check_no_check.sql":
+                    # skip specific files
                     continue
                 sql_files.append(root_path / f)
 
     return sql_files
-
-
-def split_batches(sql_text: str):
-    """
-    Split SQL script into batches separated by GO.
-    """
-    pattern = r"^\s*GO\s*;?\s*$"
-    batches = re.split(pattern, sql_text, flags=re.IGNORECASE | re.MULTILINE)
-    return [b.strip() for b in batches if b.strip()]
 
 
 def execute_sql_file(conn, file_path: Path):
@@ -66,6 +70,15 @@ def execute_sql_file(conn, file_path: Path):
 
     try:
         for batch in batches:
+            # Handle CREATE OR ALTER for stored procedures
+            if "CREATE PROCEDURE" in batch or "CREATE PROC" in batch:
+                # Check if procedure already exists and drop it
+                proc_match = re.search(r'CREATE\s+(?:PROCEDURE|PROC)\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?', batch, re.IGNORECASE)
+                if proc_match:
+                    proc_name = proc_match.group(1)
+                    drop_sql = f"IF OBJECT_ID('dbo.{proc_name}', 'P') IS NOT NULL DROP PROCEDURE dbo.{proc_name}"
+                    cursor.execute(drop_sql)
+            
             cursor.execute(batch)
             while cursor.nextset():
                 pass
@@ -74,6 +87,15 @@ def execute_sql_file(conn, file_path: Path):
     except Exception as e:
         conn.rollback()
         return False, str(e)
+    
+
+def split_batches(sql_text: str):
+    """
+    Split SQL script into batches separated by GO.
+    """
+    pattern = r"^\s*GO\s*;?\s*$"
+    batches = re.split(pattern, sql_text, flags=re.IGNORECASE | re.MULTILINE)
+    return [b.strip() for b in batches if b.strip()]
 
 
 def main():

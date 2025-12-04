@@ -23,9 +23,11 @@ class Config:
 
     # DB connection string
     CN_STR = (
-        "Driver={ODBC Driver 18 for SQL Server};"
-        f"Server={os.getenv('DB_HOST')},1433;"
-        f"Database={os.getenv('DB_NAME')};"
-        f"UID={os.getenv('DB_NAME')};PWD={os.getenv('DB_PASS')};"
-        "Encrypt=yes;TrustServerCertificate=yes"
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"SERVER={os.getenv('DB_HOST')},1433;"
+        f"DATABASE={os.getenv('DB_NAME')};"
+        f"UID={os.getenv('DB_USERNAME')};"
+        f"PWD={os.getenv('DB_PASS')};"
+        "Encrypt=yes;"
+        "TrustServerCertificate=yes;"
     )
