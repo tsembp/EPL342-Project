@@ -1,19 +1,23 @@
+import os
 import pyodbc
 import pandas as pd
 from pathlib import Path
+from dotenv import load_dotenv
 
-DB_HOST = "10.16.1.133"
-DB_NAME = "sgavri03"
-DB_USER = "sgavri03"
-DB_PASS = "Rk7d3be2"
+load_dotenv()
+
+# DB_HOST = "10.16.1.133"
+# DB_NAME = "sgavri03"
+# DB_USER = "sgavri03"
+# DB_PASS = "Rk7d3be2"
 
 conn = pyodbc.connect(
     "DRIVER={ODBC Driver 18 for SQL Server};"
-    f"SERVER={DB_HOST},1433;"
-    f"DATABASE={DB_NAME};"
-    f"UID={DB_USER};"
-    f"PWD={DB_PASS};"
-    "Encrypt=no;"
+    f"SERVER={os.getenv('DB_HOST')},1433;"
+    f"DATABASE={os.getenv('DB_NAME')};"
+    f"UID={os.getenv('DB_USERNAME')};"
+    f"PWD={os.getenv('DB_PASS')};"
+    "Encrypt=yes;"
     "TrustServerCertificate=yes;"
 )
 

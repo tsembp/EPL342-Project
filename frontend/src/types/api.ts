@@ -89,7 +89,7 @@ export type BridgedPath = {
 // Enums
 export type RideType = 
   | "vehicle_with_driver"
-  | "vehicle_no_driver"
+  | "vehicle_rental"
   | "teledriving"
   | "fully_autonomous"
   | "small_cargo_van";
