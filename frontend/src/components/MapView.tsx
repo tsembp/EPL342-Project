@@ -89,23 +89,25 @@ export function MapView({
     };
   }, []);
 
-  // Update center
+  // Update center only if we don't have markers to auto-fit
   useEffect(() => {
-    if (mapRef.current) {
+    if (mapRef.current && markers.length <= 1) {
       mapRef.current.setView(center, zoom);
     }
-  }, [center, zoom]);
+  }, [center, zoom, markers.length]);
 
   // Update markers & route
   useEffect(() => {
     if (!mapRef.current || !clusterRef.current) return;
 
     const clusters = clusterRef.current;
+    const map = mapRef.current;
 
     // Clear markers
     clusters.clearLayers();
 
     // Add markers
+    const allMarkers: L.Marker[] = [];
     markers.forEach(({ position, popup, icon, onClick }) => {
       const iconObj = getMarkerIcon(icon);
       const marker = L.marker(position, iconObj ? { icon: iconObj } : {});
@@ -114,11 +116,12 @@ export function MapView({
       if (onClick) marker.on("click", onClick);
 
       clusters.addLayer(marker);
+      allMarkers.push(marker);
     });
 
     // Clear old route
     if (routeRef.current) {
-      mapRef.current.removeLayer(routeRef.current);
+      map.removeLayer(routeRef.current);
       routeRef.current = null;
     }
 
@@ -128,9 +131,30 @@ export function MapView({
         color: "#2563eb", // blue-600
         weight: 4,
         opacity: 0.9,
-      }).addTo(mapRef.current);
+      }).addTo(map);
 
       routeRef.current = route;
+    }
+
+    // Auto-fit bounds if we have markers or polyline
+    if (markers.length > 1 || (polyline && polyline.length > 1)) {
+      const bounds = L.latLngBounds([]);
+      
+      // Add marker positions to bounds
+      markers.forEach(({ position }) => {
+        bounds.extend(position);
+      });
+      
+      // Add polyline positions to bounds
+      if (polyline && polyline.length > 1) {
+        polyline.forEach((pos) => {
+          bounds.extend(pos);
+        });
+      }
+      
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      }
     }
   }, [markers, polyline]);
 

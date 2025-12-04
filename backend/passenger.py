@@ -903,16 +903,17 @@ def pay_for_ride_request(request_id: int):
                         "error": f"RideRequest is not in Completed status (current: {request_status})"
                     }), 400
 
-                # 2) Find all completed rides for this request with no payment
+                # 2) Find all completed rides for this request with no payment or pending payment
                 cur.execute("""
                     SELECT DISTINCT r.RideId
                     FROM dbo.Ride r
                     JOIN dbo.DispatchOffer dof ON r.OfferId = dof.OfferId
                     JOIN dbo.ItineraryLeg il   ON dof.LegId = il.LegId
+                    LEFT JOIN dbo.Payment p ON r.Payment = p.PaymentId
                     WHERE il.RideRequestId = ?
                       AND r.PassengerUserId = ?
                       AND r.Status = 'Completed'
-                      AND r.Payment IS NULL
+                      AND (r.Payment IS NULL OR p.Status = 'Pending')
                     ORDER BY r.RideId
                 """, request_id, user_id)
                 ride_rows = cur.fetchall()

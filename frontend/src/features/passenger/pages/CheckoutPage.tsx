@@ -341,7 +341,7 @@ export default function CheckoutPage() {
                     className={
                       paymentMethod === "Cash"
                       ? "flex-1 bg-black border-black text-white shadow-sm ring-2 ring-black hover:bg-gray-800"
-                      : "flex-1 bg-gray-50 border-gray-300 text-gray-800 shadow-sm ring-2 ring-gray-9000 hover:bg-gray-50"
+                      : "flex-1 bg-gray-50 border-gray-300 text-gray-800 shadow-sm ring-2 ring-gray-9000 hover:bg-gray-50 hover:text-black"
                     }
                     onClick={() => setPaymentMethod("Cash")}
                     onMouseEnter={e => {

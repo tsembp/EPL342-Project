@@ -1768,3 +1768,93 @@ def set_driver_preferences():
     except Exception as e:
         print("Error in /api/driver/preferences [PUT]:", e)
         return jsonify({"success": False, "error": str(e)}), 400
+
+
+@driver_bp.route("/rides/<int:ride_id>/rating", methods=["POST"])
+@require_auth
+@require_role("D", "C")
+def create_ride_rating(ride_id: int):
+    """
+    Driver creates a rating for a completed ride.
+    We only accept stars + comment from the client; we derive author/target
+    from the session and the Ride row.
+    """
+    user_id = session["user_id"]  # Author
+    data = request.json or {}
+
+    try:
+        stars = int(data.get("stars", 0))
+        comment = data.get("comment")
+
+        if stars < 1 or stars > 5:
+            return (
+                jsonify({"success": False, "error": "Stars must be between 1 and 5."}),
+                400,
+            )
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                # Get ride participants
+                cur.execute(
+                    """
+                    SELECT DriverUserId, PassengerUserId, Status
+                    FROM dbo.Ride
+                    WHERE RideId = ?
+                    """,
+                    ride_id,
+                )
+                row = cur.fetchone()
+                if not row:
+                    return jsonify({"success": False, "error": "Ride not found"}), 404
+
+                driver_id, passenger_id, ride_status = row
+
+                # Decide target user based on who is logged in
+                if user_id == driver_id:
+                    target_id = passenger_id
+                elif user_id == passenger_id:
+                    target_id = driver_id
+                else:
+                    # Shouldn't happen. Guard anyway
+                    return (
+                        jsonify(
+                            {"success": False, "error": "User did not participate in this ride."}
+                        ),
+                        403,
+                    )
+
+                # Call sproc
+                cur.execute(
+                    """
+                    EXEC dbo.usp_CreateRating
+                        @RideId=?,
+                        @AuthorUserId=?,
+                        @TargetUserId=?,
+                        @Stars=?,
+                        @Comment=?
+                    """,
+                    ride_id,
+                    user_id,
+                    target_id,
+                    stars,
+                    comment,
+                )
+
+                row = cur.fetchone()
+                conn.commit()
+
+                rating_id = row[0] if row else None
+
+                return (
+                    jsonify(
+                        {
+                            "success": True,
+                            "ratingId": rating_id,
+                        }
+                    ),
+                    201,
+                )
+
+    except Exception as e:
+        print(f"Error in /api/driver/rides/{ride_id}/rating:", e)
+        return jsonify({"success": False, "error": str(e)}), 400

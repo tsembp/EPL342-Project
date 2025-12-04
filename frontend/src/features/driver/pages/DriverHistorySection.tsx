@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 import { toast } from "sonner";
 import {
   getDriverRideHistory,
   type DriverHistoryRow,
+  submitRideRating,
 } from "@/features/driver/api";
 import {
   MapPin,
@@ -18,6 +20,7 @@ import {
   CreditCard,
   Loader2,
   History,
+  Star,
 } from "lucide-react";
 
 type ActiveRideDetails = DriverHistoryRow | null;
@@ -30,6 +33,14 @@ export function DriverHistorySection() {
   const [error, setError] = useState<string | null>(null);
   const [detailsRide, setDetailsRide] = useState<ActiveRideDetails>(null);
   const [page, setPage] = useState(1);
+  
+  // Review dialog state
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRideId, setReviewRideId] = useState<number | null>(null);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const hasHistory = rides.length > 0;
 
@@ -338,8 +349,112 @@ export function DriverHistorySection() {
                   </span>
                 </div>
               </div>
+
+              {/* Leave a review button (only for completed rides) */}
+              {detailsRide.Status === "Completed" && (
+                <div className="pt-2">
+                  <Button
+                    className="w-full bg-black hover:bg-black/90 text-white"
+                    onClick={() => {
+                      setReviewRideId(detailsRide.RideId);
+                      setReviewOpen(true);
+                      setDetailsRide(null); // Close details dialog
+                    }}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    <span className="text-white font-semibold">Leave a review</span>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review dialog */}
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="bg-gray-100 border border-gray-200 text-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">Leave a review</DialogTitle>
+          </DialogHeader>
+
+          {/* ⭐ STAR SELECTOR */}
+          <div className="flex gap-2 py-3 justify-center">
+            {[1, 2, 3, 4, 5].map((star) => {
+              const filled = hoverRating >= star || rating >= star;
+              return (
+                <Star
+                  key={star}
+                  className={`h-8 w-8 cursor-pointer transition-colors ${
+                    filled ? "text-yellow-400 fill-yellow-400" : "text-neutral-600"
+                  }`}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setRating(star)}
+                />
+              );
+            })}
+          </div>
+
+          {/* COMMENT FIELD */}
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Write your feedback..."
+            className="bg-gray-200 border-gray-300 text-gray-900"
+          />
+
+          <DialogFooter className="pt-3">
+            <Button
+              variant="outline"
+              className="bg-gray-200 border-neutral-600 text-white hover:bg-gray-300 hover:text-black"
+              onClick={() => {
+                setReviewOpen(false);
+                setRating(0);
+                setHoverRating(0);
+                setComment("");
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              disabled={rating === 0 || submittingReview}
+              className="bg-black hover:bg-black text-white"
+              onClick={async () => {
+                if (!reviewRideId) {
+                  toast.error("Missing ride id for review.");
+                  return;
+                }
+
+                try {
+                  setSubmittingReview(true);
+                  const res = await submitRideRating(reviewRideId, {
+                    stars: rating,
+                    comment: comment.trim() || undefined,
+                  });
+
+                  if (!res.success) {
+                    throw new Error(res.error || "Failed to submit review.");
+                  }
+
+                  toast.success("Review submitted. Thank you!");
+                  setReviewOpen(false);
+                  setRating(0);
+                  setHoverRating(0);
+                  setComment("");
+                  setReviewRideId(null);
+                } catch (err: any) {
+                  console.error(err);
+                  toast.error(err.message || "Failed to submit review.");
+                } finally {
+                  setSubmittingReview(false);
+                }
+              }}
+            >
+              {submittingReview ? "Submitting..." : "Submit Review"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

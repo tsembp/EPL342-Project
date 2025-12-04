@@ -22,7 +22,8 @@ import {
   CarTaxiFront,
   Pencil,
   X,
-  Bot
+  Bot,
+  CreditCard
 } from "lucide-react";
 import {
   Dialog,
@@ -487,6 +488,12 @@ const filteredRideTypeIds = selected.serviceType
     data?.status === "Completed" || data?.progressStatus === "Completed";
   const canProceedToPayment = requestCompleted && allRidesCompleted;
 
+  // Calculate total price from rides
+  const totalPrice = useMemo(() => {
+    if (!data?.rides) return 0;
+    return data.rides.reduce((sum, ride) => sum + (ride.priceFinal || 0), 0);
+  }, [data?.rides]);
+
   const formattedPickupTime =
     data?.pickupAt ? new Date(data.pickupAt).toLocaleString() : "—";
 
@@ -505,7 +512,21 @@ const filteredRideTypeIds = selected.serviceType
     navigate(`/passenger/checkout?requestId=${data.requestId}`);
   };
 
+  // Calculate map center as midpoint between pickup and dropoff
   const mapCenter: [number, number] = useMemo(() => {
+    if (hasPickupCoords && hasDropoffCoords && data) {
+      const pickupLat = (data as any).pickup.latitude as number;
+      const pickupLng = (data as any).pickup.longitude as number;
+      const dropoffLat = (data as any).dropoff.latitude as number;
+      const dropoffLng = (data as any).dropoff.longitude as number;
+      
+      // Return midpoint
+      return [
+        (pickupLat + dropoffLat) / 2,
+        (pickupLng + dropoffLng) / 2
+      ];
+    }
+    
     if (hasPickupCoords && data) {
       return [
         (data as any).pickup.latitude as number,
@@ -514,7 +535,30 @@ const filteredRideTypeIds = selected.serviceType
     }
 
     return DEFAULT_MAP_CENTER as [number, number];
-  }, [hasPickupCoords, data]);
+  }, [hasPickupCoords, hasDropoffCoords, data]);
+
+  // Calculate appropriate zoom level based on distance between points
+  const mapZoom = useMemo(() => {
+    if (hasPickupCoords && hasDropoffCoords && data) {
+      const pickupLat = (data as any).pickup.latitude as number;
+      const pickupLng = (data as any).pickup.longitude as number;
+      const dropoffLat = (data as any).dropoff.latitude as number;
+      const dropoffLng = (data as any).dropoff.longitude as number;
+      
+      // Calculate distance (rough approximation)
+      const latDiff = Math.abs(pickupLat - dropoffLat);
+      const lngDiff = Math.abs(pickupLng - dropoffLng);
+      const maxDiff = Math.max(latDiff, lngDiff);
+      
+      // Adjust zoom based on distance
+      if (maxDiff > 1) return 8;
+      if (maxDiff > 0.5) return 9;
+      if (maxDiff > 0.2) return 10;
+      if (maxDiff > 0.1) return 11;
+      return 12;
+    }
+    return 12;
+  }, [hasPickupCoords, hasDropoffCoords, data]);
 
   const markers = useMemo(() => {
     const m: {
@@ -526,6 +570,7 @@ const filteredRideTypeIds = selected.serviceType
 
     if (hasPickupCoords && data) {
       const { pickup } = data as any;
+      console.log("Adding pickup marker:", pickup.latitude, pickup.longitude);
       m.push({
         position: [pickup.latitude as number, pickup.longitude as number],
         icon: "pickup",
@@ -535,12 +580,15 @@ const filteredRideTypeIds = selected.serviceType
 
     if (hasDropoffCoords && data) {
       const { dropoff } = data as any;
+      console.log("Adding dropoff marker:", dropoff.latitude, dropoff.longitude);
       m.push({
         position: [dropoff.latitude as number, dropoff.longitude as number],
         icon: "dropoff",
         popup: `Dropoff: ${dropoff.name} (Zone ${dropoff.zoneId})`,
       });
     }
+    
+    console.log("Total markers:", m.length);
 
     if (data?.rides) {
       for (const ride of data.rides) {
@@ -1050,6 +1098,7 @@ const filteredRideTypeIds = selected.serviceType
                   <div className="relative h-full min-h-[320px] rounded-none">
                     <MapView
                     center={mapCenter}
+                    zoom={mapZoom}
                     markers={markers}
                     polyline={polyline}
                     className="rounded-none"
@@ -1058,6 +1107,66 @@ const filteredRideTypeIds = selected.serviceType
                 </div>
             </div>
           </Card>
+
+          {/* Payment Summary Card - Show when rides are completed */}
+          {allRidesCompleted && totalPrice > 0 && (
+            <Card className="mx-4 my-4 border border-gray-200 bg-white">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Payment Summary</h3>
+                    <p className="text-sm text-gray-600">Your ride is complete</p>
+                  </div>
+                  {canProceedToPayment ? (
+                    <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/60">
+                      Payment Pending
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/60">
+                      Paid
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {data?.rides?.map((ride, idx) => (
+                    <div key={ride.rideId} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">
+                        Leg {ride.legIndex}: {ride.fromName} → {ride.toName}
+                      </span>
+                      <span className="font-medium text-gray-900">
+                        €{ride.priceFinal?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-semibold text-gray-900">Total</span>
+                      <span className="text-xl font-bold text-black">
+                        €{totalPrice.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {canProceedToPayment && (
+                    <div className="mt-4">
+                      <Button
+                        size="lg"
+                        className="w-full bg-black hover:bg-black/90 text-white flex items-center justify-center gap-2 group"
+                        onClick={handleGoToPayment}
+                      >
+                        <CreditCard className="h-5 w-5" />
+                        <span>Continue to Payment</span>
+                        <span className="transition-transform duration-200 group-hover:translate-x-1 text-xl">→</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* BOTTOM: Rides */}
           <div className="w-full px-4 py-4">
             {/* If accepted → show rides */}
@@ -1154,19 +1263,6 @@ const filteredRideTypeIds = selected.serviceType
             </>
             )}
           </div>
-
-          {canProceedToPayment && (
-            <div className="mt-4 flex justify-end px-4 pb-4">
-                <Button
-                  size="lg"
-                  className="bg-black hover:bg-black text-white flex items-center gap-2 group"
-                  onClick={handleGoToPayment}
-                >
-                  Continue to payment
-                  <span className="transition-transform duration-200 group-hover:translate-x-1 text-xl">→</span>
-                </Button>
-            </div>
-          )}
 
         </section>
       </main>
