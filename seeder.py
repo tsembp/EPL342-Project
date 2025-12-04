@@ -1077,7 +1077,8 @@ VEHICLE_DOC_TYPES = [
     "VEHICLE_REGISTRATION",
     "MOT_CERTIFICATE",
     "VEHICLE_CLASSIFICATION_CERTIFICATE",
-    "VEHICLE_IMAGE",
+    "VEHICLE_IMAGE_INTERIOR",
+    "VEHICLE_IMAGE_EXTERIOR",
 ]
 
 def seed_vehicle_documents(cursor, vehicle_ids, operator_ids):

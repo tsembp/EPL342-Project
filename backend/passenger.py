@@ -456,8 +456,9 @@ def select_alternative(request_id: int):
                 leg_ids = [r[0] for r in cur.fetchall()]
                 print(f"DEBUG select_alternative: Created leg IDs={leg_ids}")
 
-                # For each leg, create dispatch offers (existing sproc)
-                for leg_id in leg_ids:
+                # For each leg, create dispatch offers and track which have no drivers
+                legs_without_drivers = []
+                for idx, leg_id in enumerate(leg_ids):
                     print(f"DEBUG select_alternative: Creating dispatch offers for LegId={leg_id}")
                     try:
                         cur.execute("""
@@ -465,7 +466,16 @@ def select_alternative(request_id: int):
                                 @ItineraryLegId=?,
                                 @SearchRadiusMeters=?
                         """, leg_id, 5000.0)
-                        print(f"DEBUG select_alternative: SUCCESS - Dispatch offers created for LegId={leg_id}")
+                        
+                        # Get the count of offers created
+                        result = cur.fetchone()
+                        offers_created = result[0] if result else 0
+                        
+                        print(f"DEBUG select_alternative: Created {offers_created} dispatch offers for LegId={leg_id}")
+                        
+                        if offers_created == 0:
+                            legs_without_drivers.append(idx + 1)  # 1-indexed leg number
+                            
                     except Exception as leg_error:
                         print(f"DEBUG select_alternative: FAILED - Error creating dispatch offers for LegId={leg_id}: {type(leg_error).__name__}: {str(leg_error)}")
                         raise
@@ -473,11 +483,20 @@ def select_alternative(request_id: int):
                 conn.commit()
                 print(f"DEBUG select_alternative: SUCCESS - Committed transaction")
 
-        return jsonify({
+        response_data = {
             "success": True,
             "requestId": request_id,
             "createdLegIds": leg_ids
-        }), 200
+        }
+        
+        # Add warning if any legs have no drivers
+        if legs_without_drivers:
+            response_data["warning"] = {
+                "message": "No drivers available for some legs",
+                "legsWithoutDrivers": legs_without_drivers
+            }
+
+        return jsonify(response_data), 200
 
     except Exception as e:
         print(f"DEBUG select_alternative: EXCEPTION - {type(e).__name__}: {str(e)}")

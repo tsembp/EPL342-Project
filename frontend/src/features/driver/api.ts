@@ -206,7 +206,7 @@ export const getPersonDocumentStatus = () =>
 export const uploadVehicleDocument = (params: {
   vehicleId: string;
   docType: string; // e.g. 'VEHICLE_REGISTRATION'
-  docNumber?: string; // Optional for document types like 'VEHICLE_IMAGE'
+  docNumber?: string; // Optional for image types like 'VEHICLE_IMAGE_INTERIOR', 'VEHICLE_IMAGE_EXTERIOR'
   issueDate: string; // ISO date string
   expiryDate?: string; // ISO date string, optional
   file: File;

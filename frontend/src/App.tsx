@@ -6,6 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/lib/store";
 import { RoleRedirect } from "@/components/RoleRedirect";
+import { 
+  PassengerOnlyGuard, 
+  DriverOnlyGuard, 
+  OperatorOnlyGuard, 
+  InspectorOnlyGuard, 
+  AdminOnlyGuard,
+  GuestOnlyGuard
+} from "@/components/RoleGuard";
 
 import Login from "@/features/auth/pages/Login";
 import Signup from "@/features/auth/pages/Signup";
@@ -89,7 +97,8 @@ function App() {
 
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <BrowserRouter>
@@ -99,17 +108,17 @@ function App() {
           <Sonner />
           <Routes>
             <Route path="/" element={<RoleRedirect />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/login" element={<GuestOnlyGuard><Login /></GuestOnlyGuard>} />
+            <Route path="/signup" element={<GuestOnlyGuard><Signup /></GuestOnlyGuard>} />
+            <Route path="/admin/login" element={<GuestOnlyGuard><AdminLogin /></GuestOnlyGuard>} />
 
             {/* PASSENGER */}
             <Route
               path="/passenger/*"
               element={
-                <ProtectedRoute>
+                <PassengerOnlyGuard>
                   <PassengerLayout />
-                </ProtectedRoute>
+                </PassengerOnlyGuard>
               }
             >
               <Route index element={<PassengerHome />} />
@@ -146,99 +155,99 @@ function App() {
             <Route
               path="/driver"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <DriverDashboard />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/vehicles"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <VehiclesPage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/services"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <ServicesPage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/availability"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <AvailabilityPage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/history"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <HistoryPage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/profile"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <ProfilePage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/documents"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                     <DriverDocuments />
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/VehicleDocuments"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <VehicleDocuments />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/add-vehicle"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   <DriverPendingGuard>
                     <AddVehiclePage />
                   </DriverPendingGuard>
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
             <Route
               path="/driver/pending-approval"
               element={
-                <ProtectedRoute>
+                <DriverOnlyGuard>
                   {/* IMPORTANT: no DriverPendingGuard here,
                       or it would redirect to itself and loop */}
                   <PendingApproval />
-                </ProtectedRoute>
+                </DriverOnlyGuard>
               }
             />
 
@@ -246,9 +255,9 @@ function App() {
             <Route
               path="/operator/*"
               element={
-                <ProtectedRoute>
+                <OperatorOnlyGuard>
                   <OperatorDashboard />
-                </ProtectedRoute>
+                </OperatorOnlyGuard>
               }
             >
               <Route index element={<Overview />} />
@@ -272,9 +281,9 @@ function App() {
             <Route
               path="/inspector/*"
               element={
-                <ProtectedRoute>
+                <InspectorOnlyGuard>
                   <InspectorDashboard />
-                </ProtectedRoute>
+                </InspectorOnlyGuard>
               }
             />
 
@@ -282,9 +291,9 @@ function App() {
             <Route
               path="/admin/*"
               element={
-                <ProtectedRoute>
+                <AdminOnlyGuard>
                   <AdminPendingOperatorsPage />
-                </ProtectedRoute>
+                </AdminOnlyGuard>
               }
             ></Route>
 

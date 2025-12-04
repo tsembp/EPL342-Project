@@ -214,7 +214,16 @@ export const selectRideRequestAlternative = (
     legs: any[];
   }
 ) => {
-  return fetchAPI<{ success: boolean; requestId?: number; createdLegIds?: number[]; error?: string }>(
+  return fetchAPI<{ 
+    success: boolean; 
+    requestId?: number; 
+    createdLegIds?: number[]; 
+    warning?: {
+      message: string;
+      legsWithoutDrivers: number[];
+    };
+    error?: string 
+  }>(
     `/passenger/ride-requests/${requestId}/select-alternative`,
     {
       method: "POST",

@@ -110,6 +110,10 @@ BEGIN
                 AND existing.RecipientUserId = enroll.UserId
             );
 
+        -- Return the count of offers created for this leg
+        DECLARE @OffersCreated INT = @@ROWCOUNT;
+        SELECT @OffersCreated AS OffersCreated;
+
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH

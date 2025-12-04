@@ -47,10 +47,16 @@ const REQUIRED_DOCUMENTS: DocumentType[] = [
     backendType: "VEHICLE_CLASSIFICATION_CERTIFICATE",
   },
   {
-    id: "vehicle_image",
-    label: "Φωτογραφία Οχήματος (Vehicle Image)",
+    id: "vehicle_image_interior",
+    label: "Φωτογραφία Εσωτερικού Οχήματος (Vehicle Interior Image)",
     hasExpiry: false,
-    backendType: "VEHICLE_IMAGE",
+    backendType: "VEHICLE_IMAGE_INTERIOR",
+  },
+  {
+    id: "vehicle_image_exterior",
+    label: "Φωτογραφία Εξωτερικού Οχήματος (Vehicle Exterior Image)",
+    hasExpiry: false,
+    backendType: "VEHICLE_IMAGE_EXTERIOR",
   },
 ];
 
@@ -129,7 +135,8 @@ export default function VehicleDocuments() {
         newState[requiredDoc.id] = {
           ...newState[requiredDoc.id],
           docNumber:
-            requiredDoc.backendType !== "VEHICLE_IMAGE"
+            requiredDoc.backendType !== "VEHICLE_IMAGE_INTERIOR" &&
+            requiredDoc.backendType !== "VEHICLE_IMAGE_EXTERIOR"
               ? doc.DocNo?.toString() || ""
               : "",
           issueDate: doc.IssueDate
@@ -174,7 +181,9 @@ export default function VehicleDocuments() {
     if (!data) return false;
 
     const hasDocNumber =
-      docInfo.backendType === "VEHICLE_IMAGE" || !!data.docNumber;
+      docInfo.backendType === "VEHICLE_IMAGE_INTERIOR" ||
+      docInfo.backendType === "VEHICLE_IMAGE_EXTERIOR" ||
+      !!data.docNumber;
     const hasBasicInfo = hasDocNumber && !!data.issueDate && !!data.file;
     const hasExpiry = !docInfo.hasExpiry || !!data.expiryDate;
 
@@ -208,7 +217,10 @@ export default function VehicleDocuments() {
         vehicleId: vehicleId,
         docType: doc.backendType,
         docNumber:
-          doc.backendType !== "VEHICLE_IMAGE" ? data.docNumber : undefined,
+          doc.backendType !== "VEHICLE_IMAGE_INTERIOR" &&
+          doc.backendType !== "VEHICLE_IMAGE_EXTERIOR"
+            ? data.docNumber
+            : undefined,
         issueDate: data.issueDate,
         expiryDate: doc.hasExpiry ? data.expiryDate : undefined,
         file: data.file!,
@@ -383,7 +395,8 @@ export default function VehicleDocuments() {
 
                 <CardContent className="space-y-3 px-4 py-4 text-sm">
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    {doc.backendType !== "VEHICLE_IMAGE" && (
+                    {doc.backendType !== "VEHICLE_IMAGE_INTERIOR" &&
+                      doc.backendType !== "VEHICLE_IMAGE_EXTERIOR" && (
                       <div className="space-y-1.5">
                         <Label
                           htmlFor={`${doc.id}-number`}
