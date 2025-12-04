@@ -12,7 +12,7 @@ const RIDE_TYPES = [
   { key: "fully_autonomous", label: "Fully Autonomous" },
   { key: "small_cargo_van", label: "Small Cargo Van" },
   { key: "teledriving", label: "Teledriving" },
-  { key: "vehicle_no_driver", label: "No Driver" },
+  { key: "vehicle_rental", label: "No Driver" },
   { key: "vehicle_with_driver", label: "With Driver" },
 ];
 import { Header } from "@/components/Header";
