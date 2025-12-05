@@ -73,18 +73,16 @@ BEGIN
         RETURN;
     END;
 
-    -- 4. Prevent duplicate active/pending enrollment
+    -- 4. Prevent duplicate enrollment: One vehicle can only have ONE service enrollment
     IF EXISTS (
         SELECT 1
         FROM dbo.UserServiceEnrollment use2
         WHERE use2.UserId     = @UserId
           AND use2.VehicleId  = @VehicleId
-          AND use2.ServiceType = @ServiceTypeId
-          AND use2.RideType    = @RideTypeId
           AND use2.Status IN ('Pending','Approved')
     )
     BEGIN
-        RAISERROR('An active or pending enrollment already exists for this combination.', 16, 1);
+        RAISERROR('This vehicle is already enrolled in a service. Each vehicle can only be enrolled in one service at a time.', 16, 1);
         RETURN;
     END;
 

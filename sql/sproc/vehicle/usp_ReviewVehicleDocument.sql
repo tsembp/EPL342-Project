@@ -73,8 +73,8 @@ BEGIN
     -- 5. Check if ALL required vehicle docs are accepted
     --    (same idea as usp_ReviewPersonDocument: only status & doc types)
     ------------------------------------------------
-    DECLARE @RequiredDocCount INT = 4; -- VEHICLE_REGISTRATION, MOT_CERTIFICATE,
-                                      -- VEHICLE_CLASSIFICATION_CERTIFICATE, VEHICLE_IMAGE
+    DECLARE @RequiredDocCount INT = 5; -- VEHICLE_REGISTRATION, MOT_CERTIFICATE,
+                                      -- VEHICLE_CLASSIFICATION_CERTIFICATE, VEHICLE_IMAGE_INTERIOR, VEHICLE_IMAGE_EXTERIOR
     DECLARE @ApprovedDocCount INT;
 
     SELECT @ApprovedDocCount = COUNT(DISTINCT DocType)
@@ -85,7 +85,8 @@ BEGIN
             'VEHICLE_REGISTRATION',
             'MOT_CERTIFICATE',
             'VEHICLE_CLASSIFICATION_CERTIFICATE',
-            'VEHICLE_IMAGE'
+            'VEHICLE_IMAGE_INTERIOR',
+            'VEHICLE_IMAGE_EXTERIOR'
       );
 
     IF @ApprovedDocCount = @RequiredDocCount

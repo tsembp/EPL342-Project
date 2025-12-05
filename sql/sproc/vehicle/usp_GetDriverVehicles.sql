@@ -27,9 +27,10 @@ BEGIN
                        'VEHICLE_REGISTRATION',
                        'MOT_CERTIFICATE',
                        'VEHICLE_CLASSIFICATION_CERTIFICATE',
-                       'VEHICLE_IMAGE'
+                       'VEHICLE_IMAGE_INTERIOR',
+                       'VEHICLE_IMAGE_EXTERIOR'
                    )
-                ) = 4 -- All required docs
+                ) = 5 -- All required docs
             THEN CAST(1 AS BIT)
             ELSE CAST(0 AS BIT)
         END AS IsApproved,
@@ -40,7 +41,8 @@ BEGIN
                     ('VEHICLE_REGISTRATION'),
                     ('MOT_CERTIFICATE'),
                     ('VEHICLE_CLASSIFICATION_CERTIFICATE'),
-                    ('VEHICLE_IMAGE')
+                    ('VEHICLE_IMAGE_INTERIOR'),
+                    ('VEHICLE_IMAGE_EXTERIOR')
                  ) AS RequiredDoc(DocType)
                  WHERE EXISTS (
                     SELECT 1
@@ -48,7 +50,7 @@ BEGIN
                     WHERE VD.VehicleId = V.VehicleId
                       AND VD.DocType = RequiredDoc.DocType
                  )
-                ) = 4 -- All required doc types have at least one submission
+                ) = 5 -- All required doc types have at least one submission
             THEN CAST(1 AS BIT)
             ELSE CAST(0 AS BIT)
         END AS HasAllRequiredDocsSubmitted

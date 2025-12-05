@@ -67,10 +67,11 @@ BEGIN
         DECLARE @MaxSeqNo INT = (SELECT MAX(SeqNo) FROM @Legs);
 
         ------------------------------------------------
-        -- 5. Insert Legs
+        -- 5. Insert Legs (with bridge point splitting)
         ------------------------------------------------
         DECLARE @CurrentStartTime DATETIME2(3) = @PickupAt;
         DECLARE @TotalElapsedMinutes INT = 0;
+        DECLARE @PhysicalSeqNo INT = 0; -- Actual leg sequence number
 
         DECLARE @Inserted TABLE (LegId INT);
 
@@ -88,9 +89,10 @@ BEGIN
         BEGIN
             DECLARE @FromPointId INT;
             DECLARE @ToPointId INT;
+            DECLARE @BridgePointId INT = NULL;
 
             --------------------------------------------
-            -- FROM POINT
+            -- Determine FROM POINT
             --------------------------------------------
             IF @SeqNo = 1
             BEGIN
@@ -98,6 +100,7 @@ BEGIN
             END
             ELSE
             BEGIN
+                -- Get the last inserted ToPointId
                 SELECT TOP 1 @FromPointId = ToPointId
                 FROM dbo.ItineraryLeg
                 WHERE RideRequestId = @RequestId
@@ -105,74 +108,159 @@ BEGIN
             END;
 
             --------------------------------------------
-            -- TO POINT (correctly handle LAST LEG)
+            -- Check if this is a cross-zone leg
             --------------------------------------------
-            IF @SeqNo = @MaxSeqNo AND @ToZoneId = @DropZoneId
+            IF @FromZoneId <> @ToZoneId
             BEGIN
-                -- LAST LEG → MUST END AT DROP OFF POINT
-                SET @ToPointId = @DropOffPointId;
+                -- Find the bridge point between these zones
+                SELECT TOP 1 @BridgePointId = zp.PointId
+                FROM dbo.ZonePoint zp
+                INNER JOIN dbo.Bridge b 
+                    ON (b.PointId = zp.PointId)
+                WHERE zp.PointType = 'B'
+                  AND ((b.FromZoneId = @FromZoneId AND b.ToZoneId = @ToZoneId)
+                    OR (b.FromZoneId = @ToZoneId AND b.ToZoneId = @FromZoneId))
+                ORDER BY zp.PointId;
+
+                IF @BridgePointId IS NULL
+                BEGIN
+                    RAISERROR('No bridge point found between zones.', 16, 1);
+                    ROLLBACK;
+                    RETURN;
+                END;
+
+                --------------------------------------------
+                -- INSERT FIRST LEG: FromPoint → BridgePoint (in FromZone)
+                --------------------------------------------
+                SET @PhysicalSeqNo += 1;
+                
+                DECLARE @DistanceKm1 FLOAT =
+                (
+                    SELECT zpFrom.Location.STDistance(zpTo.Location) / 1000.0
+                    FROM dbo.ZonePoint zpFrom
+                    CROSS JOIN dbo.ZonePoint zpTo
+                    WHERE zpFrom.PointId = @FromPointId
+                      AND zpTo.PointId   = @BridgePointId
+                );
+
+                DECLARE @DurationMinutes1 INT = CEILING((@DistanceKm1 / 50.0) * 60.0);
+                SET @TotalElapsedMinutes += @DurationMinutes1;
+
+                INSERT INTO dbo.ItineraryLeg
+                (
+                    RideRequestId, SeqNo, ZoneId,
+                    FromPointId, ToPointId,
+                    ApproxStartTime, ApproxEndTime
+                )
+                OUTPUT INSERTED.LegId INTO @Inserted
+                VALUES
+                (
+                    @RequestId, @PhysicalSeqNo, @FromZoneId,
+                    @FromPointId, @BridgePointId,
+                    DATEADD(MINUTE, @TotalElapsedMinutes - @DurationMinutes1, @PickupAt),
+                    DATEADD(MINUTE, @TotalElapsedMinutes, @PickupAt)
+                );
+
+                --------------------------------------------
+                -- INSERT SECOND LEG: BridgePoint → ToPoint (in ToZone)
+                --------------------------------------------
+                SET @PhysicalSeqNo += 1;
+
+                -- Determine the ToPoint for this leg
+                IF @SeqNo = @MaxSeqNo
+                BEGIN
+                    -- Last logical leg → end at dropoff point
+                    SET @ToPointId = @DropOffPointId;
+                END
+                ELSE
+                BEGIN
+                    -- Not the last leg → this shouldn't happen for simple adjacent zones
+                    -- But if it does, we'll end at the bridge point and next leg starts from there
+                    SET @ToPointId = @BridgePointId;
+                END;
+
+                DECLARE @DistanceKm2 FLOAT =
+                (
+                    SELECT zpFrom.Location.STDistance(zpTo.Location) / 1000.0
+                    FROM dbo.ZonePoint zpFrom
+                    CROSS JOIN dbo.ZonePoint zpTo
+                    WHERE zpFrom.PointId = @BridgePointId
+                      AND zpTo.PointId   = @ToPointId
+                );
+
+                DECLARE @DurationMinutes2 INT = CEILING((@DistanceKm2 / 50.0) * 60.0);
+                SET @TotalElapsedMinutes += @DurationMinutes2;
+
+                INSERT INTO dbo.ItineraryLeg
+                (
+                    RideRequestId, SeqNo, ZoneId,
+                    FromPointId, ToPointId,
+                    ApproxStartTime, ApproxEndTime
+                )
+                OUTPUT INSERTED.LegId INTO @Inserted
+                VALUES
+                (
+                    @RequestId, @PhysicalSeqNo, @ToZoneId,
+                    @BridgePointId, @ToPointId,
+                    DATEADD(MINUTE, @TotalElapsedMinutes - @DurationMinutes2, @PickupAt),
+                    DATEADD(MINUTE, @TotalElapsedMinutes, @PickupAt)
+                );
             END
             ELSE
             BEGIN
-                -- Choose bridge point in the next zone
-                SELECT TOP 1 @ToPointId = zp.PointId
-                FROM dbo.ZonePoint zp
-                WHERE zp.ZoneId = @ToZoneId
-                  AND zp.PointType = 'B'
-                ORDER BY zp.PointId;
+                --------------------------------------------
+                -- Same zone: single leg
+                --------------------------------------------
+                SET @PhysicalSeqNo += 1;
 
-                IF @ToPointId IS NULL
+                -- For same-zone, end at dropoff if this is the last leg
+                IF @SeqNo = @MaxSeqNo
                 BEGIN
+                    SET @ToPointId = @DropOffPointId;
+                END
+                ELSE
+                BEGIN
+                    -- Pick any point in the zone (shouldn't normally happen)
                     SELECT TOP 1 @ToPointId = zp.PointId
                     FROM dbo.ZonePoint zp
                     WHERE zp.ZoneId = @ToZoneId
                     ORDER BY zp.PointId;
-                END
+                END;
+
+                IF @FromPointId IS NULL OR @ToPointId IS NULL
+                BEGIN
+                    RAISERROR('Point resolution error.', 16, 1);
+                    ROLLBACK;
+                    RETURN;
+                END;
+
+                DECLARE @DistanceKm FLOAT =
+                (
+                    SELECT zpFrom.Location.STDistance(zpTo.Location) / 1000.0
+                    FROM dbo.ZonePoint zpFrom
+                    CROSS JOIN dbo.ZonePoint zpTo
+                    WHERE zpFrom.PointId = @FromPointId
+                      AND zpTo.PointId   = @ToPointId
+                );
+
+                DECLARE @DurationMinutes INT = CEILING((@DistanceKm / 50.0) * 60.0);
+                SET @TotalElapsedMinutes += @DurationMinutes;
+
+                INSERT INTO dbo.ItineraryLeg
+                (
+                    RideRequestId, SeqNo, ZoneId,
+                    FromPointId, ToPointId,
+                    ApproxStartTime, ApproxEndTime
+                )
+                OUTPUT INSERTED.LegId INTO @Inserted
+                VALUES
+                (
+                    @RequestId, @PhysicalSeqNo, @FromZoneId,
+                    @FromPointId, @ToPointId,
+                    DATEADD(MINUTE, @TotalElapsedMinutes - @DurationMinutes, @PickupAt),
+                    DATEADD(MINUTE, @TotalElapsedMinutes, @PickupAt)
+                );
             END;
-
-            --------------------------------------------
-            -- SAFETY CHECK
-            --------------------------------------------
-            IF @FromPointId IS NULL OR @ToPointId IS NULL
-            BEGIN
-                RAISERROR('Point resolution error.', 16, 1);
-                ROLLBACK;
-                RETURN;
-            END;
-
-            --------------------------------------------
-            -- Distance
-            --------------------------------------------
-            DECLARE @DistanceKm FLOAT =
-            (
-                SELECT zpFrom.Location.STDistance(zpTo.Location) / 1000.0
-                FROM dbo.ZonePoint zpFrom
-                CROSS JOIN dbo.ZonePoint zpTo
-                WHERE zpFrom.PointId = @FromPointId
-                  AND zpTo.PointId   = @ToPointId
-            );
-
-            DECLARE @DurationMinutes INT = CEILING((@DistanceKm / 50.0) * 60.0);
-
-            SET @TotalElapsedMinutes += @DurationMinutes;
-
-            --------------------------------------------
-            -- Insert leg
-            --------------------------------------------
-            INSERT INTO dbo.ItineraryLeg
-            (
-                RideRequestId, SeqNo, ZoneId,
-                FromPointId, ToPointId,
-                ApproxStartTime, ApproxEndTime
-            )
-            OUTPUT INSERTED.LegId INTO @Inserted
-            VALUES
-            (
-                @RequestId, @SeqNo, @FromZoneId,
-                @FromPointId, @ToPointId,
-                DATEADD(MINUTE, @TotalElapsedMinutes - @DurationMinutes, @PickupAt),
-                DATEADD(MINUTE, @TotalElapsedMinutes, @PickupAt)
-            );
 
             FETCH NEXT FROM cur INTO @SeqNo, @FromZoneId, @ToZoneId;
         END;

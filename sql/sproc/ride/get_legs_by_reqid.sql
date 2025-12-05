@@ -15,7 +15,9 @@ BEGIN
         VT.Name             AS VehicleType,
         IL.ApproxStartTime  AS PlannedStart,
         IL.ApproxEndTime    AS PlannedEnd,
-        R.PriceFinal        AS PriceFinal
+        R.PriceFinal        AS PriceFinal,
+        R.Payment           AS PaymentId,
+        P.Status            AS PaymentStatus
     FROM dbo.Ride R
     JOIN dbo.DispatchOffer DO
         ON DO.OfferId = R.OfferId
@@ -31,6 +33,8 @@ BEGIN
         ON V.VehicleId = R.VehicleId
     LEFT JOIN dbo.VehicleType VT
         ON VT.VehicleTypeId = V.VehicleTypeId
+    LEFT JOIN dbo.Payment P
+        ON P.PaymentId = R.Payment
     WHERE DO.Status = 'Accepted'
       AND IL.RideRequestId = @RideRequestId
     ORDER BY IL.SeqNo;

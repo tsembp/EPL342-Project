@@ -41,6 +41,8 @@ export interface RideSummary {
   vehiclePlate?: string;
   vehicleType?: string;
   priceFinal?: number;
+  paymentId?: string;
+  paymentStatus?: string;
 }
 
 export type RideRequestDetails = {
