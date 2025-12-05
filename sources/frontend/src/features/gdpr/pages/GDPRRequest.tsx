@@ -88,35 +88,49 @@ export default function GDPRRequest() {
     setLoading(true);
     try {
       await submitGDPRRequest({ reason, type });
-      toast.success("Your GDPR request has been submitted.");
-
-      if (type === "DataAccess" || type === "DataExport") {
-        // This goes to a common export screen
-        navigate("/gdpr/export");
+      
+      if (type === "DataDeletion") {
+        // For data deletion, show success message and redirect to login
+        toast.success("Your account data has been deleted. You have been logged out.");
+        // Give user time to see the message before redirecting
+        setTimeout(() => {
+          navigate("/login");
+        }, 1500);
       } else {
-        // Go back to where we came from (driver profile tab or passenger profile)
-        navigate(backTo);
+        toast.success("Your GDPR request has been submitted.");
+        
+        if (type === "DataAccess" || type === "DataExport") {
+          // This goes to a common export screen
+          navigate("/gdpr/export");
+        } else {
+          // Go back to where we came from (driver profile tab or passenger profile)
+          navigate(backTo);
+        }
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to submit GDPR request.");
-    } finally {
       setLoading(false);
+    } finally {
+      // Don't set loading to false for DataDeletion since we're navigating away
+      if (type !== "DataDeletion") {
+        setLoading(false);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* If your Header supports onBack, pass it: */}
       <Header title="GDPR Request" showBack />
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 pb-8 pt-4">
-        <Card className="w-full border border-neutral-800 bg-neutral-900/80 p-6 shadow-xl backdrop-blur">
+        <Card className="w-full border border-gray-200 bg-white p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-5 text-sm">
             {/* Type selector */}
             <div className="space-y-2">
               <Label
                 htmlFor="type"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                className="text-xs font-medium uppercase tracking-wide text-gray-600"
               >
                 Request type
               </Label>
@@ -125,7 +139,7 @@ export default function GDPRRequest() {
                 id="type"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-11 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 px-3 outline-none focus:ring-gray-500 focus:ring-offset-0"
+                className="w-full h-11 rounded-lg border border-gray-300 bg-white text-gray-900 px-3 outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
                 required
               >
                 {REQUEST_TYPES.map((t) => (
@@ -135,7 +149,7 @@ export default function GDPRRequest() {
                 ))}
               </select>
 
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-gray-500">
                 {getHelperText(type)}
               </p>
             </div>
@@ -144,7 +158,7 @@ export default function GDPRRequest() {
             <div className="space-y-2">
               <Label
                 htmlFor="reason"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                className="text-xs font-medium uppercase tracking-wide text-gray-600"
               >
                 {getReasonLabel(type)}
               </Label>
@@ -154,7 +168,7 @@ export default function GDPRRequest() {
                 placeholder={getReasonPlaceholder(type)}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="min-h-32 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
+                className="min-h-32 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
                 required={type === "DataDeletion" || type === "DataCorrection"}
               />
             </div>
@@ -162,7 +176,7 @@ export default function GDPRRequest() {
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl bg-gray-500 text-neutral-950 font-medium hover:bg-gray-800 disabled:bg-neutral-800 disabled:text-neutral-500"
+              className="w-full h-11 rounded-xl bg-gray-900 text-white font-medium hover:bg-gray-800 disabled:bg-gray-300 disabled:text-gray-500"
               disabled={loading}
             >
               {loading ? "Submitting..." : "Submit request"}

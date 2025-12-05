@@ -86,6 +86,11 @@ def submit_gdpr_request():
                 row = cur.fetchone()
                 gdpr_id = row[0] if row else None
 
+        # If this is a data deletion request, clear the session immediately
+        # because the user's account has been anonymized
+        if request_type == "DataDeletion":
+            session.clear()
+
         return jsonify({"success": True, "gdprId": gdpr_id}), 200
 
     except Exception as e:

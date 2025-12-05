@@ -135,20 +135,20 @@ export default function PendingApproval() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 text-neutral-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 text-gray-900">
       <div className="w-full max-w-md space-y-6">
-        <Card className="bg-neutral-950 text-center border-2 border-gray-500">
+        <Card className="bg-white text-center border border-gray-200 shadow-sm">
           <CardHeader className="pb-4">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-warning/10 flex items-center justify-center">
-                <Clock className="h-10 w-10 text-warning" />
+              <div className="w-20 h-20 rounded-full bg-amber-50 flex items-center justify-center">
+                <Clock className="h-10 w-10 text-amber-600" />
               </div>
             </div>
 
-            <CardTitle className="text-2xl font-semibold text-white">
+            <CardTitle className="text-2xl font-semibold text-gray-900">
               Verification in Progress
             </CardTitle>
-            <CardDescription className="text-sm text-neutral-400 mt-2">
+            <CardDescription className="text-sm text-gray-600 mt-2">
               We&apos;re reviewing your documents. You can track your progress
               and upload any missing documents below.
             </CardDescription>
@@ -156,28 +156,28 @@ export default function PendingApproval() {
 
           <CardContent className="space-y-4">
             {loading && (
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-gray-600">
                 Fetching your document status...
               </p>
             )}
 
             {error && !loading && (
-              <p className="text-sm text-red-400">{error}</p>
+              <p className="text-sm text-red-600">{error}</p>
             )}
 
             {docStats && !loading && !error && (
               <>
                 {/* Progress bar */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-neutral-400">
+                  <div className="flex items-center justify-between text-xs text-gray-600">
                     <span>Required documents approved</span>
-                    <span className="font-medium text-neutral-100">
+                    <span className="font-medium text-gray-900">
                       {docStats.requiredAccepted} / {docStats.totalRequired}
                     </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
                     <div
-                      className="h-full bg-gray-500 transition-all"
+                      className="h-full bg-green-600 transition-all"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -185,34 +185,34 @@ export default function PendingApproval() {
 
                 {/* Status grid */}
                 <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                  <div className="bg-transparent p-3 flex flex-col gap-1 items-center">
-                  <span className="font-semibold text-neutral-100">Pending</span>
-                  <span className="font-semibold text-amber-400 text-lg">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex flex-col gap-1 items-center">
+                  <span className="font-semibold text-gray-700">Pending</span>
+                  <span className="font-semibold text-amber-600 text-lg">
                     {docStats.pending}
                   </span>
                   </div>
-                  <div className="bg-transparent p-3 flex flex-col gap-1 items-center">
-                  <span className="font-semibold text-neutral-100">Accepted</span>
-                  <span className="font-semibold text-gray-400 text-lg">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex flex-col gap-1 items-center">
+                  <span className="font-semibold text-gray-700">Accepted</span>
+                  <span className="font-semibold text-green-600 text-lg">
                     {docStats.accepted}
                   </span>
                   </div>
-                  <div className="bg-transparent p-3 flex flex-col gap-1 items-center">
-                  <span className="font-semibold text-neutral-100">Rejected</span>
-                  <span className="font-semibold text-red-400 text-lg">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex flex-col gap-1 items-center">
+                  <span className="font-semibold text-gray-700">Rejected</span>
+                  <span className="font-semibold text-red-600 text-lg">
                     {docStats.rejected}
                   </span>
                   </div>
                 </div>
 
-                <div className="text-xs text-neutral-500 border-t border-neutral-800 pt-3 text-left">
+                <div className="text-xs text-gray-600 border-t border-gray-200 pt-3 text-left">
                   <p>
                     To speed up your approval, make sure all{" "}
-                    <span className="font-semibold text-neutral-200">
+                    <span className="font-semibold text-gray-900">
                       required documents
                     </span>{" "}
                     are uploaded and any{" "}
-                    <span className="text-red-400 font-medium">rejected</span>{" "}
+                    <span className="text-red-600 font-medium">rejected</span>{" "}
                     documents are corrected and resubmitted.
                   </p>
                 </div>
@@ -220,7 +220,7 @@ export default function PendingApproval() {
                 <div className="space-y-2 pt-2">
                   <Button
                     onClick={() => navigate("/driver/documents")}
-                    className="w-full bg-gray-500 hover:bg-gray-800 text-neutral-900 font-semibold"
+                    className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold"
                   >
                     Review & Upload Documents
                   </Button>
@@ -229,7 +229,7 @@ export default function PendingApproval() {
             )}
 
             {!docStats && !loading && !error && (
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-gray-600">
                 No document information found yet. Start by uploading your
                 documents.
               </p>
