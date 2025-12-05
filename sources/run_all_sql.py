@@ -30,7 +30,7 @@ def get_connection():
 
 def find_sql_files(base_dir: Path):
     sql_files = []
-    db_programming_dir = base_dir / "db_programming"
+    db_programming_dir = base_dir / "sql"
     
     if not db_programming_dir.exists():
         return sql_files
@@ -99,7 +99,7 @@ def split_batches(sql_text: str):
 
 
 def main():
-    base_dir = Path(__file__).resolve().parent
+    base_dir = Path(__file__).resolve().parent.parent
 
     print(f"Base directory : {base_dir}")
     print("Finding .sql files...\n")

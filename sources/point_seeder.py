@@ -23,8 +23,8 @@ conn = pyodbc.connect(
 
 cursor = conn.cursor()
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "map_zones"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data" / "map_zones"
 
 zones_path = DATA_DIR / "zones"
 zone_points_path = DATA_DIR / "zone_points"
