@@ -372,10 +372,10 @@ export function DriverScheduleSection() {
           if (!open) setMapRide(null);
         }}
       >
-        <DialogContent className="w-[95vw] max-w-6xl h-[85vh] border-gray-200 bg-white text-gray-900">
+        <DialogContent className="w-[95vw] max-w-6xl h-[85vh] overflow-hidden border-gray-200 bg-white text-gray-900">
           {mapRide && (
-            <>
-              <DialogHeader>
+            <div className="flex h-full flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle className="text-base font-semibold">
                   Route overview
                 </DialogTitle>
@@ -384,9 +384,9 @@ export function DriverScheduleSection() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 grid h-[calc(85vh-5rem)] gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <div className="mt-4 grid flex-1 gap-4 overflow-hidden md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 {/* BIG MAP */}
-                <div className="h-full min-h-[24rem] rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                <div className="h-full min-h-0 rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
                   <MapView
                     center={getRideMapCenter(mapRide)}
                     markers={getRideMarkers(mapRide)}
@@ -436,7 +436,7 @@ export function DriverScheduleSection() {
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </DialogContent>
       </Dialog>
