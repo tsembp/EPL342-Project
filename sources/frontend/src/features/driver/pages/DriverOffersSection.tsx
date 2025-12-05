@@ -182,21 +182,8 @@ export function DriverOffersSection() {
         return;
       }
 
-      const updated = res.offer;
-      if (updated) {
-        setOffers((prev) =>
-          prev.map((o) =>
-            o.OfferId === offerId
-              ? {
-                  ...o,
-                  OfferStatus: (updated as any).Status ?? o.OfferStatus,
-                  RespondedAt:
-                    (updated as any).RespondedAt ?? o.RespondedAt,
-                }
-              : o
-          )
-        );
-      }
+      // Remove the offer from the list immediately after successful response
+      setOffers((prev) => prev.filter((o) => o.OfferId !== offerId));
 
       toast.success(
         action === "accept" ? "Offer accepted." : "Offer rejected."

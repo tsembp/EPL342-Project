@@ -370,16 +370,52 @@ def get_ride_alternatives(request_id: int):
                         }
                     )
 
-                # 4) Convert dict -> sorted list for response
+                # 4) Expand cross-zone legs into physical legs (matching build_itinerary logic)
+                # For each cross-zone leg, we create 2 legs: FromZone->Bridge and Bridge->ToZone
                 alternatives = []
                 for alt_no in sorted(alternatives_dict.keys()):
-                    legs = sorted(
+                    logical_legs = sorted(
                         alternatives_dict[alt_no], key=lambda leg: leg["seqNo"]
                     )
+                    
+                    # Expand legs to match what will be created in database
+                    physical_legs = []
+                    physical_seq = 1
+                    
+                    for logical_leg in logical_legs:
+                        from_zone = logical_leg["fromZoneId"]
+                        to_zone = logical_leg["toZoneId"]
+                        
+                        if from_zone != to_zone:
+                            # Cross-zone: create 2 physical legs
+                            # Leg 1: Within FromZone (to bridge point)
+                            physical_legs.append({
+                                "seqNo": physical_seq,
+                                "fromZoneId": from_zone,
+                                "toZoneId": from_zone,  # Still in same zone, going to bridge
+                            })
+                            physical_seq += 1
+                            
+                            # Leg 2: Within ToZone (from bridge point)
+                            physical_legs.append({
+                                "seqNo": physical_seq,
+                                "fromZoneId": to_zone,
+                                "toZoneId": to_zone,  # In destination zone
+                            })
+                            physical_seq += 1
+                        else:
+                            # Same-zone: single leg
+                            physical_legs.append({
+                                "seqNo": physical_seq,
+                                "fromZoneId": from_zone,
+                                "toZoneId": to_zone,
+                            })
+                            physical_seq += 1
+                    
                     alternatives.append(
                         {
                             "alternativeNo": int(alt_no),
-                            "legs": legs,
+                            "legs": physical_legs,
                         }
                     )
 
@@ -573,6 +609,8 @@ def get_ride_request_details(request_id: int):
                                 else None
                             ),
                             "priceFinal": float(r.PriceFinal) if getattr(r, "PriceFinal", None) is not None else None,
+                            "paymentId": str(r.PaymentId) if getattr(r, "PaymentId", None) else None,
+                            "paymentStatus": r.PaymentStatus if getattr(r, "PaymentStatus", None) else None,
                         }
                     )
 

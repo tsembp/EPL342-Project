@@ -486,7 +486,13 @@ const filteredRideTypeIds = selected.serviceType
     hasRides && data!.rides!.every((r) => r.status === "Completed");
   const requestCompleted =
     data?.status === "Completed" || data?.progressStatus === "Completed";
-  const canProceedToPayment = requestCompleted && allRidesCompleted;
+  
+  // Check if any rides have been paid (payment status is 'Completed')
+  const allRidesPaid = hasRides && data!.rides!.every((r) => 
+    r.paymentStatus === "Completed"
+  );
+  
+  const canProceedToPayment = requestCompleted && allRidesCompleted && !allRidesPaid;
 
   // Calculate total price from rides
   const totalPrice = useMemo(() => {
