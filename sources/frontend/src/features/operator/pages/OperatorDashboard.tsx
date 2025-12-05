@@ -57,11 +57,8 @@ export default function OperatorDashboard() {
       <aside className="hidden md:flex w-64 flex-col border-r border-gray-200 bg-white">
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Operator Console
-            </span>
             <span className="text-sm font-semibold text-gray-900">
-              One-Stop Ride-Hail
+              OSRH - Operator Dashboard
             </span>
           </div>
         </div>
@@ -105,16 +102,13 @@ export default function OperatorDashboard() {
       {/* MAIN AREA */}
       <div className="flex-1 flex flex-col bg-gray-50 min-w-0 overflow-hidden">
         {/* Top app bar */}
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+        {/* <header className="flex items-center justify-between bg-white px-6 py-4">
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs uppercase tracking-wide text-gray-500">
-              Operator Console
-            </span>
             <h1 className="text-lg font-semibold text-gray-900">
               {currentSection.label}
             </h1>
           </div>
-        </header>
+        </header> */}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">

@@ -916,8 +916,8 @@ def report_driver_vehicle_earnings():
     dropoff_zone_id = to_int("dropoffZoneId")
     min_trips = to_int("minTrips")
     min_earnings = to_float("minEarnings")
-    include_current_year = to_bit("includeCurrentYear", None)  # default 1
-    include_last3_years = to_bit("includeLast3Years", None)
+    include_current_year = to_bit("includeCurrentYear", 1)   # default = 1 (include current year)
+    include_last3_years  = to_bit("includeLast3Years", 0)    # default = 0 (exclude last 3 years)
     current_year_override = to_int("currentYearOverride")
 
     try:
