@@ -2,7 +2,7 @@ CREATE OR ALTER PROCEDURE dbo.usp_Report_DriverVehicleEarnings
 (
     @GroupBy           NVARCHAR(20) = 'DRIVER',     -- 'DRIVER', 'VEHICLE', or 'BOTH'
     @ServiceTypeId     INT          = NULL,
-    @RideStatus        NVARCHAR(50) = 'COMPLETED',
+    @RideStatus        NVARCHAR(50) = 'Completed',
     @PaymentStatus     NVARCHAR(50) = 'Completed',
     @PickupZoneId      INT          = NULL,
     @DropoffZoneId     INT          = NULL,

@@ -699,3 +699,620 @@ def review_gdpr_request():
     except Exception as e:
         print("Error in /review-gdpr-request:", e)
         return jsonify({"error": "Failed to update GDPR request"}), 500
+
+
+# Reports endpoints
+
+# Avg cost by category report
+@operator_bp.route("/reports/average-cost-by-category", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_average_cost_by_category():
+    """
+    Runs dbo.usp_Report_AverageCostByCategory and returns the result set as JSON.
+    Query params:
+      fromDate, toDate, frequency, serviceTypeId, rideStatus, paymentStatus,
+      pickupZoneId, dropoffZoneId
+    """
+    # Helpers to parse optional params
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    from_date = request.args.get("fromDate") or None
+    to_date = request.args.get("toDate") or None
+    frequency = to_str("frequency", None)
+    service_type_id = to_int("serviceTypeId")
+    # Keep the stored procedure defaults ("Completed") unless client overrides
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_AverageCostByCategory
+                        @FromDate      = ?,
+                        @ToDate        = ?,
+                        @Frequency     = ?,
+                        @ServiceTypeId = ?,
+                        @RideStatus    = ?,
+                        @PaymentStatus = ?,
+                        @PickupZoneId  = ?,
+                        @DropoffZoneId = ?
+                    """,
+                    (
+                        from_date,
+                        to_date,
+                        frequency,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                    ),
+                )
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/average-cost-by-category:", e)
+        return jsonify({"error": "Failed to load average cost report"}), 500
+
+
+# High/Low cost tripts report
+@operator_bp.route("/reports/high-low-cost-trips", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_high_low_cost_trips():
+    """
+    Runs dbo.usp_Report_HighLowCostTrips and returns the result set as JSON.
+    Query params:
+      fromDate, toDate, serviceTypeId, rideStatus, paymentStatus,
+      pickupZoneId, dropoffZoneId, topN
+    """
+    def to_int(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        try:
+            return int(val)
+        except ValueError:
+            return default
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    from_date = request.args.get("fromDate") or None
+    to_date = request.args.get("toDate") or None
+    service_type_id = to_int("serviceTypeId")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+    top_n = to_int("topN", 10)
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_HighLowCostTrips
+                        @FromDate      = ?,
+                        @ToDate        = ?,
+                        @ServiceTypeId = ?,
+                        @RideStatus    = ?,
+                        @PaymentStatus = ?,
+                        @PickupZoneId  = ?,
+                        @DropoffZoneId = ?,
+                        @TopN          = ?
+                    """,
+                    (
+                        from_date,
+                        to_date,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                        top_n,  # default to 10
+                    ),
+                )
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/high-low-cost-trips:", e)
+        return jsonify({"error": "Failed to load high/low cost trips report"}), 500
+
+
+# Driver/Vehicle earnings report
+@operator_bp.route("/reports/driver-vehicle-earnings", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_driver_vehicle_earnings():
+    """
+    Runs dbo.usp_Report_DriverVehicleEarnings and returns the result as JSON.
+
+    Query params (all optional):
+      groupBy: 'DRIVER' | 'VEHICLE' | 'BOTH'
+      serviceTypeId: int
+      rideStatus: string (default 'Completed')
+      paymentStatus: string (default 'Completed')
+      pickupZoneId: int
+      dropoffZoneId: int
+      minTrips: int
+      minEarnings: number
+      includeCurrentYear: bool (1/0, true/false)
+      includeLast3Years: bool (1/0, true/false)
+      currentYearOverride: int
+    """
+
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_float(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return float(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    def to_bit(name, default=None):
+        """
+        Accepts: 1/0, '1'/'0', 'true'/'false', 'True'/'False'
+        Returns: 1, 0 or None
+        """
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        v = str(val).strip().lower()
+        if v in ("1", "true", "yes", "y"):
+            return 1
+        if v in ("0", "false", "no", "n"):
+            return 0
+        return default
+
+    group_by = to_str("groupBy", None)  # default 'DRIVER' by sproc
+    service_type_id = to_int("serviceTypeId")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+    min_trips = to_int("minTrips")
+    min_earnings = to_float("minEarnings")
+    include_current_year = to_bit("includeCurrentYear", None)  # default 1
+    include_last3_years = to_bit("includeLast3Years", None)
+    current_year_override = to_int("currentYearOverride")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_DriverVehicleEarnings
+                        @GroupBy            = ?,
+                        @ServiceTypeId      = ?,
+                        @RideStatus         = ?,
+                        @PaymentStatus      = ?,
+                        @PickupZoneId       = ?,
+                        @DropoffZoneId      = ?,
+                        @MinTrips           = ?,
+                        @MinEarnings        = ?,
+                        @IncludeCurrentYear = ?,
+                        @IncludeLast3Years  = ?,
+                        @CurrentYearOverride = ?
+                    """,
+                    (
+                        group_by,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                        min_trips,
+                        min_earnings,
+                        include_current_year,
+                        include_last3_years,
+                        current_year_override,
+                    ),
+                )
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/driver-vehicle-earnings:", e)
+        return jsonify({"error": "Failed to load driver/vehicle earnings report"}), 500
+
+
+# Driver/Vehicle performance report
+@operator_bp.route("/reports/driver-vehicle-performance", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_driver_vehicle_performance():
+    """
+    Runs dbo.usp_Report_DriverVehiclePerformance and returns the result as JSON.
+
+    Query params:
+      fromDate: date string (optional)
+      toDate: date string (optional)
+      periodGranularity: 'day' | 'week' | 'month' | 'quarter' | 'year' (optional)
+      serviceTypeId: int (optional)
+      rideStatus: string (default 'Completed')
+      paymentStatus: string (default 'Completed')
+      pickupZoneId: int (optional)
+      dropoffZoneId: int (optional)
+      minRating: float (optional) - minimum average rating filter
+      minTrips: int (optional) - minimum number of trips filter
+      groupBy: 'DRIVER' | 'VEHICLE' | 'BOTH' (default 'DRIVER')
+      topN: int (optional) - return only top N performers
+      orderBy: 'TRIPS' | 'RATING' (default 'TRIPS')
+    """
+
+    from flask import request, jsonify
+
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_float(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return float(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    def to_bit(name, default=None):
+        """
+        Accepts: 1/0, '1'/'0', 'true'/'false', 'True'/'False'
+        Returns: 1, 0 or None
+        """
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        v = str(val).strip().lower()
+        if v in ("1", "true", "yes", "y"):
+            return 1
+        if v in ("0", "false", "no", "n"):
+            return 0
+        return default
+
+    from_date = request.args.get("fromDate") or None
+    to_date = request.args.get("toDate") or None
+    period_granularity = to_str("periodGranularity", None)
+    service_type_id = to_int("serviceTypeId")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+    min_rating = to_float("minRating")
+    min_trips = to_int("minTrips")
+    group_by = to_str("groupBy", "DRIVER")
+    top_n = to_int("topN")
+    order_by = to_str("orderBy", "TRIPS")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_DriverVehiclePerformance
+                        @FromDate          = ?,
+                        @ToDate            = ?,
+                        @PeriodGranularity = ?,
+                        @ServiceTypeId     = ?,
+                        @RideStatus        = ?,
+                        @PaymentStatus     = ?,
+                        @PickupZoneId      = ?,
+                        @DropoffZoneId     = ?,
+                        @MinRating         = ?,
+                        @MinTrips          = ?,
+                        @GroupBy           = ?,
+                        @TopN              = ?,
+                        @OrderBy           = ?
+                    """,
+                    (
+                        from_date,
+                        to_date,
+                        period_granularity,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                        min_rating,
+                        min_trips,
+                        group_by,
+                        top_n,
+                        order_by,
+                    ),
+                )
+
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/driver-vehicle-performance:", e)
+        return jsonify({"error": "Failed to load driver/vehicle performance report"}), 500
+
+
+# Trip Count Report
+@operator_bp.route("/reports/trip-count", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_trip_count():
+    """
+    Runs dbo.usp_Report_TripCount and returns the result as JSON.
+
+    Query params:
+      fromDate: date string (optional)
+      toDate: date string (optional)
+      frequency: 'day' | 'week' | 'month' | 'quarter' | 'year' (default 'month')
+      serviceTypeId: int (optional)
+      rideStatus: string (default 'Completed')
+      paymentStatus: string (default 'Completed')
+    """
+
+    from flask import request, jsonify
+
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    from_date = request.args.get("fromDate") or None
+    to_date = request.args.get("toDate") or None
+    frequency = to_str("frequency", "month")
+    service_type_id = to_int("serviceTypeId")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_TripCount
+                        @FromDate      = ?,
+                        @ToDate        = ?,
+                        @Frequency     = ?,
+                        @ServiceTypeId = ?,
+                        @RideStatus    = ?,
+                        @PaymentStatus = ?
+                    """,
+                    (
+                        from_date,
+                        to_date,
+                        frequency,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                    ),
+                )
+
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/trip-count:", e)
+        return jsonify({"error": "Failed to load trip count report"}), 500
+
+
+# Trip Trends Report
+@operator_bp.route("/reports/trip-trends", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_trip_trends():
+    """
+    Runs dbo.usp_Report_TripTrends and returns the result as JSON.
+
+    Query params:
+      fromDate: date string (optional)
+      toDate: date string (optional)
+      frequency: 'day' | 'week' | 'month' | 'quarter' | 'year' (default 'month')
+      rideStatus: string (default 'Completed')
+      paymentStatus: string (default 'Completed')
+      pickupZoneId: int (optional)
+      dropoffZoneId: int (optional)
+    """
+
+    from flask import request, jsonify
+
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    from_date = request.args.get("fromDate") or None
+    to_date = request.args.get("toDate") or None
+    frequency = to_str("frequency", "month")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_TripTrends
+                        @FromDate      = ?,
+                        @ToDate        = ?,
+                        @Frequency     = ?,
+                        @RideStatus    = ?,
+                        @PaymentStatus = ?,
+                        @PickupZoneId  = ?,
+                        @DropoffZoneId = ?
+                    """,
+                    (
+                        from_date,
+                        to_date,
+                        frequency,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                    ),
+                )
+
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/trip-trends:", e)
+        return jsonify({"error": "Failed to load trip trends report"}), 500
+
+
+# High Activity Periods Report
+@operator_bp.route("/reports/high-activity-periods", methods=["GET"])
+@require_auth
+@require_role("O", "I")
+def report_high_activity_periods():
+    """
+    Runs dbo.usp_Report_HighActivityPeriods and returns the result as JSON.
+
+    Query params:
+      frequency: 'day' | 'week' | 'month' | 'quarter' | 'year' (default 'month')
+      serviceTypeId: int (optional)
+      rideStatus: string (default 'Completed')
+      paymentStatus: string (default 'Completed')
+      pickupZoneId: int (optional)
+      dropoffZoneId: int (optional)
+      topN: int (optional) - return only top N periods
+    """
+
+    from flask import request, jsonify
+
+    def to_int(name):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return None
+
+    def to_str(name, default=None):
+        val = request.args.get(name)
+        if val is None or val == "":
+            return default
+        return val
+
+    frequency = to_str("frequency", "month")
+    service_type_id = to_int("serviceTypeId")
+    ride_status = to_str("rideStatus", "Completed")
+    payment_status = to_str("paymentStatus", "Completed")
+    pickup_zone_id = to_int("pickupZoneId")
+    dropoff_zone_id = to_int("dropoffZoneId")
+    top_n = to_int("topN")
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Report_HighActivityPeriods
+                        @Frequency     = ?,
+                        @ServiceTypeId = ?,
+                        @RideStatus    = ?,
+                        @PaymentStatus = ?,
+                        @PickupZoneId  = ?,
+                        @DropoffZoneId = ?,
+                        @TopN          = ?
+                    """,
+                    (
+                        frequency,
+                        service_type_id,
+                        ride_status,
+                        payment_status,
+                        pickup_zone_id,
+                        dropoff_zone_id,
+                        top_n,
+                    ),
+                )
+
+                columns = [c[0] for c in cur.description]
+                rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        return jsonify(rows), 200
+
+    except Exception as e:
+        print("Error in /reports/high-activity-periods:", e)
+        return jsonify({"error": "Failed to load high activity periods report"}), 500

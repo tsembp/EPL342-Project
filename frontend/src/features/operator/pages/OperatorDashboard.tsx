@@ -103,7 +103,7 @@ export default function OperatorDashboard() {
       </aside>
 
       {/* MAIN AREA */}
-      <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="flex-1 flex flex-col bg-gray-50 min-w-0 overflow-hidden">
         {/* Top app bar */}
         <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
           <div className="flex flex-col gap-0.5">
@@ -117,7 +117,7 @@ export default function OperatorDashboard() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
           <Outlet />
         </main>
       </div>
