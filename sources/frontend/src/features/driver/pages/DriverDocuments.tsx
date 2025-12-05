@@ -268,6 +268,25 @@ export default function DriverDocuments() {
       setStatusesError(null);
       const data = await getPersonDocumentStatus();
       setPersonDocStatuses(data);
+      
+      // Sync local state with backend statuses
+      setDocuments((prev) => {
+        const updated = { ...prev };
+        for (const doc of REQUIRED_DOCUMENTS) {
+          const backendStatus = data.find(s => s.DocType === doc.backendType);
+          if (backendStatus) {
+            const status = backendStatus.Status?.trim(); // Trim whitespace
+            if (status === "Pending" || status === "Accepted") {
+              // Mark as success in local state if already submitted
+              updated[doc.id] = {
+                ...updated[doc.id],
+                status: "success"
+              };
+            }
+          }
+        }
+        return updated;
+      });
     } catch (err) {
       console.error("Error fetching person document status:", err);
       setStatusesError(
@@ -306,6 +325,21 @@ export default function DriverDocuments() {
     return map;
   }, [personDocStatuses]);
 
+  // Show message when all required documents are uploaded (no redirect)
+  useEffect(() => {
+    if (personDocStatuses.length > 0) {
+      const allUploaded = REQUIRED_DOCUMENTS.filter((doc) => !doc.optional).every((doc) => {
+        const statusInfo = statusByDocType[doc.backendType];
+        const dbStatus = statusInfo?.Status?.trim() ?? null; // Trim whitespace
+        return dbStatus === "Pending" || dbStatus === "Accepted";
+      });
+
+      if (allUploaded) {
+        toast.success("All documents submitted successfully! Awaiting review.");
+      }
+    }
+  }, [personDocStatuses, statusByDocType]);
+
   type DisplayStatus = "Not submitted" | "Submitted" | "Accepted" | "Rejected";
 
   const statusPriority: Record<DisplayStatus, number> = {
@@ -319,7 +353,7 @@ export default function DriverDocuments() {
     doc: DocumentType
   ): { displayStatus: DisplayStatus; reviewComments: string | null } => {
     const statusInfo = statusByDocType[doc.backendType];
-    const dbStatus = statusInfo?.Status ?? null;
+    const dbStatus = statusInfo?.Status?.trim() ?? null; // Trim whitespace
 
     const reviewComments =
       (statusInfo as any)?.ReviewComments ??
@@ -343,101 +377,143 @@ export default function DriverDocuments() {
     return { displayStatus, reviewComments };
   };
 
+  const allRequiredSubmitted = remainingRequiredDocuments.length === 0;
+
+  // Check if all required documents are at least submitted (Pending or Accepted)
+  const allRequiredDocumentsUploaded = useMemo(() => {
+    return REQUIRED_DOCUMENTS.filter((doc) => !doc.optional).every((doc) => {
+      const statusInfo = statusByDocType[doc.backendType];
+      const dbStatus = statusInfo?.Status?.trim() ?? null; // Trim whitespace
+      return dbStatus === "Pending" || dbStatus === "Accepted";
+    });
+  }, [personDocStatuses, statusByDocType]);
+
+  const handleViewStatus = () => {
+    navigate("/driver/pending-approval");
+  };
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex items-start justify-center px-4 py-8">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex items-start justify-center px-4 py-8">
       <div className="w-full max-w-3xl space-y-8">
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-neutral-800 bg-neutral-900 shadow-lg">
-            <Car className="h-8 w-8 text-gray-500" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <Car className="h-8 w-8 text-gray-600" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">
             Driver &amp; Company Documents
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-gray-600">
             Upload the required documents to complete registration. Optional
             documents can be added later.
           </p>
         </div>
 
-        {/* Driver Photo*/}
-        <Card className="border border-neutral-800 bg-neutral-900/80 shadow-xl backdrop-blur">
-          <CardHeader className="pb-3 border-b border-neutral-800">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col gap-1">
-                <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                  <FileText className="h-4 w-4 text-gray-500" />
-                  Driver Profile Photo
-                </CardTitle>
-                <CardDescription className="text-xs text-neutral-500">
-                  Upload a clear, recent photo. This will appear on your profile.
-                </CardDescription>
+        {/* Success message when all required docs are uploaded (submitted or accepted) */}
+        {allRequiredDocumentsUploaded && (
+          <Card className="border border-green-200 bg-green-50 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <CheckCircle2 className="h-12 w-12 text-green-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-900">
+                    All Required Documents Submitted!
+                  </h3>
+                  <p className="text-sm text-green-700 mt-1">
+                    Your documents are pending operator review. Click below to view your approval status.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleViewStatus}
+                  className="mt-2 bg-green-600 text-white hover:bg-green-700"
+                >
+                  View Approval Status
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Driver Photo - Only show if not all required documents are uploaded */}
+        {!allRequiredDocumentsUploaded && (
+          <Card className="border border-gray-200 bg-white shadow-sm">
+            <CardHeader className="pb-3 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col gap-1">
+                  <CardTitle className="text-base flex items-center gap-2 text-gray-900">
+                    <FileText className="h-4 w-4 text-gray-600" />
+                    Driver Profile Photo
+                  </CardTitle>
+                  <CardDescription className="text-xs text-gray-600">
+                    Upload a clear, recent photo. This will appear on your profile.
+                  </CardDescription>
+                </div>
+
+                <span
+                  className={`
+                    text-xs font-medium px-2 py-1 rounded-full border
+                    ${
+                      photoStatus === "Submitted"
+                        ? "bg-green-50 text-green-700 border-green-300"
+                        : "bg-gray-50 text-gray-600 border-gray-300"
+                    }
+                  `}
+                >
+                  {photoStatus}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="driver-photo-file"
+                  className="text-xs font-medium uppercase tracking-wide text-gray-600"
+                >
+                  Upload Photo
+                </Label>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <Input
+                    id="driver-photo-file"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setPhotoFile(e.target.files?.[0] ?? null)
+                    }
+                    className="h-10 rounded-lg border border-gray-300 bg-white text-gray-900 file:text-gray-900 file:bg-gray-100 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
+                  />
+                  {photoFile && (
+                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                      <FileText className="h-4 w-4" />
+                      <span className="truncate max-w-[180px]">
+                        {photoFile.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <span
-                className={`
-                  text-xs font-medium px-2 py-1 rounded-full border
-                  ${
-                    photoStatus === "Submitted"
-                      ? "bg-gray-500/10 text-gray-400 border-gray-500/40"
-                      : "bg-neutral-900 text-neutral-400 border-neutral-700"
-                  }
-                `}
-              >
-                {photoStatus}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="driver-photo-file"
-                className="text-xs font-medium uppercase tracking-wide text-neutral-400"
-              >
-                Upload Photo
-              </Label>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <Input
-                  id="driver-photo-file"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setPhotoFile(e.target.files?.[0] ?? null)
-                  }
-                  className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
-                />
-                {photoFile && (
-                  <div className="flex items-center gap-1 text-xs text-neutral-400">
-                    <FileText className="h-4 w-4" />
-                    <span className="truncate max-w-[180px]">
-                      {photoFile.name}
-                    </span>
-                  </div>
-                )}
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePhotoSubmit}
+                  disabled={!photoFile || photoUploading}
+                  className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  {photoUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    "Upload Photo"
+                  )}
+                </Button>
               </div>
-            </div>
-
-            <div className="pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePhotoSubmit}
-                disabled={!photoFile || photoUploading}
-                className="border-neutral-700 bg-neutral-900 text-neutral-50 hover:bg-neutral-800 hover:border-neutral-600 disabled:bg-neutral-900 disabled:text-neutral-500 disabled:border-neutral-800"
-              >
-                {photoUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  "Upload Photo"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Documents form */}
                 {/* Documents form */}
@@ -464,19 +540,19 @@ export default function DriverDocuments() {
                   key={doc.id}
                   className={
                     isPending
-                      ? "border bg-neutral-900/80 shadow-xl backdrop-blur border-amber-500/40"
-                      : "border bg-neutral-900/80 shadow-xl backdrop-blur border-gray-500/40"
+                      ? "border bg-white shadow-sm border-amber-300"
+                      : "border bg-white shadow-sm border-green-300"
                   }
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex flex-col gap-1">
-                        <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                          <FileText className="h-4 w-4 text-gray-500" />
+                        <CardTitle className="text-base flex items-center gap-2 text-gray-900">
+                          <FileText className="h-4 w-4 text-gray-600" />
                           {doc.label}
                         </CardTitle>
                         {doc.optional && (
-                          <span className="text-[11px] font-medium px-2 py-0.5 w-fit rounded-full bg-neutral-900 text-neutral-400 border border-neutral-700">
+                          <span className="text-[11px] font-medium px-2 py-0.5 w-fit rounded-full bg-gray-50 text-gray-600 border border-gray-300">
                             Optional
                           </span>
                         )}
@@ -485,8 +561,8 @@ export default function DriverDocuments() {
                       <span
                         className={
                           isPending
-                            ? "text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/40"
-                            : "text-xs font-medium px-2 py-1 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/40"
+                            ? "text-xs font-medium px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-300"
+                            : "text-xs font-medium px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-300"
                         }
                       >
                         {badgeText}
@@ -494,18 +570,18 @@ export default function DriverDocuments() {
                     </div>
                   </CardHeader>
                   <CardContent className="pt-1 space-y-2">
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-xs text-gray-600">
                       {isPending
                         ? "This document has been submitted and is currently pending approval. You won't be able to upload a new file until it is reviewed."
                         : "This document has been reviewed and accepted. You cannot upload another file unless an operator changes its status."}
                     </p>
 
                     {reviewComments && (
-                      <div className="mt-1 rounded-lg border border-neutral-700 bg-neutral-900/70 px-3 py-2">
-                        <p className="text-[11px] font-semibold text-neutral-300">
+                      <div className="mt-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2">
+                        <p className="text-[11px] font-semibold text-gray-700">
                           Review comment
                         </p>
-                        <p className="mt-0.5 text-[11px] text-neutral-400">
+                        <p className="mt-0.5 text-[11px] text-gray-600">
                           {reviewComments}
                         </p>
                       </div>
@@ -519,21 +595,21 @@ export default function DriverDocuments() {
             return (
               <Card
                 key={doc.id}
-                className={`border bg-neutral-900/80 shadow-xl backdrop-blur ${
+                className={`border bg-white shadow-sm ${
                   data.status === "error"
-                    ? "border-red-500/80"
-                    : "border-neutral-800"
+                    ? "border-red-300"
+                    : "border-gray-200"
                 }`}
               >
-                <CardHeader className="pb-3 border-b border-neutral-800">
+                <CardHeader className="pb-3 border-b border-gray-200">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col gap-1">
-                      <CardTitle className="text-base flex items-center gap-2 text-neutral-50">
-                        <FileText className="h-4 w-4 text-gray-500" />
+                      <CardTitle className="text-base flex items-center gap-2 text-gray-900">
+                        <FileText className="h-4 w-4 text-gray-600" />
                         {doc.label}
                       </CardTitle>
                       {doc.optional && (
-                        <span className="text-[11px] font-medium px-2 py-0.5 w-fit rounded-full bg-neutral-900 text-neutral-400 border border-neutral-700">
+                        <span className="text-[11px] font-medium px-2 py-0.5 w-fit rounded-full bg-gray-50 text-gray-600 border border-gray-300">
                           Optional
                         </span>
                       )}
@@ -545,12 +621,12 @@ export default function DriverDocuments() {
                             (() => {
                               switch (displayStatus) {
                                 case "Not submitted":
-                                  return "bg-amber-500/10 text-amber-400 border-amber-500/60";
+                                  return "bg-amber-50 text-amber-700 border-amber-300";
                                 case "Rejected":
-                                  return "bg-red-500/10 text-red-400 border-red-500/60";
+                                  return "bg-red-50 text-red-700 border-red-300";
                                 default:
                                   // just in case, but shouldn't be hit
-                                  return "bg-neutral-700/30 text-neutral-300 border-neutral-600";
+                                  return "bg-gray-50 text-gray-600 border-gray-300";
                               }
                             })()
                           }
@@ -561,13 +637,13 @@ export default function DriverDocuments() {
                   </div>
 
                   {data.status === "error" && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-red-400">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-red-600">
                       <AlertCircle className="h-4 w-4" />
                       <p>Error: {data.error}</p>
                     </div>
                   )}
 
-                  <CardDescription className="mt-2 text-xs text-neutral-500">
+                  <CardDescription className="mt-2 text-xs text-gray-600">
                     {doc.hasExpiry
                       ? "Include issue and expiry dates"
                       : "No expiry date required"}
@@ -575,11 +651,11 @@ export default function DriverDocuments() {
 
                   {/* 🔴 Rejected: show review comment but keep editable */}
                   {displayStatus === "Rejected" && reviewComments && (
-                    <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2">
-                      <p className="text-[11px] font-semibold text-red-300">
+                    <div className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2">
+                      <p className="text-[11px] font-semibold text-red-700">
                         Review comment
                       </p>
-                      <p className="mt-0.5 text-[11px] text-red-200">
+                      <p className="mt-0.5 text-[11px] text-red-600">
                         {reviewComments}
                       </p>
                     </div>
@@ -592,7 +668,7 @@ export default function DriverDocuments() {
                     <div className="space-y-2">
                       <Label
                         htmlFor={`${doc.id}-number`}
-                        className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                        className="text-xs font-medium uppercase tracking-wide text-gray-600"
                       >
                         ID / Number
                       </Label>
@@ -606,14 +682,14 @@ export default function DriverDocuments() {
                             e.target.value
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label
                         htmlFor={`${doc.id}-issue`}
-                        className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                        className="text-xs font-medium uppercase tracking-wide text-gray-600"
                       >
                         Issue Date
                       </Label>
@@ -628,7 +704,7 @@ export default function DriverDocuments() {
                             e.target.value
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
                       />
                     </div>
 
@@ -636,7 +712,7 @@ export default function DriverDocuments() {
                       <div className="space-y-2">
                         <Label
                           htmlFor={`${doc.id}-expiry`}
-                          className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                          className="text-xs font-medium uppercase tracking-wide text-gray-600"
                         >
                           Expiry Date
                         </Label>
@@ -651,7 +727,7 @@ export default function DriverDocuments() {
                               e.target.value
                             )
                           }
-                          className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
+                          className="h-10 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
                         />
                       </div>
                     )}
@@ -661,7 +737,7 @@ export default function DriverDocuments() {
                   <div className="space-y-2">
                     <Label
                       htmlFor={`${doc.id}-file`}
-                      className="text-xs font-medium uppercase tracking-wide text-neutral-400"
+                      className="text-xs font-medium uppercase tracking-wide text-gray-600"
                     >
                       Upload Document
                     </Label>
@@ -676,10 +752,10 @@ export default function DriverDocuments() {
                             e.target.files?.[0] || null
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-50 file:text-neutral-50 file:bg-neutral-800 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-neutral-500 focus-visible:ring-gray-500 focus-visible:ring-offset-0"
+                        className="h-10 rounded-lg border border-gray-300 bg-white text-gray-900 file:text-gray-900 file:bg-gray-100 file:border-0 file:px-3 file:py-1 file:mr-2 file:text-xs placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:border-transparent"
                       />
                       {data.file && !isLoading && (
-                        <div className="flex items-center gap-1 text-xs text-neutral-400">
+                        <div className="flex items-center gap-1 text-xs text-gray-600">
                           <FileText className="h-4 w-4" />
                           <span className="truncate max-w-[180px]">
                             {data.file.name}
@@ -697,7 +773,7 @@ export default function DriverDocuments() {
                       size="sm"
                       onClick={() => handleIndividualSubmit(doc.id)}
                       disabled={!isSubmittable || isLoading}
-                      className="border-neutral-700 bg-neutral-900 text-neutral-50 hover:bg-neutral-800 hover:border-neutral-600 disabled:bg-neutral-900 disabled:text-neutral-500 disabled:border-neutral-800"
+                      className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       {isLoading ? (
                         <>

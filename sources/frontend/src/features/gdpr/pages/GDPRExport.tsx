@@ -88,20 +88,20 @@ export default function GDPRExport() {
       : data?.Verified === 1;
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header title="My GDPR Data Export" showBack />
 
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         {/* Status / Info card */}
-        <Card className="p-4 flex items-start gap-3 border border-neutral-800 bg-neutral-900/80 shadow-lg">
+        <Card className="p-4 flex items-start gap-3 border border-gray-200 bg-white shadow-sm">
           <div className="mt-1">
-            <ShieldCheck className="h-6 w-6 text-gray-500" />
+            <ShieldCheck className="h-6 w-6 text-gray-400" />
           </div>
           <div className="flex-1 space-y-1">
-            <h2 className="font-semibold text-base text-neutral-50">
+            <h2 className="font-semibold text-base text-gray-900">
               Your personal data snapshot
             </h2>
-            <p className="text-sm text-neutral-400">
+            <p className="text-sm text-gray-600">
               This page shows the main information our system currently stores
               about your account. You can review it or download it as a JSON
               file for your records.
@@ -111,13 +111,13 @@ export default function GDPRExport() {
 
         {/* Error / loading */}
         {error && (
-          <Card className="p-4 border border-red-500/50 bg-red-950/40 text-red-300 text-sm">
+          <Card className="p-4 border border-red-300 bg-red-50 text-red-700 text-sm">
             {error}
           </Card>
         )}
 
         {loading && (
-          <Card className="p-4 text-sm text-neutral-400 flex items-center gap-2 border border-neutral-800 bg-neutral-900/80">
+          <Card className="p-4 text-sm text-gray-600 flex items-center gap-2 border border-gray-200 bg-white">
             <RefreshCw className="h-4 w-4 animate-spin" />
             Fetching your latest data export...
           </Card>
@@ -127,15 +127,15 @@ export default function GDPRExport() {
         {data && !loading && (
           <div className="space-y-4">
             {/* Top summary */}
-            <Card className="p-4 flex flex-wrap items-center gap-4 justify-between border border-neutral-800 bg-neutral-900/80">
+            <Card className="p-4 flex flex-wrap items-center gap-4 justify-between border border-gray-200 bg-white">
               <div>
-                <div className="text-xs uppercase text-neutral-500">
+                <div className="text-xs uppercase text-gray-500">
                   Account
                 </div>
-                <div className="font-semibold text-lg text-neutral-50">
+                <div className="font-semibold text-lg text-gray-900">
                   {fullName || data.Username || "User"}
                 </div>
-                <div className="text-sm text-neutral-400">
+                <div className="text-sm text-gray-600">
                   {data.Email || "No email stored"}
                 </div>
               </div>
@@ -145,7 +145,7 @@ export default function GDPRExport() {
                   {data.Role && (
                     <Badge
                       variant="outline"
-                      className="border-neutral-700 bg-neutral-900 text-neutral-200"
+                      className="border-gray-300 bg-gray-50 text-gray-700"
                     >
                       {data.Role === "D"
                         ? "Driver"
@@ -160,22 +160,22 @@ export default function GDPRExport() {
                     variant={verified ? "default" : "outline"}
                     className={
                       verified
-                        ? "bg-gray-500 text-neutral-950"
-                        : "border-neutral-700 bg-neutral-900 text-neutral-200"
+                        ? "bg-green-600 text-white border-green-600"
+                        : "border-gray-300 bg-gray-50 text-gray-700"
                     }
                   >
                     {verified ? "Verified" : "Not verified"}
                   </Badge>
                 </div>
-                <div className="text-xs text-neutral-500">
+                <div className="text-xs text-gray-500">
                   Created at: {formatDateTime(data.CreatedAt)}
                 </div>
               </div>
             </Card>
 
             {/* Personal details */}
-            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
-              <h3 className="font-semibold text-sm text-neutral-50">
+            <Card className="p-4 space-y-3 border border-gray-200 bg-white">
+              <h3 className="font-semibold text-sm text-gray-900">
                 Personal details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -187,8 +187,8 @@ export default function GDPRExport() {
             </Card>
 
             {/* Contact info */}
-            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
-              <h3 className="font-semibold text-sm text-neutral-50">
+            <Card className="p-4 space-y-3 border border-gray-200 bg-white">
+              <h3 className="font-semibold text-sm text-gray-900">
                 Contact information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -201,8 +201,8 @@ export default function GDPRExport() {
             </Card>
 
             {/* Account metadata */}
-            <Card className="p-4 space-y-3 border border-neutral-800 bg-neutral-900/80">
-              <h3 className="font-semibold text-sm text-neutral-50">
+            <Card className="p-4 space-y-3 border border-gray-200 bg-white">
+              <h3 className="font-semibold text-sm text-gray-900">
                 Account details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -215,7 +215,7 @@ export default function GDPRExport() {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleDownloadJson}
-                className="bg-gray-500 text-neutral-950 hover:bg-gray-800"
+                className="bg-gray-900 text-white hover:bg-gray-800"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Download JSON
@@ -224,7 +224,7 @@ export default function GDPRExport() {
                 variant="outline"
                 onClick={fetchExport}
                 disabled={loading}
-                className="border-neutral-700 bg-neutral-900 text-neutral-100 hover:bg-neutral-800 hover:text-neutral-50"
+                className="border-gray-300 bg-white text-gray-900 hover:bg-gray-50"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh export
@@ -233,7 +233,7 @@ export default function GDPRExport() {
                 variant="ghost"
                 type="button"
                 onClick={() => setShowRaw((s) => !s)}
-                className="text-neutral-300 hover:bg-neutral-900"
+                className="text-gray-700 hover:bg-gray-100"
               >
                 {showRaw ? "Hide raw data" : "Show raw JSON"}
               </Button>
@@ -241,11 +241,11 @@ export default function GDPRExport() {
 
             {/* Raw JSON (optional) */}
             {showRaw && (
-              <Card className="p-4 border border-neutral-800 bg-neutral-900/80">
-                <div className="text-xs mb-2 text-neutral-500">
+              <Card className="p-4 border border-gray-200 bg-white">
+                <div className="text-xs mb-2 text-gray-600">
                   Raw export (JSON)
                 </div>
-                <pre className="text-xs bg-neutral-950/70 p-3 rounded-md overflow-x-auto text-neutral-100">
+                <pre className="text-xs bg-gray-50 p-3 rounded-md overflow-x-auto text-gray-900 border border-gray-200">
                   {JSON.stringify(data, null, 2)}
                 </pre>
               </Card>
@@ -254,7 +254,7 @@ export default function GDPRExport() {
         )}
 
         {!loading && !data && !error && (
-          <Card className="p-4 text-sm text-neutral-400 border border-neutral-800 bg-neutral-900/80">
+          <Card className="p-4 text-sm text-gray-600 border border-gray-200 bg-white">
             No export data available for your account.
           </Card>
         )}
@@ -275,10 +275,10 @@ function Field({
 }) {
   return (
     <div className={fullWidth ? "col-span-1 md:col-span-2" : ""}>
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500 mb-0.5">
+      <div className="text-[11px] uppercase tracking-wide text-gray-500 mb-0.5">
         {label}
       </div>
-      <div className="text-sm text-neutral-100">
+      <div className="text-sm text-gray-900">
         {value === undefined || value === null || value === ""
           ? "-"
           : String(value)}
