@@ -1140,6 +1140,7 @@ def upload_driver_photo():
 def get_driver_daily_availability():
     """
     Get daily availability for the logged-in driver.
+    Returns multiple time slots for the same enrollment/service.
 
     Query param:
       ?date=YYYY-MM-DD (if missing, defaults to today)
@@ -1147,14 +1148,23 @@ def get_driver_daily_availability():
     Response:
     {
       "success": true,
-      "availability": {
-        "date": "2025-11-30",
-        "enabled": true/false,
-        "enrollId": 123 | null,
-        "startTime": "08:00" | null,
-        "endTime": "18:00" | null,
-        "locked": true/false
-      }
+      "timeSlots": [
+        {
+          "enrollId": 123,
+          "startTime": "08:00",
+          "endTime": "12:00",
+          "zoneId": 1,
+          "locked": false
+        },
+        {
+          "enrollId": 123,
+          "startTime": "14:00",
+          "endTime": "18:00",
+          "zoneId": 1,
+          "locked": false
+        }
+      ],
+      "date": "2025-11-30"
     }
     """
     user_id = session["user_id"]
@@ -1183,30 +1193,24 @@ def get_driver_daily_availability():
                     """,
                     (user_id, target_date),
                 )
-                row = cur.fetchone()
+                rows = cur.fetchall()
 
-        if not row:
-            availability = {
-                "date": date_str,
-                "enabled": False,
-                "enrollId": None,
-                "startTime": None,
-                "endTime": None,
-                "locked": False,
-                "zoneId": None,
-            }
-        else:
-            availability = {
-                "date": date_str,
-                "enabled": True,
+        print(f"[DEBUG] GET /api/driver/availability for user {user_id}, date {target_date}")
+        print(f"[DEBUG] Found {len(rows)} rows from database")
+
+        time_slots = []
+        for row in rows:
+            slot = {
                 "enrollId": row.EnrollId,
                 "startTime": row.StartsAt.strftime("%H:%M"),
                 "endTime": row.EndsAt.strftime("%H:%M"),
-                "locked": bool(row.IsLocked),
                 "zoneId": row.GeofencezoneId,
+                "locked": bool(row.IsLocked),
             }
+            print(f"[DEBUG] Slot: {slot}")
+            time_slots.append(slot)
 
-        return jsonify({"success": True, "availability": availability}), 200
+        return jsonify({"success": True, "timeSlots": time_slots, "date": date_str}), 200
 
     except Exception as e:
         print("Error in /api/driver/availability [GET]:", e)
@@ -1218,7 +1222,8 @@ def get_driver_daily_availability():
 @require_role("D", "C")
 def set_driver_daily_availability():
     """
-    Set daily availability for the logged-in driver.
+    Add a time slot for daily availability for the logged-in driver.
+    Multiple non-overlapping time slots allowed for same enrollment/service.
 
     Body:
     {
@@ -1278,6 +1283,9 @@ def set_driver_daily_availability():
                 )
 
     try:
+        print(f"[DEBUG] PUT /api/driver/availability for user {user_id}")
+        print(f"[DEBUG] Params: date={target_date}, enabled={enabled}, enrollId={enroll_id}, startTime={starts_at}, endTime={ends_at}, zoneId={zone_id}")
+        
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -1303,6 +1311,7 @@ def set_driver_daily_availability():
                 )
                 conn.commit()
 
+        print(f"[DEBUG] Successfully added time slot")
         return jsonify({"success": True}), 200
 
     except Exception as e:
@@ -1439,6 +1448,68 @@ def cancel_driver_service_enrollment(enroll_id: int):
     print("Error in cancel_driver_service_enrollment:", e)
     return jsonify({"success": False, "error": str(e)}), 500
   
+@driver_bp.route("/availability/timeslot", methods=["DELETE"])
+@require_auth
+@require_role("D", "C")
+def delete_driver_time_slot():
+    """
+    Delete a specific time slot from daily availability.
+
+    Body:
+    {
+      "date": "2025-11-30",
+      "enrollId": 123,
+      "startTime": "08:00"
+    }
+    """
+    user_id = session["user_id"]
+    payload = request.get_json(silent=True) or {}
+
+    date_str = payload.get("date")
+    enroll_id = payload.get("enrollId")
+    start_time = payload.get("startTime")
+
+    if not date_str or not enroll_id or not start_time:
+        return jsonify({"success": False, "error": "date, enrollId, and startTime are required"}), 400
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return (
+            jsonify({"success": False, "error": "Invalid date format. Use YYYY-MM-DD."}),
+            400,
+        )
+
+    try:
+        starts_at = datetime.strptime(start_time, "%H:%M").time().replace(microsecond=0)
+    except ValueError:
+        return (
+            jsonify({"success": False, "error": "Invalid startTime format. Use HH:MM."}),
+            400,
+        )
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    EXEC dbo.usp_Driver_DeleteTimeSlot
+                        @DriverUserId = ?,
+                        @Date         = ?,
+                        @EnrollId     = ?,
+                        @StartsAt     = ?
+                    """,
+                    (user_id, target_date, enroll_id, starts_at),
+                )
+                conn.commit()
+
+        return jsonify({"success": True}), 200
+
+    except Exception as e:
+        print("Error in /api/driver/availability/timeslot [DELETE]:", e)
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @driver_bp.route("/availability/confirm", methods=["POST"])
 @require_auth
 @require_role("D", "C")

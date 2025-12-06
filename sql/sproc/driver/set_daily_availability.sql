@@ -82,6 +82,7 @@ BEGIN
 
     ----------------------------------------------------------------
     -- 4. Enforce 1 service per day for this driver
+    --    (Can't mix different enrollments on same day)
     ----------------------------------------------------------------
     IF EXISTS (
         SELECT 1
@@ -97,14 +98,7 @@ BEGIN
     END;
 
     ----------------------------------------------------------------
-    -- 5. Delete existing availability for this enrollId/date
-    ----------------------------------------------------------------
-    DELETE FROM dbo.DriverAvailability
-    WHERE EnrollId        = @EnrollId
-      AND AvailabilityDate = @Date;
-
-    ----------------------------------------------------------------
-    -- 6. Validate the provided Geofence zone exists
+    -- 5. Validate the provided Geofence zone exists
     ----------------------------------------------------------------
     IF NOT EXISTS (
         SELECT 1
@@ -116,7 +110,8 @@ BEGIN
     END;
 
     ----------------------------------------------------------------
-    -- 7. Insert new availability (non-recurring) via canonical proc
+    -- 6. Insert new time slot (non-recurring) via canonical proc
+    --    sp_AddDriverAvailability will check for overlaps
     ----------------------------------------------------------------
     EXEC dbo.sp_AddDriverAvailability
         @EnrollId         = @EnrollId,

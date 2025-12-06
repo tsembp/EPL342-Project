@@ -7,13 +7,15 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Return at most one daily availability block (we assume 1 per day)
-    SELECT TOP (1)
+    -- Return all time slots for this driver on this date
+    -- Multiple non-overlapping time slots allowed for same enrollment
+    SELECT
         DA.EnrollId,
         DA.StartsAt,
         DA.EndsAt,
         DA.IsLocked,
-        DA.GeofencezoneId
+        DA.GeofencezoneId,
+        DA.AvailabilityDate
     FROM dbo.DriverAvailability AS DA
     JOIN dbo.UserServiceEnrollment AS SE
       ON DA.EnrollId = SE.EnrollId

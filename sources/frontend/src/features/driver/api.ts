@@ -456,8 +456,16 @@ export const getDriverRideHistory = () =>
   }>("/driver/rides/history");
 
 // ---------------------------------------------
-// Driver daily availability (new detailed API)
+// Driver daily availability (new detailed API with multiple time slots)
 // ---------------------------------------------
+
+export type TimeSlot = {
+  enrollId: number;
+  startTime: string; // "HH:MM"
+  endTime: string; // "HH:MM"
+  zoneId: number;
+  locked: boolean;
+};
 
 export type DriverDailyAvailability = {
   date: string; // "YYYY-MM-DD"
@@ -516,7 +524,8 @@ export const confirmDriverDailyAvailability = (date: string) =>
 export const getDriverDailyAvailability = (date: string) =>
   fetchAPI<{
     success: boolean;
-    availability?: DriverDailyAvailability;
+    timeSlots: TimeSlot[];
+    date: string;
     error?: string;
   }>(`/driver/availability?date=${encodeURIComponent(date)}`);
 
@@ -527,7 +536,7 @@ export const getAvailableZones = () =>
     error?: string;
   }>("/driver/zones");
 
-export const setDriverDailyAvailability = (
+export const addDriverTimeSlot = (
   payload: DriverDailyAvailability
 ) =>
   fetchAPI<{
@@ -537,6 +546,22 @@ export const setDriverDailyAvailability = (
     method: "PUT",
     body: JSON.stringify(payload),
   });
+
+export const deleteDriverTimeSlot = (
+  date: string,
+  enrollId: number,
+  startTime: string
+) =>
+  fetchAPI<{
+    success: boolean;
+    error?: string;
+  }>("/driver/availability/timeslot", {
+    method: "DELETE",
+    body: JSON.stringify({ date, enrollId, startTime }),
+  });
+
+// Legacy - kept for backward compatibility
+export const setDriverDailyAvailability = addDriverTimeSlot;
 
 // ---------------------------------------------
 // Driver photo

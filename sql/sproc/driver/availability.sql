@@ -1,5 +1,5 @@
 -- Add a new availability for driver's/comp. repr's enrollment 
-CREATE PROCEDURE [dbo].[sp_AddDriverAvailability]
+CREATE OR ALTER PROCEDURE [dbo].[sp_AddDriverAvailability]
     @EnrollId INT,
     @AvailabilityDate DATE,
     @GeofencezoneId INT,
@@ -103,6 +103,18 @@ BEGIN
         ----------------------------------------------------------------
         -- 7. Insert main availability
         ----------------------------------------------------------------
+        -- Check if this exact slot already exists
+        IF EXISTS (
+            SELECT 1
+            FROM [dbo].[DriverAvailability]
+            WHERE [EnrollId] = @EnrollId
+              AND [AvailabilityDate] = @AvailabilityDate
+              AND [StartsAt] = @StartsAt
+        )
+        BEGIN
+            ;THROW 50007, 'A time slot with this start time already exists. Please use a different start time.', 1;
+        END;
+
         INSERT INTO [dbo].[DriverAvailability] (
             [EnrollId],
             [AvailabilityDate],
